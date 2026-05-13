@@ -77,6 +77,7 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 
 // Utility for tailwind classes
@@ -101,95 +102,6 @@ const THEMES = {
   sakura: { primary: 'bg-pink-400', text: 'text-pink-400', border: 'border-pink-400', shadow: 'shadow-pink-400/20', ring: 'ring-pink-400' },
 };
 
-const TRANSLATIONS = {
-  zh: {
-    total_assets: '总资产估值',
-    monthly_balance: '本月结余',
-    budget_progress: '预算进度',
-    daily_suggest: '建议今日消费',
-    search_placeholder: '搜索账单、备注或标签...',
-    today: '今日',
-    week: '本周',
-    month: '本月',
-    year: '本年',
-    bill_detail: '账单明细',
-    stats: '统计分析',
-    calendar: '记账日历',
-    settings: '系统设置',
-    no_bills: '暂无账单记录',
-    start_recording: '点击下方按钮开始记第一笔账吧',
-    trend_title: '消费趋势 (7天)',
-    heatmap_title: '消费热力图 (30天)',
-    composition_title: '支出构成',
-    user_nickname: '高级会员',
-    user_id: 'ID: 888888',
-    login_sync: '登录 / 同步账号',
-    language: '语言切换 (Language)',
-    theme: '应用主题色',
-    dark_mode: '深色模式 (Dark Mode)',
-    privacy_lock: '隐私锁',
-    export_csv: '导出账单 (CSV)',
-    invite_friends: '邀请好友分享',
-    rate_app: '去好评',
-    about_us: '关于我们',
-    clear_data: '清空所有数据',
-    version: '当前版本',
-    copyright: '© 2026 我的账本 版权所有',
-    invite_msg: '快来和我一起用“我的账本”理财吧！安全、专业、美观。',
-    copy_link: '复制 App 链接',
-    thanks_rating: '感谢您的评价！我们会继续努力 ❤️',
-    general: '通用',
-    data: '数据',
-    about: '关于',
-    rate_update: '汇率更新',
-    last_update: '最后更新',
-    select_lang: '选择语言',
-  },
-  en: {
-    total_assets: 'Total Assets',
-    monthly_balance: 'Monthly Balance',
-    budget_progress: 'Budget Progress',
-    daily_suggest: 'Daily Suggested Spend',
-    search_placeholder: 'Search bills, notes, or tags...',
-    today: 'Today',
-    week: 'Week',
-    month: 'Month',
-    year: 'Year',
-    bill_detail: 'Bills',
-    stats: 'Statistics',
-    calendar: 'Calendar',
-    settings: 'Settings',
-    no_bills: 'No transactions yet',
-    start_recording: 'Click the button below to start recording',
-    trend_title: 'Spending Trend (7 Days)',
-    heatmap_title: 'Spending Heatmap (30 Days)',
-    composition_title: 'Spending Composition',
-    user_nickname: 'Premium Member',
-    user_id: 'ID: 888888',
-    login_sync: 'Login / Sync Account',
-    language: 'Language',
-    theme: 'Theme Color',
-    dark_mode: 'Dark Mode',
-    privacy_lock: 'Privacy Lock',
-    export_csv: 'Export Bills (CSV)',
-    invite_friends: 'Invite Friends',
-    rate_app: 'Rate Us',
-    about_us: 'About Us',
-    clear_data: 'Clear All Data',
-    version: 'Current Version',
-    copyright: '© 2026 My Money App. All rights reserved.',
-    invite_msg: 'Come and join me in using "My Money App" for financial management! Secure, professional, and beautiful.',
-    copy_link: 'Copy App Link',
-    thanks_rating: 'Thanks for your rating! We will keep working hard ❤️',
-    general: 'General',
-    data: 'Data',
-    about: 'About',
-    rate_update: 'Rates Updated',
-    last_update: 'Last Update',
-    select_lang: 'Select Language',
-  }
-};
-
 type ThemeKey = keyof typeof THEMES;
 
 const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[] = [
@@ -204,10 +116,10 @@ const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[
 ];
 
 const DEFAULT_ACCOUNTS: Account[] = [
-  { id: 'ac-1', name: '微信支付', type: 'wechat', balance: 0, icon: '📱' },
-  { id: 'ac-2', name: '支付宝', type: 'alipay', balance: 0, icon: '💳' },
-  { id: 'ac-3', name: '招商银行', type: 'bank', balance: 0, icon: '🏦' },
-  { id: 'ac-4', name: '现金钱包', type: 'cash', balance: 0, icon: '💵' },
+  { id: 'ac-1', name: 'wechat', type: 'wechat', balance: 0, icon: '📱' },
+  { id: 'ac-2', name: 'alipay', type: 'alipay', balance: 0, icon: '💳' },
+  { id: 'ac-3', name: 'bank', type: 'bank', balance: 0, icon: '🏦' },
+  { id: 'ac-4', name: 'cash', type: 'cash', balance: 0, icon: '💵' },
 ];
 
 const QUOTES = [
@@ -222,6 +134,7 @@ const QUOTES = [
 type FilterType = 'today' | 'week' | 'month' | 'year';
 
 export default function App() {
+  const { t, i18n } = useTranslation();
   // --- Core State ---
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('transactions');
@@ -260,13 +173,11 @@ export default function App() {
   const theme = THEMES[themeKey];
 
   // --- Settings & i18n ---
-  const [lang, setLang] = useState<'zh' | 'en'>(() => (localStorage.getItem('app_lang') as 'zh' | 'en') || 'zh');
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('app_dark_mode') === 'true');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [isLangPickerOpen, setIsLangPickerOpen] = useState(false);
   const [lastRateUpdate, setLastRateUpdate] = useState(() => localStorage.getItem('last_rate_update') || format(new Date(), 'HH:mm'));
-  const t = TRANSLATIONS[lang];
 
   // --- Exchange Rate State ---
   const [rates, setRates] = useState<Record<string, number>>(() => {
@@ -308,7 +219,7 @@ export default function App() {
     localStorage.setItem('privacy_pin', pin);
   }, [isLockEnabled, pin]);
   useEffect(() => localStorage.setItem('app_theme', themeKey), [themeKey]);
-  useEffect(() => localStorage.setItem('app_lang', lang), [lang]);
+  useEffect(() => localStorage.setItem('app_lang', i18n.language), [i18n.language]);
   useEffect(() => localStorage.setItem('app_dark_mode', isDarkMode.toString()), [isDarkMode]);
 
   useEffect(() => {
@@ -542,10 +453,10 @@ export default function App() {
         </div>
         <nav className="space-y-2">
           {[
-            { id: 'list', label: t.bill_detail, icon: <History size={20} /> },
-            { id: 'chart', label: t.stats, icon: <PieIcon size={20} /> },
-            { id: 'calendar', label: t.calendar, icon: <CalendarIcon size={20} /> },
-            { id: 'settings', label: t.settings, icon: <Settings size={20} /> },
+            { id: 'list', label: t('bill_detail'), icon: <History size={20} /> },
+            { id: 'chart', label: t('stats'), icon: <PieIcon size={20} /> },
+            { id: 'calendar', label: t('calendar'), icon: <CalendarIcon size={20} /> },
+            { id: 'settings', label: t('settings'), icon: <Settings size={20} /> },
           ].map((item) => (
             <button key={item.id} onClick={() => {
               if (item.id === 'settings') setIsBudgetModalOpen(true);
@@ -592,18 +503,18 @@ export default function App() {
         <div className={cn("text-white p-8 rounded-[2.5rem] mb-6 shadow-2xl relative transition-all duration-500", theme.primary)}>
           <div className="flex justify-between items-start mb-6">
             <div>
-              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">{t.total_assets}</p>
+              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">{t('total_assets')}</p>
               <p className="text-4xl font-black">¥{formatCurrency(totalAssets)}</p>
             </div>
             <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md"><BarChart3 size={24} /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-              <p className="text-[10px] text-white/50 font-bold mb-1">{t.monthly_balance}</p>
+              <p className="text-[10px] text-white/50 font-bold mb-1">{t('monthly_balance')}</p>
               <p className="text-lg font-black">¥{formatCurrency(stats.balance)}</p>
             </div>
             <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-              <p className="text-[10px] text-white/50 font-bold mb-1">{t.budget_progress}</p>
+              <p className="text-[10px] text-white/50 font-bold mb-1">{t('budget_progress')}</p>
               <div className="flex items-center space-x-2">
                 <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
                   <div className={cn("h-full transition-all duration-1000", stats.budgetUsage > 90 ? "bg-red-400" : "bg-white")} style={{ width: `${Math.min(stats.budgetUsage, 100)}%` }} />
@@ -614,7 +525,7 @@ export default function App() {
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-            <p className="text-[10px] text-white/50 font-bold tracking-tight">{t.daily_suggest}</p>
+            <p className="text-[10px] text-white/50 font-bold tracking-tight">{t('daily_suggest')}</p>
             <p className="text-sm font-black text-yellow-300">¥{formatCurrency(stats.dailyBudget)}</p>
           </div>
         </div>
@@ -628,7 +539,7 @@ export default function App() {
             )}>
               <div className="flex items-center space-x-2 mb-2">
                 <span className="text-lg">{acc.icon}</span>
-                <span className="text-[10px] font-black text-gray-400">{acc.name}</span>
+                <span className="text-[10px] font-black text-gray-400">{t(`accounts.${acc.name}`)}</span>
               </div>
               <p className={cn("text-sm font-black", isDarkMode ? "text-slate-200" : "text-gray-800")}>¥{formatCurrency(acc.balance)}</p>
             </div>
@@ -643,7 +554,7 @@ export default function App() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
           <input
             type="text"
-            placeholder={t.search_placeholder}
+            placeholder={t('search_placeholder')}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             className={cn(
@@ -670,7 +581,7 @@ export default function App() {
             {stats.filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                 <div className="text-6xl mb-4 opacity-50">🏜️</div>
-                <p className="font-bold text-center px-8">{t.no_bills}<br /><span className="text-xs font-medium">{t.start_recording}</span></p>
+                <p className="font-bold text-center px-8">{t('no_bills')}<br /><span className="text-xs font-medium">{t('start_recording')}</span></p>
               </div>
             ) : (
               <div className="space-y-8">
@@ -681,7 +592,7 @@ export default function App() {
                   return groups;
                 }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
                   <div key={date}>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">{format(parseISO(date), 'MM月dd日 EEEE', { locale: zhCN })}</p>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">{format(parseISO(date), 'MM月dd日 EEEE', { locale: i18n.language === 'zh-CN' ? zhCN : undefined })}</p>
                     <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-50 overflow-hidden">
                       {items.map((item, idx) => (
                         <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} onContextMenu={(e) => { e.preventDefault(); deleteTransaction(item.id, e as any); }} className={cn("p-5 flex items-center active:bg-gray-50 transition-colors group", idx !== items.length - 1 && "border-b border-gray-50")}>
@@ -690,8 +601,8 @@ export default function App() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center space-x-2">
-                              <span className="font-bold text-sm text-gray-800">{item.category}</span>
-                              <span className="text-[8px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-bold uppercase">{accounts.find(a => a.id === item.accountId)?.name}</span>
+                              <span className="font-bold text-sm text-gray-800">{t(`categories.${item.category}`)}</span>
+                              <span className="text-[8px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-bold uppercase">{t(`accounts.${accounts.find(a => a.id === item.accountId)?.name}`)}</span>
                             </div>
                             {item.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{item.note}</p>}
                             <div className="flex flex-wrap gap-1 mt-1 items-center">
@@ -722,7 +633,7 @@ export default function App() {
         {activeTab === 'chart' && (
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-              <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t.trend_title}</h3>
+              <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
               {stats.trendData.some(d => d.amount > 0) ? (
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
@@ -744,13 +655,13 @@ export default function App() {
               ) : (
                 <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
                   <Smile size={32} className="mb-2 opacity-20" />
-                  <p className="text-xs font-bold">{t.no_bills}</p>
+                  <p className="text-xs font-bold">{t('no_bills')}</p>
                 </div>
               )}
             </div>
 
             <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-              <h3 className="font-black text-lg mb-6 flex items-center"><History size={20} className="mr-2 text-green-500" />{t.heatmap_title}</h3>
+              <h3 className="font-black text-lg mb-6 flex items-center"><History size={20} className="mr-2 text-green-500" />{t('heatmap_title')}</h3>
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {stats.heatmapData.map((day) => (
                   <div key={day.date} className={cn(
@@ -780,7 +691,7 @@ export default function App() {
             </div>
 
             <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-              <h3 className="font-black text-lg mb-8 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t.composition_title}</h3>
+              <h3 className="font-black text-lg mb-8 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('composition_title')}</h3>
               {stats.pieData.length > 0 ? (
                 <>
                   <div className="h-64 w-full relative">
@@ -793,27 +704,27 @@ export default function App() {
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.total_assets}</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('total_assets')}</p>
                       <p className="text-xl font-black">¥{formatCurrency(stats.expense)}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 mt-8">
                     {stats.pieData.map(entry => (
                       <div key={entry.name} className={cn("p-3 rounded-2xl flex items-center justify-between", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
-                        <div className="flex items-center"><div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} /><span className="text-xs font-bold opacity-70">{entry.name}</span></div>
+                        <div className="flex items-center"><div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} /><span className="text-xs font-bold opacity-70">{t(`categories.${entry.name}`)}</span></div>
                         <span className="text-xs font-black">¥{formatCurrency(entry.value)}</span>
                       </div>
                     ))}
                   </div>
                 </>
-              ) : <div className="py-20 text-center text-gray-300 font-bold italic">暂无统计数据</div>}
+              ) : <div className="py-20 text-center text-gray-300 font-bold italic">{t('no_bills')}</div>}
             </div>
           </div>
         )}
 
         {activeTab === 'calendar' && (
           <div className={cn("rounded-[2.5rem] p-8 shadow-sm border animate-in fade-in duration-500", isDarkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-gray-50 text-gray-900")}>
-            <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />{t.calendar}</h3>
+            <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />{t('calendar')}</h3>
             <div className="grid grid-cols-7 gap-2">
               {['一', '二', '三', '四', '五', '六', '日'].map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 pb-4">{d}</div>)}
               {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
@@ -832,13 +743,13 @@ export default function App() {
                 <p className="text-xs text-gray-300 font-bold italic text-center py-4">这一天很安静，没有开支 🍃</p>
               ) : (
                 <div className="space-y-3">
-                  {transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate)).map(t => (
-                    <div key={t.id} className={cn("flex items-center justify-between p-3 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
+                  {transactions.filter(item => isSameDay(parseISO(item.date), selectedCalendarDate)).map(bill => (
+                    <div key={bill.id} className={cn("flex items-center justify-between p-3 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
                       <div className="flex items-center space-x-3">
-                        <span className="text-lg">{CATEGORIES.find(c => c.label === t.category)?.icon}</span>
-                        <span className="text-xs font-bold">{t.category}</span>
+                        <span className="text-lg">{CATEGORIES.find(c => c.label === bill.category)?.icon}</span>
+                        <span className="text-xs font-bold">{t(`categories.${bill.category}`)}</span>
                       </div>
-                      <span className={cn("text-xs font-black", t.type === 'expense' ? "text-red-500" : "text-green-500")}>¥{formatCurrency(t.amount)}</span>
+                      <span className={cn("text-xs font-black", bill.type === 'expense' ? "text-red-500" : "text-green-500")}>¥{formatCurrency(bill.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -863,7 +774,7 @@ export default function App() {
             isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
           )}>
             <div className="flex justify-between items-center mb-10">
-              <h2 className="text-2xl font-black">{editingTransaction ? (lang === 'zh' ? '修改账单' : 'Edit Bill') : (lang === 'zh' ? '记一笔' : 'Add Bill')}</h2>
+              <h2 className="text-2xl font-black">{editingTransaction ? t('edit_bill') : t('add_bill')}</h2>
               <button onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }} className={cn("p-3 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
                 <X size={20} />
               </button>
@@ -876,7 +787,6 @@ export default function App() {
               initialData={editingTransaction || undefined}
               onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
               isDarkMode={isDarkMode}
-              lang={lang}
             />
           </div>
         </div>
@@ -890,7 +800,7 @@ export default function App() {
             isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
           )}>
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black">{t.settings}</h2>
+              <h2 className="text-xl font-black">{t('settings')}</h2>
               <button onClick={() => setIsBudgetModalOpen(false)} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
                 <X size={18} />
               </button>
@@ -905,19 +815,19 @@ export default function App() {
                     <User className="text-white" size={28} />
                   </div>
                   <div>
-                    <p className="text-white font-black">{t.user_nickname}</p>
-                    <p className="text-white/60 text-[10px] font-bold">{t.user_id}</p>
+                    <p className="text-white font-black">{t('user_nickname')}</p>
+                    <p className="text-white/60 text-[10px] font-bold">{t('user_id')}</p>
                   </div>
                 </div>
                 <button className="w-full mt-4 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white text-[10px] font-black uppercase tracking-widest transition-all">
-                  {t.login_sync}
+                  {t('login_sync')}
                 </button>
               </div>
 
               {/* Settings List Groups */}
               <div className="space-y-6">
                 <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t.general}</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t('general')}</label>
                   <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
                     {/* Language Switch */}
                     <button onClick={() => setIsLangPickerOpen(true)} className="w-full p-5 flex items-center justify-between hover:bg-black/5 active:scale-[0.98] transition-all border-b border-black/5">
@@ -925,9 +835,9 @@ export default function App() {
                         <div className="w-8 h-8 bg-indigo-100 text-indigo-500 rounded-lg flex items-center justify-center">
                           <Languages size={18} />
                         </div>
-                        <span className="text-sm font-bold">{t.language}</span>
+                        <span className="text-sm font-bold">{t('language')}</span>
                       </div>
-                      <span className="text-xs font-black opacity-40">{lang === 'zh' ? '简体中文' : 'English'}</span>
+                      <span className="text-xs font-black opacity-40">{i18n.language === 'zh-CN' ? '简体中文' : 'English'}</span>
                     </button>
                     {/* Dark Mode */}
                     <div className="p-5 flex items-center justify-between">
@@ -935,7 +845,7 @@ export default function App() {
                         <div className="w-8 h-8 bg-orange-100 text-orange-500 rounded-lg flex items-center justify-center">
                           {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
                         </div>
-                        <span className="text-sm font-bold">{t.dark_mode}</span>
+                        <span className="text-sm font-bold">{t('dark_mode')}</span>
                       </div>
                       <button onClick={() => setIsDarkMode(!isDarkMode)} className={cn("w-12 h-6 rounded-full relative transition-colors", isDarkMode ? theme.primary : "bg-gray-300")}>
                         <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm", isDarkMode ? "left-7" : "left-1")} />
@@ -945,7 +855,7 @@ export default function App() {
                 </section>
 
                 <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t.data}</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t('data')}</label>
                   <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
                     {/* Rate Update */}
                     <div className="w-full p-5 flex items-center justify-between border-b border-black/5">
@@ -953,29 +863,29 @@ export default function App() {
                         <div className="w-8 h-8 bg-blue-100 text-blue-500 rounded-lg flex items-center justify-center">
                           <ArrowRightLeft size={18} />
                         </div>
-                        <span className="text-sm font-bold">{t.rate_update}</span>
+                        <span className="text-sm font-bold">{t('rate_update')}</span>
                       </div>
-                      <span className="text-[10px] font-black opacity-40">{t.last_update} {lastRateUpdate}</span>
+                      <span className="text-[10px] font-black opacity-40">{t('last_update')} {lastRateUpdate}</span>
                     </div>
                     {/* Export CSV */}
                     <button onClick={exportCSV} className="w-full p-5 flex items-center space-x-4 hover:bg-black/5 active:scale-[0.98] transition-all">
                       <div className="w-8 h-8 bg-emerald-100 text-emerald-500 rounded-lg flex items-center justify-center">
                         <Download size={18} />
                       </div>
-                      <span className="text-sm font-bold">{t.export_csv}</span>
+                      <span className="text-sm font-bold">{t('export_csv')}</span>
                     </button>
                   </div>
                 </section>
 
                 <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t.about}</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t('about')}</label>
                   <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
                     {/* Invite */}
                     <button onClick={() => setIsInviteModalOpen(true)} className="w-full p-5 flex items-center space-x-4 hover:bg-black/5 active:scale-[0.98] transition-all border-b border-black/5">
                       <div className="w-8 h-8 bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center">
                         <Share2 size={18} />
                       </div>
-                      <span className="text-sm font-bold">{t.invite_friends}</span>
+                      <span className="text-sm font-bold">{t('invite_friends')}</span>
                     </button>
                     {/* Version */}
                     <div className="w-full p-5 flex items-center justify-between">
@@ -983,7 +893,7 @@ export default function App() {
                         <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center">
                           <Info size={18} />
                         </div>
-                        <span className="text-sm font-bold">{t.version}</span>
+                        <span className="text-sm font-bold">{t('version')}</span>
                       </div>
                       <span className="text-xs font-black opacity-40">v2.1.0</span>
                     </div>
@@ -992,11 +902,11 @@ export default function App() {
 
                 <button onClick={handleReset} className="w-full p-4 flex items-center justify-center space-x-2 text-rose-500 hover:bg-rose-500/5 active:scale-[0.98] transition-all mt-4 font-black text-sm">
                   <LogOut size={18} />
-                  <span>{t.clear_data}</span>
+                  <span>{t('clear_data')}</span>
                 </button>
 
                 <p className="text-center text-[8px] font-bold text-gray-500 uppercase tracking-widest py-4">
-                  {t.copyright}
+                  {t('copyright')}
                 </p>
               </div>
             </div>
@@ -1012,25 +922,26 @@ export default function App() {
             isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
           )} onClick={e => e.stopPropagation()}>
             <div className={cn("w-12 h-1.5 rounded-full mx-auto mb-8", isDarkMode ? "bg-slate-700" : "bg-gray-100")} />
-            <h3 className="text-lg font-black mb-6">{t.select_lang}</h3>
-            <div className="space-y-2">
+            <h3 className="text-lg font-black mb-6">{t('select_lang')}</h3>
+            <div className="grid grid-cols-2 gap-3">
               {[
-                { id: 'zh', label: '简体中文', flag: '🇨🇳' },
-                { id: 'en', label: 'English', flag: '🇺🇸' }
+                { id: 'zh-CN', label: '简体中文', flag: '🇨🇳' },
+                { id: 'en-US', label: 'English', flag: '🇺🇸' },
+                { id: 'ja-JP', label: '日本語', flag: '🇯🇵' },
+                { id: 'ko-KR', label: '한국어', flag: '🇰🇷' },
+                { id: 'es-ES', label: 'Español', flag: '🇪🇸' },
+                { id: 'fr-FR', label: 'Français', flag: '🇫🇷' }
               ].map(l => (
                 <button
                   key={l.id}
-                  onClick={() => { setLang(l.id as any); setIsLangPickerOpen(false); }}
+                  onClick={() => { i18n.changeLanguage(l.id); setIsLangPickerOpen(false); }}
                   className={cn(
-                    "w-full p-5 rounded-2xl flex items-center justify-between transition-all",
-                    lang === l.id ? (isDarkMode ? "bg-white text-black" : "bg-black text-white") : (isDarkMode ? "hover:bg-slate-700 text-slate-300" : "hover:bg-gray-50 text-gray-600")
+                    "w-full p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 transition-all border",
+                    i18n.language === l.id ? theme.primary + " text-white border-transparent" : (isDarkMode ? "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600" : "bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100")
                   )}
                 >
-                  <div className="flex items-center space-x-4">
-                    <span className="text-2xl">{l.flag}</span>
-                    <span className="font-black">{l.label}</span>
-                  </div>
-                  {lang === l.id && <div className={cn("w-2 h-2 rounded-full", isDarkMode ? "bg-black" : "bg-white")} />}
+                  <span className="text-2xl">{l.flag}</span>
+                  <span className="text-[10px] font-black">{l.label}</span>
                 </button>
               ))}
             </div>
@@ -1049,19 +960,19 @@ export default function App() {
               <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
                 <Wallet className="text-white" size={32} />
               </div>
-              <h3 className="text-white font-black mb-2 tracking-tighter">我的账本</h3>
-              <p className="text-white/60 text-[10px] font-bold">{t.invite_msg}</p>
+              <h3 className="text-white font-black mb-2 tracking-tighter">{t('app_name')}</h3>
+              <p className="text-white/60 text-[10px] font-bold">{t('invite_msg')}</p>
             </div>
             <button
               onClick={() => {
                 navigator.clipboard.writeText("https://my-money-app.vercel.app");
-                alert(t.copy_link + " Success!");
+                alert(t('copy_link') + " Success!");
                 setIsInviteModalOpen(false);
               }}
               className={cn("w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center space-x-2", isDarkMode ? "bg-white text-black" : "bg-black text-white")}
             >
               <Copy size={18} />
-              <span>{t.copy_link}</span>
+              <span>{t('copy_link')}</span>
             </button>
             <button onClick={() => setIsInviteModalOpen(false)} className="w-full mt-2 py-4 text-[10px] font-black text-gray-400 uppercase">
               关闭
@@ -1080,8 +991,8 @@ export default function App() {
             <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-full mx-auto mb-6 flex items-center justify-center animate-pulse">
               <Heart size={40} fill="currentColor" />
             </div>
-            <h3 className="text-xl font-black mb-4">{t.rate_app}</h3>
-            <p className="text-xs text-gray-400 font-bold mb-8">{t.thanks_rating}</p>
+            <h3 className="text-xl font-black mb-4">{t('rate_app')}</h3>
+            <p className="text-xs text-gray-400 font-bold mb-8">{t('thanks_rating')}</p>
             <button
               onClick={() => setIsRateModalOpen(false)}
               className={cn("w-full py-4 rounded-2xl font-black text-sm", isDarkMode ? "bg-white text-black" : "bg-black text-white")}
@@ -1110,7 +1021,7 @@ export default function App() {
           <div className="bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl animate-in slide-in-from-bottom duration-500">
             <div className="flex justify-between items-center mb-10"><h2 className="text-2xl font-black">筛选维度</h2><button onClick={() => setIsFilterModalOpen(false)} className="p-3 bg-gray-100 rounded-full"><X size={20} /></button></div>
             <div className="grid grid-cols-2 gap-4">
-              {[{ id: 'today', label: '今日', icon: '🕒' }, { id: 'week', label: '本周', icon: '📅' }, { id: 'month', label: '本月', icon: '📊' }, { id: 'year', label: '本年', icon: '🗓️' }].map(dim => (
+              {[{ id: 'today', label: t('today'), icon: '🕒' }, { id: 'week', label: t('week'), icon: '📅' }, { id: 'month', label: t('month'), icon: '📊' }, { id: 'year', label: t('year'), icon: '🗓️' }].map(dim => (
                 <button key={dim.id} onClick={() => { setFilterType(dim.id as any); setCurrentDate(new Date()); setIsFilterModalOpen(false); }} className={cn("flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 transition-all", filterType === dim.id ? "bg-black text-white border-black" : "bg-gray-50 text-gray-500 border-transparent")}>
                   <span className="text-2xl mb-2">{dim.icon}</span><span className="font-black text-[10px] uppercase tracking-widest">{dim.label}</span>
                 </button>
@@ -1130,8 +1041,7 @@ function TransactionForm({
   onSubmit,
   initialData,
   onDelete,
-  isDarkMode,
-  lang
+  isDarkMode
 }: {
   accounts: Account[],
   transactions: Transaction[],
@@ -1139,9 +1049,9 @@ function TransactionForm({
   onSubmit: (t: Omit<Transaction, 'id'>) => void,
   initialData?: Transaction,
   onDelete?: () => void,
-  isDarkMode: boolean,
-  lang: 'zh' | 'en'
+  isDarkMode: boolean
 }) {
+  const { t } = useTranslation();
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(initialData?.originalAmount?.toString() || initialData?.amount.toString() || '');
   const [category, setCategory] = useState<Category>(initialData?.category || '餐饮');
@@ -1199,12 +1109,12 @@ function TransactionForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className={cn("flex p-1.5 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
-        <button type="button" onClick={() => setType('expense')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'expense' ? (isDarkMode ? "bg-slate-600 shadow-md text-red-400" : "bg-white shadow-md text-red-500") : "text-gray-400")}>{lang === 'zh' ? '支出' : 'EXPENSE'}</button>
-        <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'income' ? (isDarkMode ? "bg-slate-600 shadow-md text-green-400" : "bg-white shadow-md text-green-500") : "text-gray-400")}>{lang === 'zh' ? '收入' : 'INCOME'}</button>
+        <button type="button" onClick={() => setType('expense')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'expense' ? (isDarkMode ? "bg-slate-600 shadow-md text-red-400" : "bg-white shadow-md text-red-500") : "text-gray-400")}>{t('expense')}</button>
+        <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'income' ? (isDarkMode ? "bg-slate-600 shadow-md text-green-400" : "bg-white shadow-md text-green-500") : "text-gray-400")}>{t('income')}</button>
       </div>
 
       <div className={cn("relative border-b-4 transition-colors pb-6", isDarkMode ? "border-slate-700 focus-within:border-white" : "border-gray-50 focus-within:border-black")}>
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">{lang === 'zh' ? '输入金额' : 'AMOUNT'}</label>
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">输入金额</label>
         <div className="flex items-center space-x-3">
           <button
             type="button"
@@ -1236,7 +1146,7 @@ function TransactionForm({
         {currencyCode !== 'CNY' && amount && (
           <div className="mt-4 flex items-center space-x-2 text-blue-500 font-bold bg-blue-50 w-fit px-3 py-1.5 rounded-full animate-in fade-in slide-in-from-left-2">
             <ArrowRightLeft size={12} />
-            <span className="text-xs">{lang === 'zh' ? '约合' : 'Approx.'} ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
+            <span className="text-xs">约合 ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
           </div>
         )}
       </div>
@@ -1249,7 +1159,7 @@ function TransactionForm({
             isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
           )} onClick={e => e.stopPropagation()}>
             <div className={cn("w-12 h-1.5 rounded-full mx-auto mb-8", isDarkMode ? "bg-slate-700" : "bg-gray-100")} />
-            <h3 className="text-lg font-black mb-6">{lang === 'zh' ? '选择记账币种' : 'Select Currency'}</h3>
+            <h3 className="text-lg font-black mb-6">{t('select_lang')}</h3>
             <div className="grid grid-cols-1 gap-2">
               {CURRENCIES.map(c => (
                 <button key={c.code} type="button" onClick={() => handleCurrencySelect(c.code)} className={cn("flex items-center justify-between p-4 rounded-2xl transition-all", currencyCode === c.code ? (isDarkMode ? "bg-white text-black" : "bg-black text-white") : (isDarkMode ? "hover:bg-slate-700 text-slate-300" : "hover:bg-gray-50 text-gray-600"))}>
@@ -1274,37 +1184,37 @@ function TransactionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '日期' : 'DATE'}</label>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">日期</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} required />
         </div>
         <div>
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '支付账户' : 'ACCOUNT'}</label>
-          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon} {acc.name}</option>)}</select>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">支付账户</label>
+          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon} {t(`accounts.${acc.name}`)}</option>)}</select>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '所属分类' : 'CATEGORY'}</label>
-          <select value={category} onChange={e => setCategory(e.target.value as Category)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{CATEGORIES.map(c => <option key={c.label} value={c.label}>{c.icon} {c.label}</option>)}</select>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">所属分类</label>
+          <select value={category} onChange={e => setCategory(e.target.value as Category)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{CATEGORIES.map(c => <option key={c.label} value={c.label}>{c.icon} {t(`categories.${c.label}`)}</option>)}</select>
         </div>
         <div className="flex flex-col">
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '附件凭证' : 'ATTACHMENT'}</label>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">附件凭证</label>
           <button type="button" onClick={() => setHasImage(!hasImage)} className={cn("p-4 rounded-2xl flex items-center justify-center transition-all", hasImage ? (isDarkMode ? "bg-white text-black" : "bg-black text-white") : (isDarkMode ? "bg-slate-700 text-slate-500" : "bg-gray-50 text-gray-300"))}><Camera size={20} /></button>
         </div>
       </div>
       <div>
-        <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '备注与标签' : 'NOTE & TAGS'}</label>
-        <textarea placeholder={lang === 'zh' ? '输入账单详情（支持长文本）...' : 'Add details (long text supported)...'} value={note} onChange={e => setNote(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none mb-2 min-h-[80px] resize-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
+        <label className="text-[10px] font-black text-gray-400 mb-2 block">备注与标签</label>
+        <textarea placeholder="输入账单详情（支持长文本）..." value={note} onChange={e => setNote(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none mb-2 min-h-[80px] resize-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
         {suggestions.length > 0 && <div className="flex flex-wrap gap-2 mb-3">{suggestions.map((s, i) => <button key={i} type="button" onClick={() => setNote(s)} className={cn("px-3 py-1 rounded-full text-[8px] font-bold", isDarkMode ? "bg-slate-700 text-slate-400" : "bg-gray-100 text-gray-500")}>{s}</button>)}</div>}
         <div className="relative">
           <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={14} />
-          <input type="text" placeholder={lang === 'zh' ? '添加标签...' : 'Add tag...'} value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && tagInput) { e.preventDefault(); setTags([...tags, tagInput]); setTagInput(''); } }} className={cn("w-full pl-9 pr-4 py-3 rounded-xl text-[10px] font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
+          <input type="text" placeholder="添加标签..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && tagInput) { e.preventDefault(); setTags([...tags, tagInput]); setTagInput(''); } }} className={cn("w-full pl-9 pr-4 py-3 rounded-xl text-[10px] font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
         </div>
         <div className="flex flex-wrap gap-2 mt-3">{tags.map((tag, i) => <span key={i} className="px-2 py-1 bg-indigo-50 text-indigo-500 rounded-lg text-[10px] font-black flex items-center">#{tag} <X size={10} className="ml-1 cursor-pointer" onClick={() => setTags(tags.filter((_, idx) => idx !== i))} /></span>)}</div>
       </div>
       <div className="flex space-x-3 pt-4">
-        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2rem] font-black text-sm">{lang === 'zh' ? '删除' : 'DELETE'}</button>}
-        <button type="submit" className={cn("flex-[2] py-5 rounded-[2rem] font-black text-sm shadow-xl active:scale-95", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{lang === 'zh' ? '保存账单' : 'SAVE'}</button>
+        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2rem] font-black text-sm">{t('delete')}</button>}
+        <button type="submit" className={cn("flex-[2] py-5 rounded-[2rem] font-black text-sm shadow-xl active:scale-95", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
       </div>
     </form>
   );
