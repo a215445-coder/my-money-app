@@ -8,9 +8,32 @@ import {
   TrendingUp,
   TrendingDown,
   Wallet,
-  Settings
+  Settings,
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  LayoutGrid,
+  History,
+  Clock,
+  BarChart3
 } from 'lucide-react';
-import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
+import {
+  format,
+  parseISO,
+  startOfMonth,
+  endOfMonth,
+  isWithinInterval,
+  startOfDay,
+  endOfDay,
+  startOfWeek,
+  endOfWeek,
+  startOfYear,
+  endOfYear,
+  addMonths,
+  addDays,
+  addWeeks,
+  addYears
+} from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -39,6 +62,8 @@ const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[
   { label: '其他', icon: '📦', color: 'bg-gray-100', hex: '#64748b' },
 ];
 
+type FilterType = 'today' | 'week' | 'month' | 'year';
+
 export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('transactions');
@@ -52,8 +77,11 @@ export default function App() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'chart'>('list');
+  const [filterType, setFilterType] = useState<FilterType>('month');
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   // Persistence
   useEffect(() => {
@@ -64,21 +92,52 @@ export default function App() {
     localStorage.setItem('monthly_budget', budget.toString());
   }, [budget]);
 
+  // Date Filtering Logic
+  const dateRange = useMemo(() => {
+    let start, end;
+    switch (filterType) {
+      case 'today':
+        start = startOfDay(currentDate);
+        end = endOfDay(currentDate);
+        break;
+      case 'week':
+        start = startOfWeek(currentDate, { weekStartsOn: 1 });
+        end = endOfWeek(currentDate, { weekStartsOn: 1 });
+        break;
+      case 'year':
+        start = startOfYear(currentDate);
+        end = endOfYear(currentDate);
+        break;
+      case 'month':
+      default:
+        start = startOfMonth(currentDate);
+        end = endOfMonth(currentDate);
+        break;
+    }
+    return { start, end };
+  }, [filterType, currentDate]);
+
+  const changeDate = (direction: 'prev' | 'next') => {
+    const amount = direction === 'prev' ? -1 : 1;
+    switch (filterType) {
+      case 'today': setCurrentDate(addDays(currentDate, amount)); break;
+      case 'week': setCurrentDate(addWeeks(currentDate, amount)); break;
+      case 'month': setCurrentDate(addMonths(currentDate, amount)); break;
+      case 'year': setCurrentDate(addYears(currentDate, amount)); break;
+    }
+  };
+
   // Calculations
   const stats = useMemo(() => {
-    const now = new Date();
-    const start = startOfMonth(now);
-    const end = endOfMonth(now);
-
-    const monthTransactions = transactions.filter(t =>
-      isWithinInterval(parseISO(t.date), { start, end })
+    const filteredTransactions = transactions.filter(t =>
+      isWithinInterval(parseISO(t.date), { start: dateRange.start, end: dateRange.end })
     );
 
-    const income = monthTransactions
+    const income = filteredTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    const expense = monthTransactions
+    const expense = filteredTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
@@ -86,7 +145,7 @@ export default function App() {
 
     // Pie chart data
     const categoryMap: Record<string, number> = {};
-    monthTransactions
+    filteredTransactions
       .filter(t => t.type === 'expense')
       .forEach(t => {
         categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
@@ -98,8 +157,11 @@ export default function App() {
       color: CATEGORIES.find(c => c.label === name)?.hex || '#ccc'
     })).sort((a, b) => b.value - a.value);
 
-    return { income, expense, balance: income - expense, budgetUsage, pieData };
-  }, [transactions, budget]);
+    // Top 3 ranking
+    const ranking = [...pieData].slice(0, 3);
+
+    return { income, expense, balance: income - expense, budgetUsage, pieData, ranking, filteredTransactions };
+  }, [transactions, budget, dateRange]);
 
   const addOrUpdateTransaction = (t: Omit<Transaction, 'id'>) => {
     if (editingTransaction) {
@@ -127,7 +189,7 @@ export default function App() {
 
   const groupedTransactions = useMemo(() => {
     const groups: Record<string, { items: Transaction[], total: number }> = {};
-    transactions.forEach(t => {
+    stats.filteredTransactions.forEach(t => {
       const date = t.date;
       if (!groups[date]) groups[date] = { items: [], total: 0 };
       groups[date].items.push(t);
@@ -135,7 +197,7 @@ export default function App() {
       else groups[date].total += t.amount;
     });
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
-  }, [transactions]);
+  }, [stats.filteredTransactions]);
 
   const handleReset = () => {
     if (confirm('确定要删除所有记账数据吗？此操作不可撤销')) {
@@ -148,26 +210,113 @@ export default function App() {
     return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
+  const getFilterLabel = () => {
+    switch (filterType) {
+      case 'today': return format(currentDate, 'MM月dd日');
+      case 'week': return `${format(dateRange.start, 'MM.dd')} - ${format(dateRange.end, 'MM.dd')}`;
+      case 'year': return format(currentDate, 'yyyy年');
+      case 'month':
+      default: return format(currentDate, 'yyyy年MM月');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-32">
-      {/* Header & Stats Cards */}
-      <header className="bg-white px-6 pt-12 pb-8 rounded-b-[2.5rem] shadow-sm relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-6">
-          <button
-            onClick={() => setIsBudgetModalOpen(true)}
-            className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors"
-          >
-            <Settings size={20} />
+      {/* Hamburger Menu Sidebar */}
+      <div
+        className={cn(
+          "fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity duration-300",
+          isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setIsMenuOpen(false)}
+      />
+      <aside
+        className={cn(
+          "fixed top-0 left-0 h-full w-[280px] bg-white z-[70] shadow-2xl transition-transform duration-500 ease-out rounded-r-[2.5rem] p-8",
+          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex justify-between items-center mb-12">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center">
+              <Wallet className="text-white" size={20} />
+            </div>
+            <span className="font-black text-xl tracking-tighter">我的账本</span>
+          </div>
+          <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-gray-50 rounded-full">
+            <X size={20} />
           </button>
         </div>
 
-        <h1 className="text-2xl font-black mb-8 tracking-tight">我的账本</h1>
+        <nav className="space-y-2">
+          {[
+            { id: 'today', label: '今日明细', icon: <Clock size={20} /> },
+            { id: 'week', label: '周视图', icon: <History size={20} /> },
+            { id: 'month', label: '月度分析', icon: <PieIcon size={20} /> },
+            { id: 'year', label: '年度账单', icon: <BarChart3 size={20} /> },
+            { id: 'settings', label: '设置', icon: <Settings size={20} /> },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => {
+                if (item.id === 'settings') {
+                  setIsBudgetModalOpen(true);
+                } else {
+                  setFilterType(item.id as FilterType);
+                  setCurrentDate(new Date());
+                }
+                setIsMenuOpen(false);
+              }}
+              className={cn(
+                "w-full flex items-center space-x-4 p-4 rounded-2xl font-bold transition-all active:scale-95",
+                (filterType === item.id) ? "bg-black text-white" : "text-gray-500 hover:bg-gray-50"
+              )}
+            >
+              {item.icon}
+              <span>{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="absolute bottom-8 left-8 right-8">
+          <div className="bg-gray-50 p-6 rounded-[2rem] border border-gray-100">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">当前版本</p>
+            <p className="text-sm font-black">v2.1.0 PRO</p>
+          </div>
+        </div>
+      </aside>
+
+      {/* Header & Stats Cards */}
+      <header className="bg-white px-6 pt-12 pb-8 rounded-b-[2.5rem] shadow-sm relative overflow-hidden">
+        <div className="flex justify-between items-center mb-8">
+          <button
+            onClick={() => setIsMenuOpen(true)}
+            className="p-3 bg-gray-50 rounded-2xl text-black active:scale-90 transition-all shadow-sm"
+          >
+            <Menu size={24} />
+          </button>
+
+          <div className="flex items-center bg-gray-50 p-1.5 rounded-2xl shadow-inner">
+            <button onClick={() => changeDate('prev')} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronLeft size={16} /></button>
+            <div className="px-4 text-xs font-black tracking-tighter min-w-[100px] text-center">{getFilterLabel()}</div>
+            <button onClick={() => changeDate('next')} className="p-2 hover:bg-white rounded-xl transition-all"><ChevronRight size={16} /></button>
+          </div>
+
+          <button
+            onClick={() => setIsBudgetModalOpen(true)}
+            className="p-3 bg-gray-50 rounded-2xl text-gray-500 active:scale-90 transition-all shadow-sm"
+          >
+            <Settings size={24} />
+          </button>
+        </div>
 
         {/* Main Balance Card */}
         <div className="bg-black text-white p-8 rounded-[2.5rem] mb-6 shadow-2xl relative">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">本月结余</p>
+              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">
+                {filterType === 'month' ? '本月' : filterType === 'today' ? '今日' : filterType === 'week' ? '本周' : '年度'}结余
+              </p>
               <p className="text-4xl font-black">¥{formatCurrency(stats.balance)}</p>
             </div>
             <div className="bg-white/10 p-3 rounded-2xl">
@@ -177,7 +326,9 @@ export default function App() {
 
           <div className="space-y-4">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-gray-400 font-bold uppercase tracking-widest">预算进度</span>
+              <span className="text-gray-400 font-bold uppercase tracking-widest">
+                {filterType === 'month' ? '月度预算' : '预算消耗'}
+              </span>
               <span className={cn(
                 "font-black px-2 py-0.5 rounded-full",
                 stats.budgetUsage > 90 ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
@@ -202,14 +353,14 @@ export default function App() {
           <div className="bg-emerald-50 p-5 rounded-3xl border border-emerald-100 shadow-sm">
             <div className="flex items-center text-emerald-600 mb-2">
               <TrendingUp size={16} className="mr-1.5" />
-              <span className="text-[10px] font-black uppercase tracking-widest">本月收入</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">总收入</span>
             </div>
             <p className="text-xl font-black text-emerald-700">¥{formatCurrency(stats.income)}</p>
           </div>
           <div className="bg-rose-50 p-5 rounded-3xl border border-rose-100 shadow-sm">
             <div className="flex items-center text-rose-600 mb-2">
               <TrendingDown size={16} className="mr-1.5" />
-              <span className="text-[10px] font-black uppercase tracking-widest">本月支出</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">总支出</span>
             </div>
             <p className="text-xl font-black text-rose-700">¥{formatCurrency(stats.expense)}</p>
           </div>
@@ -221,27 +372,33 @@ export default function App() {
         <button
           onClick={() => setActiveTab('list')}
           className={cn(
-            "flex-1 py-3 rounded-2xl text-sm font-bold transition-all",
-            activeTab === 'list' ? "bg-black text-white shadow-lg" : "bg-white text-gray-500"
+            "flex-1 py-4 rounded-3xl text-sm font-black transition-all active:scale-95",
+            activeTab === 'list' ? "bg-black text-white shadow-xl" : "bg-white text-gray-400 border border-gray-100"
           )}
         >
-          账单明细
+          <div className="flex items-center justify-center">
+            <LayoutGrid size={16} className="mr-2" />
+            账单明细
+          </div>
         </button>
         <button
           onClick={() => setActiveTab('chart')}
           className={cn(
-            "flex-1 py-3 rounded-2xl text-sm font-bold transition-all",
-            activeTab === 'chart' ? "bg-black text-white shadow-lg" : "bg-white text-gray-500"
+            "flex-1 py-4 rounded-3xl text-sm font-black transition-all active:scale-95",
+            activeTab === 'chart' ? "bg-black text-white shadow-xl" : "bg-white text-gray-400 border border-gray-100"
           )}
         >
-          统计分析
+          <div className="flex items-center justify-center">
+            <PieIcon size={16} className="mr-2" />
+            统计分析
+          </div>
         </button>
       </div>
 
       {/* Content Area */}
       <main className="px-6 mt-6">
         {activeTab === 'list' ? (
-          transactions.length === 0 ? (
+          stats.filteredTransactions.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-32 text-gray-300 animate-in fade-in duration-700">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
                 <span className="text-5xl">📥</span>
@@ -308,55 +465,95 @@ export default function App() {
           )
         ) : (
           /* Chart Tab */
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="font-black text-lg flex items-center">
-                <PieIcon className="mr-2 text-indigo-500" size={20} />
-                支出构成
-              </h3>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">本月</span>
+          <div className="space-y-6">
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="font-black text-lg flex items-center">
+                  <PieIcon className="mr-2 text-indigo-500" size={20} />
+                  支出构成
+                </h3>
+                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{getFilterLabel()}</span>
+              </div>
+
+              {stats.pieData.length > 0 ? (
+                <>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={8}
+                          dataKey="value"
+                        >
+                          {stats.pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip
+                          contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                          itemStyle={{ fontWeight: 'bold' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 mt-8">
+                    {stats.pieData.map((entry) => (
+                      <div key={entry.name} className="flex items-center justify-between p-3 rounded-2xl bg-gray-50">
+                        <div className="flex items-center">
+                          <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} />
+                          <span className="text-xs font-bold text-gray-600">{entry.name}</span>
+                        </div>
+                        <span className="text-xs font-black">¥{formatCurrency(entry.value)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="py-20 text-center text-gray-300">
+                  <p className="font-bold italic">当前时段还没有支出数据哦</p>
+                </div>
+              )}
             </div>
 
-            {stats.pieData.length > 0 ? (
-              <>
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={stats.pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={80}
-                        paddingAngle={8}
-                        dataKey="value"
-                      >
-                        {stats.pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip
-                        contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
-                        itemStyle={{ fontWeight: 'bold' }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="grid grid-cols-2 gap-4 mt-8">
-                  {stats.pieData.map((entry) => (
-                    <div key={entry.name} className="flex items-center justify-between p-3 rounded-2xl bg-gray-50">
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} />
-                        <span className="text-xs font-bold text-gray-600">{entry.name}</span>
+            {/* Top 3 Ranking */}
+            {stats.ranking.length > 0 && (
+              <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-6 duration-500">
+                <h3 className="font-black text-lg mb-6 flex items-center">
+                  <TrendingDown className="mr-2 text-rose-500" size={20} />
+                  消费排行榜
+                </h3>
+                <div className="space-y-4">
+                  {stats.ranking.map((item, index) => (
+                    <div key={item.name} className="flex items-center space-x-4">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-black text-xs text-gray-400">
+                        {index + 1}
                       </div>
-                      <span className="text-xs font-black">¥{formatCurrency(entry.value)}</span>
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center text-lg",
+                        CATEGORIES.find(c => c.label === item.name)?.color || "bg-gray-100"
+                      )}>
+                        {CATEGORIES.find(c => c.label === item.name)?.icon}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-sm">{item.name}</p>
+                        <div className="w-full h-1.5 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                          <div
+                            className="h-full bg-black rounded-full"
+                            style={{ width: `${(item.value / stats.expense) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-sm">¥{formatCurrency(item.value)}</p>
+                        <p className="text-[10px] text-gray-400 font-bold tracking-widest">{((item.value / stats.expense) * 100).toFixed(1)}%</p>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </>
-            ) : (
-              <div className="py-20 text-center text-gray-300">
-                <p className="font-bold italic">本月还没有支出数据哦</p>
               </div>
             )}
           </div>
@@ -375,7 +572,7 @@ export default function App() {
 
       {/* Transaction Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl animate-in slide-in-from-bottom duration-500 overflow-hidden">
             <div className="flex justify-between items-center mb-10">
               <h2 className="text-2xl font-black">{editingTransaction ? '编辑账单' : '记一笔'}</h2>
@@ -396,7 +593,7 @@ export default function App() {
 
       {/* Budget Modal */}
       {isBudgetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-300">
             <div className="flex justify-between items-center mb-8">
               <h2 className="text-xl font-black">设置预算</h2>
