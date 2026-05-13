@@ -24,7 +24,10 @@ import {
   Cloud,
   Camera,
   Hash,
-  Smile
+  Smile,
+  Globe,
+  ArrowRightLeft,
+  ChevronUp
 } from 'lucide-react';
 import {
   format,
@@ -63,12 +66,22 @@ import {
   YAxis,
   CartesianGrid
 } from 'recharts';
-import type { Transaction, Category, TransactionType, Account } from './types';
+import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const CURRENCIES: Currency[] = [
+  { code: 'CNY', name: '人民币', flag: '🇨🇳', symbol: '¥' },
+  { code: 'USD', name: '美元', flag: '🇺🇸', symbol: '$' },
+  { code: 'EUR', name: '欧元', flag: '🇪🇺', symbol: '€' },
+  { code: 'JPY', name: '日元', flag: '🇯🇵', symbol: '¥' },
+  { code: 'KRW', name: '韩元', flag: '🇰🇷', symbol: '₩' },
+  { code: 'THB', name: '泰铢', flag: '🇹🇭', symbol: '฿' },
+  { code: 'HKD', name: '港币', flag: '🇭🇰', symbol: '$' },
+];
 
 const THEMES = {
   black: { primary: 'bg-black', text: 'text-black', border: 'border-black', shadow: 'shadow-black/20', ring: 'ring-black' },
@@ -145,6 +158,34 @@ export default function App() {
   const [isSettingPin, setIsSettingPin] = useState(false);
   const [themeKey, setThemeKey] = useState<ThemeKey>(() => (localStorage.getItem('app_theme') as ThemeKey) || 'black');
   const theme = THEMES[themeKey];
+
+  // --- Exchange Rate State ---
+  const [rates, setRates] = useState<Record<string, number>>(() => {
+    const saved = localStorage.getItem('exchange_rates');
+    return saved ? JSON.parse(saved) : { USD: 7.25, EUR: 7.85, JPY: 0.046, KRW: 0.0053, THB: 0.19, HKD: 0.93, CNY: 1 };
+  });
+
+  useEffect(() => {
+    const fetchRates = async () => {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/CNY');
+        const data = await res.json();
+        if (data.rates) {
+          const newRates: Record<string, number> = {};
+          CURRENCIES.forEach(c => {
+            if (data.rates[c.code]) {
+              newRates[c.code] = 1 / data.rates[c.code];
+            }
+          });
+          setRates(newRates);
+          localStorage.setItem('exchange_rates', JSON.stringify(newRates));
+        }
+      } catch (e) {
+        console.error('Failed to fetch rates', e);
+      }
+    };
+    fetchRates();
+  }, []);
 
   // --- Persistence ---
   useEffect(() => localStorage.setItem('transactions', JSON.stringify(transactions)), [transactions]);
@@ -508,9 +549,15 @@ export default function App() {
                               <span className="text-[8px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-bold uppercase">{accounts.find(a => a.id === item.accountId)?.name}</span>
                             </div>
                             {item.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{item.note}</p>}
-                            <div className="flex flex-wrap gap-1 mt-1">
+                            <div className="flex flex-wrap gap-1 mt-1 items-center">
                               {item.tags?.map(tag => <span key={tag} className="text-[8px] text-indigo-400 font-bold">#{tag}</span>)}
                               {item.hasImage && <Camera size={10} className="text-gray-300 ml-1" />}
+                              {item.currency && item.currency !== 'CNY' && (
+                                <div className="flex items-center space-x-1 ml-1 bg-blue-50 px-1.5 py-0.5 rounded-md">
+                                  <Globe size={8} className="text-blue-400" />
+                                  <span className="text-[8px] text-blue-400 font-black">{CURRENCIES.find(c => c.code === item.currency)?.flag} {item.originalAmount?.toFixed(2)}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center space-x-3">
@@ -671,7 +718,7 @@ export default function App() {
               <h2 className="text-2xl font-black">{editingTransaction ? '修改账单' : '记一笔'}</h2>
               <button onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }} className="p-3 bg-gray-100 rounded-full"><X size={20} /></button>
             </div>
-            <TransactionForm accounts={accounts} transactions={transactions} onSubmit={addOrUpdateTransaction} initialData={editingTransaction || undefined} onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined} />
+            <TransactionForm accounts={accounts} transactions={transactions} rates={rates} onSubmit={addOrUpdateTransaction} initialData={editingTransaction || undefined} onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined} />
           </div>
         </div>
       )}
@@ -746,9 +793,9 @@ export default function App() {
   );
 }
 
-function TransactionForm({ accounts, transactions, onSubmit, initialData, onDelete }: { accounts: Account[], transactions: Transaction[], onSubmit: (t: Omit<Transaction, 'id'>) => void, initialData?: Transaction, onDelete?: () => void }) {
+function TransactionForm({ accounts, transactions, rates, onSubmit, initialData, onDelete }: { accounts: Account[], transactions: Transaction[], rates: Record<string, number>, onSubmit: (t: Omit<Transaction, 'id'>) => void, initialData?: Transaction, onDelete?: () => void }) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
-  const [amount, setAmount] = useState(initialData?.amount.toString() || '');
+  const [amount, setAmount] = useState(initialData?.originalAmount?.toString() || initialData?.amount.toString() || '');
   const [category, setCategory] = useState<Category>(initialData?.category || '餐饮');
   const [date, setDate] = useState(initialData?.date || format(new Date(), 'yyyy-MM-dd'));
   const [accountId, setAccountId] = useState(initialData?.accountId || accounts[0].id);
@@ -757,12 +804,48 @@ function TransactionForm({ accounts, transactions, onSubmit, initialData, onDele
   const [tagInput, setTagInput] = useState('');
   const [hasImage, setHasImage] = useState(initialData?.hasImage || false);
 
+  // --- Currency State ---
+  const [currencyCode, setCurrencyCode] = useState<CurrencyCode>(() => {
+    if (initialData?.currency) return initialData.currency;
+    return (localStorage.getItem('last_used_currency') as CurrencyCode) || 'CNY';
+  });
+  const [isCurrencyDrawerOpen, setIsCurrencyDrawerOpen] = useState(false);
+  const [isAmountAnimating, setIsAmountAnimating] = useState(false);
+
+  const selectedCurrency = CURRENCIES.find(c => c.code === currencyCode)!;
+  const convertedCNY = useMemo(() => {
+    const num = Number(amount);
+    if (isNaN(num)) return 0;
+    if (currencyCode === 'CNY') return num;
+    return num * (rates[currencyCode] || 1);
+  }, [amount, currencyCode, rates]);
+
   const suggestions = useMemo(() => Array.from(new Set(transactions.filter(t => t.category === category && t.note).map(t => t.note as string))).slice(0, 3), [category, transactions]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!amount || isNaN(Number(amount))) return;
-    onSubmit({ amount: Math.abs(Number(amount)), type, category, date, note, accountId, tags, hasImage });
+    localStorage.setItem('last_used_currency', currencyCode);
+    onSubmit({
+      amount: convertedCNY,
+      type,
+      category,
+      date,
+      note,
+      accountId,
+      tags,
+      hasImage,
+      originalAmount: Number(amount),
+      currency: currencyCode,
+      exchangeRate: rates[currencyCode]
+    });
+  };
+
+  const handleCurrencySelect = (code: CurrencyCode) => {
+    setIsAmountAnimating(true);
+    setCurrencyCode(code);
+    setIsCurrencyDrawerOpen(false);
+    setTimeout(() => setIsAmountAnimating(false), 500);
   };
 
   return (
@@ -771,10 +854,68 @@ function TransactionForm({ accounts, transactions, onSubmit, initialData, onDele
         <button type="button" onClick={() => setType('expense')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'expense' ? "bg-white shadow-md text-red-500" : "text-gray-400")}>支出</button>
         <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'income' ? "bg-white shadow-md text-green-500" : "text-gray-400")}>收入</button>
       </div>
+
       <div className="relative border-b-4 border-gray-50 focus-within:border-black transition-colors pb-4">
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">输入金额</label>
-        <div className="flex items-baseline"><span className="text-2xl font-black text-gray-300 mr-2">¥</span><input autoFocus type="number" inputMode="decimal" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} className="w-full text-5xl font-black focus:outline-none placeholder:text-gray-100" required /></div>
+        <div className="flex justify-between items-center mb-2">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">输入金额</label>
+          <button type="button" onClick={() => setIsCurrencyDrawerOpen(true)} className="flex items-center space-x-1 px-3 py-1 bg-gray-50 rounded-full border border-gray-100 hover:bg-gray-100 transition-colors">
+            <span className="text-xs font-black">{selectedCurrency.flag} {selectedCurrency.code}</span>
+            <ChevronUp size={12} className="text-gray-400" />
+          </button>
+        </div>
+        <div className="flex items-baseline">
+          <span className="text-2xl font-black text-gray-300 mr-2">{selectedCurrency.symbol}</span>
+          <input
+            autoFocus
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            placeholder="0.00"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            className={cn(
+              "w-full text-5xl font-black focus:outline-none placeholder:text-gray-100 transition-all duration-500",
+              isAmountAnimating && "translate-y-2 opacity-0"
+            )}
+            required
+          />
+        </div>
+        {currencyCode !== 'CNY' && amount && (
+          <div className="mt-2 flex items-center space-x-1 text-blue-400 font-bold animate-in fade-in slide-in-from-left-2">
+            <ArrowRightLeft size={10} />
+            <span className="text-[10px]">约合 ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
+          </div>
+        )}
       </div>
+
+      {/* Currency Drawer */}
+      {isCurrencyDrawerOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm animate-in fade-in" onClick={() => setIsCurrencyDrawerOpen(false)}>
+          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
+            <h3 className="text-lg font-black mb-6">选择记账币种</h3>
+            <div className="grid grid-cols-1 gap-2">
+              {CURRENCIES.map(c => (
+                <button key={c.code} type="button" onClick={() => handleCurrencySelect(c.code)} className={cn("flex items-center justify-between p-4 rounded-2xl transition-all", currencyCode === c.code ? "bg-black text-white" : "hover:bg-gray-50 text-gray-600")}>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-2xl">{c.flag}</span>
+                    <div className="text-left">
+                      <p className="text-sm font-black">{c.code}</p>
+                      <p className="text-[10px] opacity-60 font-bold">{c.name}</p>
+                    </div>
+                  </div>
+                  {currencyCode === c.code ? (
+                    <div className="w-2 h-2 bg-white rounded-full" />
+                  ) : (
+                    <span className="text-xs font-bold opacity-40">1 {c.code} ≈ {rates[c.code]?.toFixed(4)} CNY</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4">
         <div><label className="text-[10px] font-black text-gray-400 mb-2 block">日期</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold focus:outline-none" required /></div>
         <div><label className="text-[10px] font-black text-gray-400 mb-2 block">支付账户</label><select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold focus:outline-none appearance-none">{accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon} {acc.name}</option>)}</select></div>

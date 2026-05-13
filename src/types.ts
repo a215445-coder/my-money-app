@@ -12,9 +12,18 @@ export interface Account {
   icon: string;
 }
 
+export type CurrencyCode = 'CNY' | 'USD' | 'EUR' | 'JPY' | 'KRW' | 'THB' | 'HKD';
+
+export interface Currency {
+  code: CurrencyCode;
+  name: string;
+  flag: string;
+  symbol: string;
+}
+
 export interface Transaction {
   id: string;
-  amount: number;
+  amount: number; // This will always be CNY for stats
   type: TransactionType;
   category: Category;
   date: string;
@@ -22,4 +31,7 @@ export interface Transaction {
   accountId: string;
   tags?: string[];
   hasImage?: boolean;
+  originalAmount?: number;
+  currency?: CurrencyCode;
+  exchangeRate?: number;
 }
