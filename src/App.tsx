@@ -855,35 +855,39 @@ function TransactionForm({ accounts, transactions, rates, onSubmit, initialData,
         <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'income' ? "bg-white shadow-md text-green-500" : "text-gray-400")}>收入</button>
       </div>
 
-      <div className="relative border-b-4 border-gray-50 focus-within:border-black transition-colors pb-4">
-        <div className="flex justify-between items-center mb-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">输入金额</label>
-          <button type="button" onClick={() => setIsCurrencyDrawerOpen(true)} className="flex items-center space-x-1 px-3 py-1 bg-gray-50 rounded-full border border-gray-100 hover:bg-gray-100 transition-colors">
-            <span className="text-xs font-black">{selectedCurrency.flag} {selectedCurrency.code}</span>
-            <ChevronUp size={12} className="text-gray-400" />
+      <div className="relative border-b-4 border-gray-50 focus-within:border-black transition-colors pb-6">
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">输入金额</label>
+        <div className="flex items-center space-x-3">
+          <button
+            type="button"
+            onClick={() => setIsCurrencyDrawerOpen(true)}
+            className="flex items-center space-x-2 px-4 py-3 bg-gray-100 rounded-2xl border border-gray-200 active:scale-95 transition-all shrink-0"
+          >
+            <span className="text-base font-black">{selectedCurrency.flag} {selectedCurrency.code}</span>
+            <ChevronDown size={14} className="text-gray-400" />
           </button>
-        </div>
-        <div className="flex items-baseline">
-          <span className="text-2xl font-black text-gray-300 mr-2">{selectedCurrency.symbol}</span>
-          <input
-            autoFocus
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            placeholder="0.00"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            className={cn(
-              "w-full text-5xl font-black focus:outline-none placeholder:text-gray-100 transition-all duration-500",
-              isAmountAnimating && "translate-y-2 opacity-0"
-            )}
-            required
-          />
+          <div className="flex-1 flex items-baseline">
+            <span className="text-2xl font-black text-gray-300 mr-2">{selectedCurrency.symbol}</span>
+            <input
+              autoFocus
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.00"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              className={cn(
+                "w-full text-5xl font-black focus:outline-none placeholder:text-gray-100 transition-all duration-500",
+                isAmountAnimating && "translate-y-2 opacity-0"
+              )}
+              required
+            />
+          </div>
         </div>
         {currencyCode !== 'CNY' && amount && (
-          <div className="mt-2 flex items-center space-x-1 text-blue-400 font-bold animate-in fade-in slide-in-from-left-2">
-            <ArrowRightLeft size={10} />
-            <span className="text-[10px]">约合 ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
+          <div className="mt-4 flex items-center space-x-2 text-blue-500 font-bold bg-blue-50 w-fit px-3 py-1.5 rounded-full animate-in fade-in slide-in-from-left-2">
+            <ArrowRightLeft size={12} />
+            <span className="text-xs">约合 ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
           </div>
         )}
       </div>
