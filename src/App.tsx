@@ -137,6 +137,13 @@ export default function App() {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [transactions]);
 
+  const handleReset = () => {
+    if (confirm('确定要删除所有记账数据吗？此操作不可撤销')) {
+      localStorage.clear();
+      window.location.reload();
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
@@ -413,6 +420,16 @@ export default function App() {
               >
                 保存设置
               </button>
+
+              <div className="pt-4 border-t border-gray-100">
+                <button
+                  onClick={handleReset}
+                  className="w-full py-4 bg-rose-50 text-rose-500 rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center"
+                >
+                  <Trash2 size={16} className="mr-2" />
+                  清空所有账单并重新开始
+                </button>
+              </div>
             </div>
           </div>
         </div>
