@@ -124,20 +124,26 @@ const TRANSLATIONS = {
     user_nickname: '高级会员',
     user_id: 'ID: 888888',
     login_sync: '登录 / 同步账号',
-    language: '语言设置',
+    language: '语言切换 (Language)',
     theme: '应用主题色',
-    dark_mode: '深色模式',
+    dark_mode: '深色模式 (Dark Mode)',
     privacy_lock: '隐私锁',
-    export_csv: '导出全部账单 (CSV)',
-    invite_friends: '邀请好友使用',
+    export_csv: '导出账单 (CSV)',
+    invite_friends: '邀请好友分享',
     rate_app: '去好评',
     about_us: '关于我们',
     clear_data: '清空所有数据',
-    version: '版本 v3.0.0',
+    version: '当前版本',
     copyright: '© 2026 我的账本 版权所有',
     invite_msg: '快来和我一起用“我的账本”理财吧！安全、专业、美观。',
     copy_link: '复制 App 链接',
     thanks_rating: '感谢您的评价！我们会继续努力 ❤️',
+    general: '通用',
+    data: '数据',
+    about: '关于',
+    rate_update: '汇率更新',
+    last_update: '最后更新',
+    select_lang: '选择语言',
   },
   en: {
     total_assets: 'Total Assets',
@@ -165,16 +171,22 @@ const TRANSLATIONS = {
     theme: 'Theme Color',
     dark_mode: 'Dark Mode',
     privacy_lock: 'Privacy Lock',
-    export_csv: 'Export All Bills (CSV)',
+    export_csv: 'Export Bills (CSV)',
     invite_friends: 'Invite Friends',
     rate_app: 'Rate Us',
     about_us: 'About Us',
     clear_data: 'Clear All Data',
-    version: 'Version v3.0.0',
+    version: 'Current Version',
     copyright: '© 2026 My Money App. All rights reserved.',
     invite_msg: 'Come and join me in using "My Money App" for financial management! Secure, professional, and beautiful.',
     copy_link: 'Copy App Link',
     thanks_rating: 'Thanks for your rating! We will keep working hard ❤️',
+    general: 'General',
+    data: 'Data',
+    about: 'About',
+    rate_update: 'Rates Updated',
+    last_update: 'Last Update',
+    select_lang: 'Select Language',
   }
 };
 
@@ -252,6 +264,8 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('app_dark_mode') === 'true');
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const [isLangPickerOpen, setIsLangPickerOpen] = useState(false);
+  const [lastRateUpdate, setLastRateUpdate] = useState(() => localStorage.getItem('last_rate_update') || format(new Date(), 'HH:mm'));
   const t = TRANSLATIONS[lang];
 
   // --- Exchange Rate State ---
@@ -272,8 +286,11 @@ export default function App() {
               newRates[c.code] = 1 / data.rates[c.code];
             }
           });
+          const now = format(new Date(), 'HH:mm');
           setRates(newRates);
+          setLastRateUpdate(now);
           localStorage.setItem('exchange_rates', JSON.stringify(newRates));
+          localStorage.setItem('last_rate_update', now);
         }
       } catch (e) {
         console.error('Failed to fetch rates', e);
@@ -900,104 +917,122 @@ export default function App() {
               {/* Settings List Groups */}
               <div className="space-y-6">
                 <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">基础设置</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t.general}</label>
                   <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
-                    {/* Budget */}
-                    <div className="p-4 border-b border-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-3">
-                          <BarChart3 size={18} className="text-blue-400" />
-                          <span className="text-sm font-bold">支出预算</span>
+                    {/* Language Switch */}
+                    <button onClick={() => setIsLangPickerOpen(true)} className="w-full p-5 flex items-center justify-between hover:bg-black/5 active:scale-[0.98] transition-all border-b border-black/5">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-indigo-100 text-indigo-500 rounded-lg flex items-center justify-center">
+                          <Languages size={18} />
                         </div>
-                      </div>
-                      <input type="number" value={budget} onChange={e => setBudget(Number(e.target.value))} className="w-full bg-transparent text-2xl font-black focus:outline-none border-b-2 border-white/10 focus:border-white transition-colors pb-1" />
-                    </div>
-                    {/* Language */}
-                    <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="w-full p-4 flex items-center justify-between hover:bg-white/5 active:scale-[0.98] transition-all border-b border-white/5">
-                      <div className="flex items-center space-x-3">
-                        <Languages size={18} className="text-indigo-400" />
                         <span className="text-sm font-bold">{t.language}</span>
                       </div>
-                      <span className="text-xs font-black opacity-60">{lang === 'zh' ? '简体中文' : 'English'}</span>
+                      <span className="text-xs font-black opacity-40">{lang === 'zh' ? '简体中文' : 'English'}</span>
                     </button>
                     {/* Dark Mode */}
-                    <div className="p-4 flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        {isDarkMode ? <Moon size={18} className="text-yellow-400" /> : <Sun size={18} className="text-orange-400" />}
+                    <div className="p-5 flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-orange-100 text-orange-500 rounded-lg flex items-center justify-center">
+                          {isDarkMode ? <Moon size={18} /> : <Sun size={18} />}
+                        </div>
                         <span className="text-sm font-bold">{t.dark_mode}</span>
                       </div>
                       <button onClick={() => setIsDarkMode(!isDarkMode)} className={cn("w-12 h-6 rounded-full relative transition-colors", isDarkMode ? theme.primary : "bg-gray-300")}>
-                        <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all", isDarkMode ? "left-7" : "left-1")} />
+                        <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm", isDarkMode ? "left-7" : "left-1")} />
                       </button>
                     </div>
                   </div>
                 </section>
 
                 <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">主题与安全</label>
-                  <div className={cn("rounded-[2rem] overflow-hidden p-4 space-y-4", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
-                    <div>
-                      <div className="flex items-center space-x-3 mb-3">
-                        <LayoutGrid size={18} className="text-pink-400" />
-                        <span className="text-sm font-bold">{t.theme}</span>
-                      </div>
-                      <div className="grid grid-cols-4 gap-3">
-                        {(Object.keys(THEMES) as ThemeKey[]).map(tk => (
-                          <button key={tk} onClick={() => setThemeKey(tk)} className={cn("h-10 rounded-xl border-2 transition-all", THEMES[tk].primary, themeKey === tk ? "border-white scale-105" : "border-transparent opacity-40")} />
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
-                      <div className="flex items-center space-x-3">
-                        <ShieldCheck size={18} className="text-green-400" />
-                        <span className="text-sm font-bold">{t.privacy_lock}</span>
-                      </div>
-                      <button onClick={() => { if (!isLockEnabled) setIsSettingPin(true); else setIsLockEnabled(false); }} className={cn("w-12 h-6 rounded-full relative transition-colors", isLockEnabled ? theme.primary : "bg-gray-300")}>
-                        <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all", isLockEnabled ? "left-7" : "left-1")} />
-                      </button>
-                    </div>
-                  </div>
-                </section>
-
-                <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">数据与社交</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t.data}</label>
                   <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
-                    <button onClick={exportCSV} className="w-full p-4 flex items-center space-x-3 hover:bg-white/5 active:scale-[0.98] transition-all border-b border-white/5">
-                      <Download size={18} className="text-blue-400" />
+                    {/* Rate Update */}
+                    <div className="w-full p-5 flex items-center justify-between border-b border-black/5">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-blue-100 text-blue-500 rounded-lg flex items-center justify-center">
+                          <ArrowRightLeft size={18} />
+                        </div>
+                        <span className="text-sm font-bold">{t.rate_update}</span>
+                      </div>
+                      <span className="text-[10px] font-black opacity-40">{t.last_update} {lastRateUpdate}</span>
+                    </div>
+                    {/* Export CSV */}
+                    <button onClick={exportCSV} className="w-full p-5 flex items-center space-x-4 hover:bg-black/5 active:scale-[0.98] transition-all">
+                      <div className="w-8 h-8 bg-emerald-100 text-emerald-500 rounded-lg flex items-center justify-center">
+                        <Download size={18} />
+                      </div>
                       <span className="text-sm font-bold">{t.export_csv}</span>
                     </button>
-                    <button onClick={() => setIsInviteModalOpen(true)} className="w-full p-4 flex items-center space-x-3 hover:bg-white/5 active:scale-[0.98] transition-all border-b border-white/5">
-                      <Share2 size={18} className="text-orange-400" />
-                      <span className="text-sm font-bold">{t.invite_friends}</span>
-                    </button>
-                    <button onClick={() => setIsRateModalOpen(true)} className="w-full p-4 flex items-center space-x-3 hover:bg-white/5 active:scale-[0.98] transition-all">
-                      <Star size={18} className="text-yellow-400" />
-                      <span className="text-sm font-bold">{t.rate_app}</span>
-                    </button>
                   </div>
                 </section>
 
                 <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">其他</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t.about}</label>
                   <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
-                    <div className="p-4 flex items-center justify-between border-b border-white/5">
-                      <div className="flex items-center space-x-3 text-gray-400">
-                        <Info size={18} />
-                        <span className="text-sm font-bold">{t.about_us}</span>
+                    {/* Invite */}
+                    <button onClick={() => setIsInviteModalOpen(true)} className="w-full p-5 flex items-center space-x-4 hover:bg-black/5 active:scale-[0.98] transition-all border-b border-black/5">
+                      <div className="w-8 h-8 bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center">
+                        <Share2 size={18} />
                       </div>
-                      <span className="text-[10px] font-black opacity-40">{t.version}</span>
-                    </div>
-                    <button onClick={handleReset} className="w-full p-4 flex items-center space-x-3 text-rose-500 hover:bg-rose-500/5 active:scale-[0.98] transition-all">
-                      <LogOut size={18} />
-                      <span className="text-sm font-black">{t.clear_data}</span>
+                      <span className="text-sm font-bold">{t.invite_friends}</span>
                     </button>
+                    {/* Version */}
+                    <div className="w-full p-5 flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-gray-100 text-gray-500 rounded-lg flex items-center justify-center">
+                          <Info size={18} />
+                        </div>
+                        <span className="text-sm font-bold">{t.version}</span>
+                      </div>
+                      <span className="text-xs font-black opacity-40">v2.1.0</span>
+                    </div>
                   </div>
                 </section>
+
+                <button onClick={handleReset} className="w-full p-4 flex items-center justify-center space-x-2 text-rose-500 hover:bg-rose-500/5 active:scale-[0.98] transition-all mt-4 font-black text-sm">
+                  <LogOut size={18} />
+                  <span>{t.clear_data}</span>
+                </button>
 
                 <p className="text-center text-[8px] font-bold text-gray-500 uppercase tracking-widest py-4">
                   {t.copyright}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Language Picker Action Sheet */}
+      {isLangPickerOpen && (
+        <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setIsLangPickerOpen(false)}>
+          <div className={cn(
+            "w-full max-w-md rounded-t-[3rem] p-8 pb-12 animate-in slide-in-from-bottom duration-300",
+            isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+          )} onClick={e => e.stopPropagation()}>
+            <div className={cn("w-12 h-1.5 rounded-full mx-auto mb-8", isDarkMode ? "bg-slate-700" : "bg-gray-100")} />
+            <h3 className="text-lg font-black mb-6">{t.select_lang}</h3>
+            <div className="space-y-2">
+              {[
+                { id: 'zh', label: '简体中文', flag: '🇨🇳' },
+                { id: 'en', label: 'English', flag: '🇺🇸' }
+              ].map(l => (
+                <button
+                  key={l.id}
+                  onClick={() => { setLang(l.id as any); setIsLangPickerOpen(false); }}
+                  className={cn(
+                    "w-full p-5 rounded-2xl flex items-center justify-between transition-all",
+                    lang === l.id ? (isDarkMode ? "bg-white text-black" : "bg-black text-white") : (isDarkMode ? "hover:bg-slate-700 text-slate-300" : "hover:bg-gray-50 text-gray-600")
+                  )}
+                >
+                  <div className="flex items-center space-x-4">
+                    <span className="text-2xl">{l.flag}</span>
+                    <span className="font-black">{l.label}</span>
+                  </div>
+                  {lang === l.id && <div className={cn("w-2 h-2 rounded-full", isDarkMode ? "bg-black" : "bg-white")} />}
+                </button>
+              ))}
             </div>
           </div>
         </div>
