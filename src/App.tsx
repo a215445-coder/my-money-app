@@ -12,6 +12,7 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  LayoutGrid,
   History,
   BarChart3,
   ChevronDown,
@@ -27,7 +28,17 @@ import {
   Smile,
   Globe,
   ArrowRightLeft,
-  ChevronUp
+  ChevronUp,
+  User,
+  Languages,
+  Share2,
+  Star,
+  Moon,
+  Sun,
+  Info,
+  LogOut,
+  Copy,
+  Heart
 } from 'lucide-react';
 import {
   format,
@@ -88,6 +99,83 @@ const THEMES = {
   gray: { primary: 'bg-slate-600', text: 'text-slate-600', border: 'border-slate-600', shadow: 'shadow-slate-600/20', ring: 'ring-slate-600' },
   mint: { primary: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500', shadow: 'shadow-emerald-500/20', ring: 'ring-emerald-500' },
   sakura: { primary: 'bg-pink-400', text: 'text-pink-400', border: 'border-pink-400', shadow: 'shadow-pink-400/20', ring: 'ring-pink-400' },
+};
+
+const TRANSLATIONS = {
+  zh: {
+    total_assets: '总资产估值',
+    monthly_balance: '本月结余',
+    budget_progress: '预算进度',
+    daily_suggest: '建议今日消费',
+    search_placeholder: '搜索账单、备注或标签...',
+    today: '今日',
+    week: '本周',
+    month: '本月',
+    year: '本年',
+    bill_detail: '账单明细',
+    stats: '统计分析',
+    calendar: '记账日历',
+    settings: '系统设置',
+    no_bills: '暂无账单记录',
+    start_recording: '点击下方按钮开始记第一笔账吧',
+    trend_title: '消费趋势 (7天)',
+    heatmap_title: '消费热力图 (30天)',
+    composition_title: '支出构成',
+    user_nickname: '高级会员',
+    user_id: 'ID: 888888',
+    login_sync: '登录 / 同步账号',
+    language: '语言设置',
+    theme: '应用主题色',
+    dark_mode: '深色模式',
+    privacy_lock: '隐私锁',
+    export_csv: '导出全部账单 (CSV)',
+    invite_friends: '邀请好友使用',
+    rate_app: '去好评',
+    about_us: '关于我们',
+    clear_data: '清空所有数据',
+    version: '版本 v3.0.0',
+    copyright: '© 2026 我的账本 版权所有',
+    invite_msg: '快来和我一起用“我的账本”理财吧！安全、专业、美观。',
+    copy_link: '复制 App 链接',
+    thanks_rating: '感谢您的评价！我们会继续努力 ❤️',
+  },
+  en: {
+    total_assets: 'Total Assets',
+    monthly_balance: 'Monthly Balance',
+    budget_progress: 'Budget Progress',
+    daily_suggest: 'Daily Suggested Spend',
+    search_placeholder: 'Search bills, notes, or tags...',
+    today: 'Today',
+    week: 'Week',
+    month: 'Month',
+    year: 'Year',
+    bill_detail: 'Bills',
+    stats: 'Statistics',
+    calendar: 'Calendar',
+    settings: 'Settings',
+    no_bills: 'No transactions yet',
+    start_recording: 'Click the button below to start recording',
+    trend_title: 'Spending Trend (7 Days)',
+    heatmap_title: 'Spending Heatmap (30 Days)',
+    composition_title: 'Spending Composition',
+    user_nickname: 'Premium Member',
+    user_id: 'ID: 888888',
+    login_sync: 'Login / Sync Account',
+    language: 'Language',
+    theme: 'Theme Color',
+    dark_mode: 'Dark Mode',
+    privacy_lock: 'Privacy Lock',
+    export_csv: 'Export All Bills (CSV)',
+    invite_friends: 'Invite Friends',
+    rate_app: 'Rate Us',
+    about_us: 'About Us',
+    clear_data: 'Clear All Data',
+    version: 'Version v3.0.0',
+    copyright: '© 2026 My Money App. All rights reserved.',
+    invite_msg: 'Come and join me in using "My Money App" for financial management! Secure, professional, and beautiful.',
+    copy_link: 'Copy App Link',
+    thanks_rating: 'Thanks for your rating! We will keep working hard ❤️',
+  }
 };
 
 type ThemeKey = keyof typeof THEMES;
@@ -159,6 +247,13 @@ export default function App() {
   const [themeKey, setThemeKey] = useState<ThemeKey>(() => (localStorage.getItem('app_theme') as ThemeKey) || 'black');
   const theme = THEMES[themeKey];
 
+  // --- Settings & i18n ---
+  const [lang, setLang] = useState<'zh' | 'en'>(() => (localStorage.getItem('app_lang') as 'zh' | 'en') || 'zh');
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('app_dark_mode') === 'true');
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
+  const t = TRANSLATIONS[lang];
+
   // --- Exchange Rate State ---
   const [rates, setRates] = useState<Record<string, number>>(() => {
     const saved = localStorage.getItem('exchange_rates');
@@ -196,6 +291,8 @@ export default function App() {
     localStorage.setItem('privacy_pin', pin);
   }, [isLockEnabled, pin]);
   useEffect(() => localStorage.setItem('app_theme', themeKey), [themeKey]);
+  useEffect(() => localStorage.setItem('app_lang', lang), [lang]);
+  useEffect(() => localStorage.setItem('app_dark_mode', isDarkMode.toString()), [isDarkMode]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -374,17 +471,20 @@ export default function App() {
   };
 
   return (
-    <div className={cn("min-h-screen bg-gray-50 text-gray-900 font-sans pb-32 transition-colors duration-500")}>
+    <div className={cn(
+      "min-h-screen transition-colors duration-500 pb-32 font-sans",
+      isDarkMode ? "bg-slate-900 text-white" : "bg-gray-50 text-gray-900"
+    )}>
       {/* Privacy Lock Screen */}
       {isLocked && (
-        <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8">
+        <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", isDarkMode ? "bg-slate-900" : "bg-white")}>
           <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-8 shadow-2xl animate-bounce", theme.primary)}>
             <Lock className="text-white" size={32} />
           </div>
           <h2 className="text-2xl font-black mb-2">安全验证</h2>
           <div className="flex space-x-4 mb-12">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className={cn("w-4 h-4 rounded-full border-2", inputPin.length >= i ? theme.primary : "border-gray-200")} />
+              <div key={i} className={cn("w-4 h-4 rounded-full border-2", inputPin.length >= i ? theme.primary : (isDarkMode ? "border-slate-700" : "border-gray-200"))} />
             ))}
           </div>
           <div className="grid grid-cols-3 gap-6 w-full max-w-xs">
@@ -399,7 +499,7 @@ export default function App() {
                     else { alert('密码错误'); setInputPin(''); }
                   }
                 }
-              }} className={cn("w-16 h-16 rounded-full flex items-center justify-center text-xl font-black bg-gray-50 active:scale-90", n === '' && "invisible")}>
+              }} className={cn("w-16 h-16 rounded-full flex items-center justify-center text-xl font-black active:scale-90", isDarkMode ? "bg-slate-800" : "bg-gray-50", n === '' && "invisible")}>
                 {n === 'del' ? <X size={20} /> : n}
               </button>
             ))}
@@ -409,68 +509,84 @@ export default function App() {
 
       {/* Sidebar Menu */}
       <div className={cn("fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity", isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none")} onClick={() => setIsMenuOpen(false)} />
-      <aside className={cn("fixed top-0 left-0 h-full w-[280px] bg-white z-[70] shadow-2xl transition-transform duration-500 rounded-r-[2.5rem] p-8", isMenuOpen ? "translate-x-0" : "-translate-x-full")}>
+      <aside className={cn(
+        "fixed top-0 left-0 h-full w-[280px] z-[70] shadow-2xl transition-transform duration-500 rounded-r-[2.5rem] p-8",
+        isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900",
+        isMenuOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="flex justify-between items-center mb-12">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-lg"><Wallet className="text-white" size={20} /></div>
+            <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-lg", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>
+              <Wallet size={20} />
+            </div>
             <span className="font-black text-xl tracking-tighter">我的账本</span>
           </div>
-          <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-gray-50 rounded-full"><X size={20} /></button>
+          <button onClick={() => setIsMenuOpen(false)} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-50")}><X size={20} /></button>
         </div>
         <nav className="space-y-2">
           {[
-            { id: 'list', label: '账单明细', icon: <History size={20} /> },
-            { id: 'chart', label: '统计分析', icon: <PieIcon size={20} /> },
-            { id: 'calendar', label: '记账日历', icon: <CalendarIcon size={20} /> },
-            { id: 'settings', label: '系统设置', icon: <Settings size={20} /> },
+            { id: 'list', label: t.bill_detail, icon: <History size={20} /> },
+            { id: 'chart', label: t.stats, icon: <PieIcon size={20} /> },
+            { id: 'calendar', label: t.calendar, icon: <CalendarIcon size={20} /> },
+            { id: 'settings', label: t.settings, icon: <Settings size={20} /> },
           ].map((item) => (
             <button key={item.id} onClick={() => {
               if (item.id === 'settings') setIsBudgetModalOpen(true);
               else setActiveTab(item.id as any);
               setIsMenuOpen(false);
-            }} className={cn("w-full flex items-center space-x-4 p-4 rounded-2xl font-bold transition-all", activeTab === item.id ? "bg-black text-white shadow-lg" : "text-gray-500 hover:bg-gray-50")}>
+            }} className={cn(
+              "w-full flex items-center space-x-4 p-4 rounded-2xl font-bold transition-all",
+              activeTab === item.id ? (isDarkMode ? "bg-white text-black shadow-lg" : "bg-black text-white shadow-lg") : (isDarkMode ? "text-slate-400 hover:bg-slate-700" : "text-gray-500 hover:bg-gray-50")
+            )}>
               {item.icon}<span>{item.label}</span>
             </button>
           ))}
         </nav>
         <div className="absolute bottom-8 left-8 right-8 space-y-4">
-          <div className="bg-green-50 p-4 rounded-2xl flex items-center space-x-3 border border-green-100">
-            <Cloud className="text-green-500" size={18} />
-            <div className="text-[10px] font-bold text-green-700">已与 GitHub 私有云同步</div>
+          <div className={cn("p-4 rounded-2xl flex items-center space-x-3 border", isDarkMode ? "bg-slate-700 border-slate-600" : "bg-green-50 border-green-100")}>
+            <Cloud className={isDarkMode ? "text-slate-400" : "text-green-500"} size={18} />
+            <div className={cn("text-[10px] font-bold", isDarkMode ? "text-slate-300" : "text-green-700")}>已与 GitHub 私有云同步</div>
           </div>
-          <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 text-[10px] font-black text-gray-400">v3.0.0 ENTERPRISE</div>
+          <div className={cn("p-4 rounded-2xl border text-[10px] font-black", isDarkMode ? "bg-slate-700 border-slate-600 text-slate-500" : "bg-gray-50 border-gray-100 text-gray-400")}>v3.0.0 ENTERPRISE</div>
         </div>
       </aside>
 
       {/* Header */}
-      <header className="bg-white px-6 pt-12 pb-8 rounded-b-[2.5rem] shadow-sm relative overflow-hidden">
+      <header className={cn(
+        "px-6 pt-12 pb-8 rounded-b-[2.5rem] shadow-sm relative overflow-hidden",
+        isDarkMode ? "bg-slate-800" : "bg-white"
+      )}>
         <div className="flex justify-between items-center mb-6">
-          <button onClick={() => setIsMenuOpen(true)} className="p-3 bg-gray-50 rounded-2xl text-black active:scale-90 shadow-sm"><Menu size={24} /></button>
+          <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl active:scale-90 shadow-sm", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>
+            <Menu size={24} />
+          </button>
           <div className="flex flex-col items-center">
             <div className="flex items-center space-x-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
               <Smile size={12} className={theme.text} /><span>每日寄语</span>
             </div>
-            <p className="text-xs font-black text-gray-800">{dailyQuote}</p>
+            <p className={cn("text-xs font-black", isDarkMode ? "text-slate-300" : "text-gray-800")}>{dailyQuote}</p>
           </div>
-          <button onClick={() => setIsBudgetModalOpen(true)} className="p-3 bg-gray-50 rounded-2xl text-gray-500 active:scale-90 shadow-sm"><Settings size={24} /></button>
+          <button onClick={() => setIsBudgetModalOpen(true)} className={cn("p-3 rounded-2xl active:scale-90 shadow-sm", isDarkMode ? "bg-slate-700 text-slate-400" : "bg-gray-50 text-gray-500")}>
+            <Settings size={24} />
+          </button>
         </div>
 
         {/* Total Assets Card */}
         <div className={cn("text-white p-8 rounded-[2.5rem] mb-6 shadow-2xl relative transition-all duration-500", theme.primary)}>
           <div className="flex justify-between items-start mb-6">
             <div>
-              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">总资产估值</p>
+              <p className="text-white/60 text-[10px] font-bold uppercase tracking-widest mb-2">{t.total_assets}</p>
               <p className="text-4xl font-black">¥{formatCurrency(totalAssets)}</p>
             </div>
             <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-md"><BarChart3 size={24} /></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-              <p className="text-[10px] text-white/50 font-bold mb-1">本月结余</p>
+              <p className="text-[10px] text-white/50 font-bold mb-1">{t.monthly_balance}</p>
               <p className="text-lg font-black">¥{formatCurrency(stats.balance)}</p>
             </div>
             <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/5">
-              <p className="text-[10px] text-white/50 font-bold mb-1">预算进度</p>
+              <p className="text-[10px] text-white/50 font-bold mb-1">{t.budget_progress}</p>
               <div className="flex items-center space-x-2">
                 <div className="flex-1 h-1.5 bg-white/20 rounded-full overflow-hidden">
                   <div className={cn("h-full transition-all duration-1000", stats.budgetUsage > 90 ? "bg-red-400" : "bg-white")} style={{ width: `${Math.min(stats.budgetUsage, 100)}%` }} />
@@ -481,7 +597,7 @@ export default function App() {
             </div>
           </div>
           <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-center">
-            <p className="text-[10px] text-white/50 font-bold tracking-tight">建议今日消费：</p>
+            <p className="text-[10px] text-white/50 font-bold tracking-tight">{t.daily_suggest}</p>
             <p className="text-sm font-black text-yellow-300">¥{formatCurrency(stats.dailyBudget)}</p>
           </div>
         </div>
@@ -489,12 +605,15 @@ export default function App() {
         {/* Accounts Horizontal Scroll */}
         <div className="flex space-x-4 overflow-x-auto pb-2 no-scrollbar">
           {accounts.map(acc => (
-            <div key={acc.id} className="flex-shrink-0 bg-gray-50 p-4 rounded-2xl border border-gray-100 min-w-[120px] shadow-sm">
+            <div key={acc.id} className={cn(
+              "flex-shrink-0 p-4 rounded-2xl border min-w-[120px] shadow-sm",
+              isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-50 border-gray-100"
+            )}>
               <div className="flex items-center space-x-2 mb-2">
                 <span className="text-lg">{acc.icon}</span>
                 <span className="text-[10px] font-black text-gray-400">{acc.name}</span>
               </div>
-              <p className="text-sm font-black text-gray-800">¥{formatCurrency(acc.balance)}</p>
+              <p className={cn("text-sm font-black", isDarkMode ? "text-slate-200" : "text-gray-800")}>¥{formatCurrency(acc.balance)}</p>
             </div>
           ))}
         </div>
@@ -505,7 +624,16 @@ export default function App() {
         {/* Search Bar */}
         <div className="relative mb-6">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-          <input type="text" placeholder="搜索账单、备注或标签..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="w-full bg-white pl-12 pr-4 py-4 rounded-2xl text-sm font-medium border border-gray-100 shadow-sm focus:outline-none focus:ring-4 ring-black/5" />
+          <input
+            type="text"
+            placeholder={t.search_placeholder}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className={cn(
+              "w-full pl-12 pr-4 py-4 rounded-2xl text-sm font-medium border shadow-sm focus:outline-none focus:ring-4 ring-black/5 transition-all",
+              isDarkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-gray-100 text-gray-900"
+            )}
+          />
         </div>
 
         {activeTab === 'list' && (
@@ -525,7 +653,7 @@ export default function App() {
             {stats.filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-gray-300">
                 <div className="text-6xl mb-4 opacity-50">🏜️</div>
-                <p className="font-bold text-center px-8">暂无账单记录<br /><span className="text-xs font-medium">点击下方按钮开始记第一笔账吧</span></p>
+                <p className="font-bold text-center px-8">{t.no_bills}<br /><span className="text-xs font-medium">{t.start_recording}</span></p>
               </div>
             ) : (
               <div className="space-y-8">
@@ -576,41 +704,41 @@ export default function App() {
 
         {activeTab === 'chart' && (
           <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-50">
-              <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />消费趋势 (7天)</h3>
+            <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+              <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t.trend_title}</h3>
               {stats.trendData.some(d => d.amount > 0) ? (
                 <div className="h-48 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={stats.trendData}>
                       <defs>
                         <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={themeKey === 'black' ? '#000' : theme.text.replace('text-', '')} stopOpacity={0.3} />
-                          <stop offset="95%" stopColor={themeKey === 'black' ? '#000' : theme.text.replace('text-', '')} stopOpacity={0} />
+                          <stop offset="5%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0.3} />
+                          <stop offset="95%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
                       <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
                       <YAxis hide />
-                      <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                      <Area type="monotone" dataKey="amount" stroke={themeKey === 'black' ? '#000' : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
+                      <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                      <Area type="monotone" dataKey="amount" stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-48 flex flex-col items-center justify-center text-gray-300 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
                   <Smile size={32} className="mb-2 opacity-20" />
-                  <p className="text-xs font-bold">暂无消费数据，记一笔试试吧</p>
+                  <p className="text-xs font-bold">{t.no_bills}</p>
                 </div>
               )}
             </div>
 
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-50">
-              <h3 className="font-black text-lg mb-6 flex items-center"><History size={20} className="mr-2 text-green-500" />消费热力图 (30天)</h3>
+            <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+              <h3 className="font-black text-lg mb-6 flex items-center"><History size={20} className="mr-2 text-green-500" />{t.heatmap_title}</h3>
               <div className="flex flex-wrap gap-1.5 justify-center">
                 {stats.heatmapData.map((day) => (
                   <div key={day.date} className={cn(
                     "w-6 h-6 rounded-md transition-all relative group",
-                    day.level === 0 ? "bg-gray-100" :
+                    day.level === 0 ? (isDarkMode ? "bg-slate-700" : "bg-gray-100") :
                       day.level === 1 ? "bg-green-200" :
                         day.level === 2 ? "bg-green-400" :
                           day.level === 3 ? "bg-green-600" : "bg-green-800"
@@ -624,7 +752,7 @@ export default function App() {
               <div className="mt-4 flex items-center justify-end space-x-2">
                 <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Less</span>
                 <div className="flex space-x-1">
-                  <div className="w-2 h-2 rounded-sm bg-gray-100" />
+                  <div className={cn("w-2 h-2 rounded-sm", isDarkMode ? "bg-slate-700" : "bg-gray-100")} />
                   <div className="w-2 h-2 rounded-sm bg-green-200" />
                   <div className="w-2 h-2 rounded-sm bg-green-400" />
                   <div className="w-2 h-2 rounded-sm bg-green-600" />
@@ -634,8 +762,8 @@ export default function App() {
               </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-50">
-              <h3 className="font-black text-lg mb-8 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />支出构成</h3>
+            <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+              <h3 className="font-black text-lg mb-8 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t.composition_title}</h3>
               {stats.pieData.length > 0 ? (
                 <>
                   <div className="h-64 w-full relative">
@@ -644,18 +772,18 @@ export default function App() {
                         <Pie data={stats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value">
                           {stats.pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
                         </Pie>
-                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
                       </PieChart>
                     </ResponsiveContainer>
                     <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">总支出</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.total_assets}</p>
                       <p className="text-xl font-black">¥{formatCurrency(stats.expense)}</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 mt-8">
                     {stats.pieData.map(entry => (
-                      <div key={entry.name} className="bg-gray-50 p-3 rounded-2xl flex items-center justify-between">
-                        <div className="flex items-center"><div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} /><span className="text-xs font-bold text-gray-600">{entry.name}</span></div>
+                      <div key={entry.name} className={cn("p-3 rounded-2xl flex items-center justify-between", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
+                        <div className="flex items-center"><div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} /><span className="text-xs font-bold opacity-70">{entry.name}</span></div>
                         <span className="text-xs font-black">¥{formatCurrency(entry.value)}</span>
                       </div>
                     ))}
@@ -667,28 +795,28 @@ export default function App() {
         )}
 
         {activeTab === 'calendar' && (
-          <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-50 animate-in fade-in duration-500">
-            <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />记账日历</h3>
+          <div className={cn("rounded-[2.5rem] p-8 shadow-sm border animate-in fade-in duration-500", isDarkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-gray-50 text-gray-900")}>
+            <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />{t.calendar}</h3>
             <div className="grid grid-cols-7 gap-2">
               {['一', '二', '三', '四', '五', '六', '日'].map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 pb-4">{d}</div>)}
               {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
                 const dayData = transactions.filter(t => isSameDay(parseISO(t.date), day));
                 return (
-                  <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? theme.primary + " text-white" : "hover:bg-gray-50")}>
+                  <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? theme.primary + " text-white" : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
                     <span className="text-xs font-black">{format(day, 'd')}</span>
-                    {dayData.length > 0 && <div className={cn("w-1 h-1 rounded-full absolute bottom-1.5", isSameDay(day, selectedCalendarDate) ? "bg-white" : "bg-black")} />}
+                    {dayData.length > 0 && <div className={cn("w-1 h-1 rounded-full absolute bottom-1.5", isSameDay(day, selectedCalendarDate) ? "bg-white" : (isDarkMode ? "bg-white" : "bg-black"))} />}
                   </div>
                 );
               })}
             </div>
-            <div className="mt-8 pt-8 border-t border-gray-50">
+            <div className={cn("mt-8 pt-8 border-t", isDarkMode ? "border-slate-700" : "border-gray-50")}>
               <p className="text-[10px] font-black text-gray-400 mb-4 uppercase tracking-widest">选中日期账单</p>
               {transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate)).length === 0 ? (
                 <p className="text-xs text-gray-300 font-bold italic text-center py-4">这一天很安静，没有开支 🍃</p>
               ) : (
                 <div className="space-y-3">
                   {transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate)).map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-2xl">
+                    <div key={t.id} className={cn("flex items-center justify-between p-3 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
                       <div className="flex items-center space-x-3">
                         <span className="text-lg">{CATEGORIES.find(c => c.label === t.category)?.icon}</span>
                         <span className="text-xs font-bold">{t.category}</span>
@@ -713,12 +841,26 @@ export default function App() {
       {/* Transaction Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl animate-in slide-in-from-bottom duration-500">
+          <div className={cn(
+            "w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl animate-in slide-in-from-bottom duration-500",
+            isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+          )}>
             <div className="flex justify-between items-center mb-10">
-              <h2 className="text-2xl font-black">{editingTransaction ? '修改账单' : '记一笔'}</h2>
-              <button onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }} className="p-3 bg-gray-100 rounded-full"><X size={20} /></button>
+              <h2 className="text-2xl font-black">{editingTransaction ? (lang === 'zh' ? '修改账单' : 'Edit Bill') : (lang === 'zh' ? '记一笔' : 'Add Bill')}</h2>
+              <button onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }} className={cn("p-3 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
+                <X size={20} />
+              </button>
             </div>
-            <TransactionForm accounts={accounts} transactions={transactions} rates={rates} onSubmit={addOrUpdateTransaction} initialData={editingTransaction || undefined} onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined} />
+            <TransactionForm
+              accounts={accounts}
+              transactions={transactions}
+              rates={rates}
+              onSubmit={addOrUpdateTransaction}
+              initialData={editingTransaction || undefined}
+              onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
+              isDarkMode={isDarkMode}
+              lang={lang}
+            />
           </div>
         </div>
       )}
@@ -726,38 +868,191 @@ export default function App() {
       {/* Settings Modal */}
       {isBudgetModalOpen && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
-          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-300 max-h-[80vh] overflow-y-auto no-scrollbar">
+          <div className={cn(
+            "w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-300 max-h-[85vh] overflow-y-auto no-scrollbar",
+            isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+          )}>
             <div className="flex justify-between items-center mb-8">
-              <h2 className="text-xl font-black">系统设置</h2>
-              <button onClick={() => setIsBudgetModalOpen(false)} className="p-2 bg-gray-100 rounded-full"><X size={18} /></button>
+              <h2 className="text-xl font-black">{t.settings}</h2>
+              <button onClick={() => setIsBudgetModalOpen(false)} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
+                <X size={18} />
+              </button>
             </div>
-            <div className="space-y-6">
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">每月支出预算</label>
-                <input type="number" value={budget} onChange={e => setBudget(Number(e.target.value))} className="w-full text-4xl font-black focus:outline-none border-b-4 border-gray-100 focus:border-black transition-colors pb-2" />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">应用主题色</label>
-                <div className="grid grid-cols-4 gap-3">
-                  {(Object.keys(THEMES) as ThemeKey[]).map(t => (
-                    <button key={t} onClick={() => setThemeKey(t)} className={cn("h-12 rounded-2xl border-2 transition-all", THEMES[t].primary, themeKey === t ? "border-gray-900 scale-105" : "border-transparent opacity-50")} />
-                  ))}
+
+            <div className="space-y-8">
+              {/* User Card */}
+              <div className={cn("p-6 rounded-[2rem] relative overflow-hidden", theme.primary)}>
+                <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
+                <div className="flex items-center space-x-4 relative z-10">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center">
+                    <User className="text-white" size={28} />
+                  </div>
+                  <div>
+                    <p className="text-white font-black">{t.user_nickname}</p>
+                    <p className="text-white/60 text-[10px] font-bold">{t.user_id}</p>
+                  </div>
                 </div>
+                <button className="w-full mt-4 py-3 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-xl text-white text-[10px] font-black uppercase tracking-widest transition-all">
+                  {t.login_sync}
+                </button>
               </div>
-              <div>
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">安全设置</label>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl">
-                  <div className="flex items-center space-x-3"><ShieldCheck size={20} className={theme.text} /><span className="text-sm font-bold">隐私锁</span></div>
-                  <button onClick={() => { if (!isLockEnabled) setIsSettingPin(true); else setIsLockEnabled(false); }} className={cn("w-12 h-6 rounded-full relative transition-colors", isLockEnabled ? theme.primary : "bg-gray-200")}>
-                    <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all", isLockEnabled ? "left-7" : "left-1")} />
-                  </button>
-                </div>
-              </div>
-              <div className="pt-4 space-y-3 border-t border-gray-100">
-                <button onClick={exportCSV} className="w-full py-4 bg-gray-50 text-gray-800 rounded-2xl font-bold text-sm flex items-center justify-center border border-gray-100"><Download size={18} className="mr-2" />导出全部账单 (CSV)</button>
-                <button onClick={handleReset} className="w-full py-4 bg-rose-50 text-rose-500 rounded-2xl font-bold text-sm flex items-center justify-center border border-rose-100"><Trash2 size={18} className="mr-2" />清空所有数据</button>
+
+              {/* Settings List Groups */}
+              <div className="space-y-6">
+                <section>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">基础设置</label>
+                  <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
+                    {/* Budget */}
+                    <div className="p-4 border-b border-white/5">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center space-x-3">
+                          <BarChart3 size={18} className="text-blue-400" />
+                          <span className="text-sm font-bold">支出预算</span>
+                        </div>
+                      </div>
+                      <input type="number" value={budget} onChange={e => setBudget(Number(e.target.value))} className="w-full bg-transparent text-2xl font-black focus:outline-none border-b-2 border-white/10 focus:border-white transition-colors pb-1" />
+                    </div>
+                    {/* Language */}
+                    <button onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} className="w-full p-4 flex items-center justify-between hover:bg-white/5 active:scale-[0.98] transition-all border-b border-white/5">
+                      <div className="flex items-center space-x-3">
+                        <Languages size={18} className="text-indigo-400" />
+                        <span className="text-sm font-bold">{t.language}</span>
+                      </div>
+                      <span className="text-xs font-black opacity-60">{lang === 'zh' ? '简体中文' : 'English'}</span>
+                    </button>
+                    {/* Dark Mode */}
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        {isDarkMode ? <Moon size={18} className="text-yellow-400" /> : <Sun size={18} className="text-orange-400" />}
+                        <span className="text-sm font-bold">{t.dark_mode}</span>
+                      </div>
+                      <button onClick={() => setIsDarkMode(!isDarkMode)} className={cn("w-12 h-6 rounded-full relative transition-colors", isDarkMode ? theme.primary : "bg-gray-300")}>
+                        <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all", isDarkMode ? "left-7" : "left-1")} />
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">主题与安全</label>
+                  <div className={cn("rounded-[2rem] overflow-hidden p-4 space-y-4", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
+                    <div>
+                      <div className="flex items-center space-x-3 mb-3">
+                        <LayoutGrid size={18} className="text-pink-400" />
+                        <span className="text-sm font-bold">{t.theme}</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-3">
+                        {(Object.keys(THEMES) as ThemeKey[]).map(tk => (
+                          <button key={tk} onClick={() => setThemeKey(tk)} className={cn("h-10 rounded-xl border-2 transition-all", THEMES[tk].primary, themeKey === tk ? "border-white scale-105" : "border-transparent opacity-40")} />
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                      <div className="flex items-center space-x-3">
+                        <ShieldCheck size={18} className="text-green-400" />
+                        <span className="text-sm font-bold">{t.privacy_lock}</span>
+                      </div>
+                      <button onClick={() => { if (!isLockEnabled) setIsSettingPin(true); else setIsLockEnabled(false); }} className={cn("w-12 h-6 rounded-full relative transition-colors", isLockEnabled ? theme.primary : "bg-gray-300")}>
+                        <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all", isLockEnabled ? "left-7" : "left-1")} />
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">数据与社交</label>
+                  <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
+                    <button onClick={exportCSV} className="w-full p-4 flex items-center space-x-3 hover:bg-white/5 active:scale-[0.98] transition-all border-b border-white/5">
+                      <Download size={18} className="text-blue-400" />
+                      <span className="text-sm font-bold">{t.export_csv}</span>
+                    </button>
+                    <button onClick={() => setIsInviteModalOpen(true)} className="w-full p-4 flex items-center space-x-3 hover:bg-white/5 active:scale-[0.98] transition-all border-b border-white/5">
+                      <Share2 size={18} className="text-orange-400" />
+                      <span className="text-sm font-bold">{t.invite_friends}</span>
+                    </button>
+                    <button onClick={() => setIsRateModalOpen(true)} className="w-full p-4 flex items-center space-x-3 hover:bg-white/5 active:scale-[0.98] transition-all">
+                      <Star size={18} className="text-yellow-400" />
+                      <span className="text-sm font-bold">{t.rate_app}</span>
+                    </button>
+                  </div>
+                </section>
+
+                <section>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">其他</label>
+                  <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
+                    <div className="p-4 flex items-center justify-between border-b border-white/5">
+                      <div className="flex items-center space-x-3 text-gray-400">
+                        <Info size={18} />
+                        <span className="text-sm font-bold">{t.about_us}</span>
+                      </div>
+                      <span className="text-[10px] font-black opacity-40">{t.version}</span>
+                    </div>
+                    <button onClick={handleReset} className="w-full p-4 flex items-center space-x-3 text-rose-500 hover:bg-rose-500/5 active:scale-[0.98] transition-all">
+                      <LogOut size={18} />
+                      <span className="text-sm font-black">{t.clear_data}</span>
+                    </button>
+                  </div>
+                </section>
+
+                <p className="text-center text-[8px] font-bold text-gray-500 uppercase tracking-widest py-4">
+                  {t.copyright}
+                </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Modal */}
+      {isInviteModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+          <div className={cn(
+            "w-full max-w-xs rounded-[3rem] p-8 shadow-2xl animate-in zoom-in-95 duration-300",
+            isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+          )}>
+            <div className={cn("p-6 rounded-[2rem] mb-6 text-center", theme.primary)}>
+              <div className="w-16 h-16 bg-white/20 rounded-2xl mx-auto mb-4 flex items-center justify-center">
+                <Wallet className="text-white" size={32} />
+              </div>
+              <h3 className="text-white font-black mb-2 tracking-tighter">我的账本</h3>
+              <p className="text-white/60 text-[10px] font-bold">{t.invite_msg}</p>
+            </div>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText("https://my-money-app.vercel.app");
+                alert(t.copy_link + " Success!");
+                setIsInviteModalOpen(false);
+              }}
+              className={cn("w-full py-4 rounded-2xl font-black text-sm flex items-center justify-center space-x-2", isDarkMode ? "bg-white text-black" : "bg-black text-white")}
+            >
+              <Copy size={18} />
+              <span>{t.copy_link}</span>
+            </button>
+            <button onClick={() => setIsInviteModalOpen(false)} className="w-full mt-2 py-4 text-[10px] font-black text-gray-400 uppercase">
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Rate Modal */}
+      {isRateModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+          <div className={cn(
+            "w-full max-w-xs rounded-[3rem] p-10 text-center shadow-2xl animate-in zoom-in-95 duration-300",
+            isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+          )}>
+            <div className="w-20 h-20 bg-rose-50 text-rose-500 rounded-full mx-auto mb-6 flex items-center justify-center animate-pulse">
+              <Heart size={40} fill="currentColor" />
+            </div>
+            <h3 className="text-xl font-black mb-4">{t.rate_app}</h3>
+            <p className="text-xs text-gray-400 font-bold mb-8">{t.thanks_rating}</p>
+            <button
+              onClick={() => setIsRateModalOpen(false)}
+              className={cn("w-full py-4 rounded-2xl font-black text-sm", isDarkMode ? "bg-white text-black" : "bg-black text-white")}
+            >
+              太棒了！
+            </button>
           </div>
         </div>
       )}
@@ -793,7 +1088,25 @@ export default function App() {
   );
 }
 
-function TransactionForm({ accounts, transactions, rates, onSubmit, initialData, onDelete }: { accounts: Account[], transactions: Transaction[], rates: Record<string, number>, onSubmit: (t: Omit<Transaction, 'id'>) => void, initialData?: Transaction, onDelete?: () => void }) {
+function TransactionForm({
+  accounts,
+  transactions,
+  rates,
+  onSubmit,
+  initialData,
+  onDelete,
+  isDarkMode,
+  lang
+}: {
+  accounts: Account[],
+  transactions: Transaction[],
+  rates: Record<string, number>,
+  onSubmit: (t: Omit<Transaction, 'id'>) => void,
+  initialData?: Transaction,
+  onDelete?: () => void,
+  isDarkMode: boolean,
+  lang: 'zh' | 'en'
+}) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(initialData?.originalAmount?.toString() || initialData?.amount.toString() || '');
   const [category, setCategory] = useState<Category>(initialData?.category || '餐饮');
@@ -850,18 +1163,18 @@ function TransactionForm({ accounts, transactions, rates, onSubmit, initialData,
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="flex bg-gray-100 p-1.5 rounded-2xl">
-        <button type="button" onClick={() => setType('expense')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'expense' ? "bg-white shadow-md text-red-500" : "text-gray-400")}>支出</button>
-        <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'income' ? "bg-white shadow-md text-green-500" : "text-gray-400")}>收入</button>
+      <div className={cn("flex p-1.5 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
+        <button type="button" onClick={() => setType('expense')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'expense' ? (isDarkMode ? "bg-slate-600 shadow-md text-red-400" : "bg-white shadow-md text-red-500") : "text-gray-400")}>{lang === 'zh' ? '支出' : 'EXPENSE'}</button>
+        <button type="button" onClick={() => setType('income')} className={cn("flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all", type === 'income' ? (isDarkMode ? "bg-slate-600 shadow-md text-green-400" : "bg-white shadow-md text-green-500") : "text-gray-400")}>{lang === 'zh' ? '收入' : 'INCOME'}</button>
       </div>
 
-      <div className="relative border-b-4 border-gray-50 focus-within:border-black transition-colors pb-6">
-        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">输入金额</label>
+      <div className={cn("relative border-b-4 transition-colors pb-6", isDarkMode ? "border-slate-700 focus-within:border-white" : "border-gray-50 focus-within:border-black")}>
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-4">{lang === 'zh' ? '输入金额' : 'AMOUNT'}</label>
         <div className="flex items-center space-x-3">
           <button
             type="button"
             onClick={() => setIsCurrencyDrawerOpen(true)}
-            className="flex items-center space-x-2 px-4 py-3 bg-gray-100 rounded-2xl border border-gray-200 active:scale-95 transition-all shrink-0"
+            className={cn("flex items-center space-x-2 px-4 py-3 rounded-2xl border active:scale-95 transition-all shrink-0", isDarkMode ? "bg-slate-700 border-slate-600" : "bg-gray-100 border-gray-200")}
           >
             <span className="text-base font-black">{selectedCurrency.flag} {selectedCurrency.code}</span>
             <ChevronDown size={14} className="text-gray-400" />
@@ -877,8 +1190,9 @@ function TransactionForm({ accounts, transactions, rates, onSubmit, initialData,
               value={amount}
               onChange={e => setAmount(e.target.value)}
               className={cn(
-                "w-full text-5xl font-black focus:outline-none placeholder:text-gray-100 transition-all duration-500",
-                isAmountAnimating && "translate-y-2 opacity-0"
+                "w-full text-5xl font-black focus:outline-none placeholder:text-gray-100 transition-all duration-500 bg-transparent",
+                isAmountAnimating && "translate-y-2 opacity-0",
+                isDarkMode ? "text-white" : "text-black"
               )}
               required
             />
@@ -887,7 +1201,7 @@ function TransactionForm({ accounts, transactions, rates, onSubmit, initialData,
         {currencyCode !== 'CNY' && amount && (
           <div className="mt-4 flex items-center space-x-2 text-blue-500 font-bold bg-blue-50 w-fit px-3 py-1.5 rounded-full animate-in fade-in slide-in-from-left-2">
             <ArrowRightLeft size={12} />
-            <span className="text-xs">约合 ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
+            <span className="text-xs">{lang === 'zh' ? '约合' : 'Approx.'} ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
           </div>
         )}
       </div>
@@ -895,12 +1209,15 @@ function TransactionForm({ accounts, transactions, rates, onSubmit, initialData,
       {/* Currency Drawer */}
       {isCurrencyDrawerOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm animate-in fade-in" onClick={() => setIsCurrencyDrawerOpen(false)}>
-          <div className="bg-white w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom" onClick={e => e.stopPropagation()}>
-            <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
-            <h3 className="text-lg font-black mb-6">选择记账币种</h3>
+          <div className={cn(
+            "w-full max-w-md rounded-t-[2.5rem] p-8 pb-12 animate-in slide-in-from-bottom",
+            isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+          )} onClick={e => e.stopPropagation()}>
+            <div className={cn("w-12 h-1.5 rounded-full mx-auto mb-8", isDarkMode ? "bg-slate-700" : "bg-gray-100")} />
+            <h3 className="text-lg font-black mb-6">{lang === 'zh' ? '选择记账币种' : 'Select Currency'}</h3>
             <div className="grid grid-cols-1 gap-2">
               {CURRENCIES.map(c => (
-                <button key={c.code} type="button" onClick={() => handleCurrencySelect(c.code)} className={cn("flex items-center justify-between p-4 rounded-2xl transition-all", currencyCode === c.code ? "bg-black text-white" : "hover:bg-gray-50 text-gray-600")}>
+                <button key={c.code} type="button" onClick={() => handleCurrencySelect(c.code)} className={cn("flex items-center justify-between p-4 rounded-2xl transition-all", currencyCode === c.code ? (isDarkMode ? "bg-white text-black" : "bg-black text-white") : (isDarkMode ? "hover:bg-slate-700 text-slate-300" : "hover:bg-gray-50 text-gray-600"))}>
                   <div className="flex items-center space-x-4">
                     <span className="text-2xl">{c.flag}</span>
                     <div className="text-left">
@@ -909,7 +1226,7 @@ function TransactionForm({ accounts, transactions, rates, onSubmit, initialData,
                     </div>
                   </div>
                   {currencyCode === c.code ? (
-                    <div className="w-2 h-2 bg-white rounded-full" />
+                    <div className={cn("w-2 h-2 rounded-full", isDarkMode ? "bg-black" : "bg-white")} />
                   ) : (
                     <span className="text-xs font-bold opacity-40">1 {c.code} ≈ {rates[c.code]?.toFixed(4)} CNY</span>
                   )}
@@ -921,23 +1238,38 @@ function TransactionForm({ accounts, transactions, rates, onSubmit, initialData,
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div><label className="text-[10px] font-black text-gray-400 mb-2 block">日期</label><input type="date" value={date} onChange={e => setDate(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold focus:outline-none" required /></div>
-        <div><label className="text-[10px] font-black text-gray-400 mb-2 block">支付账户</label><select value={accountId} onChange={e => setAccountId(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold focus:outline-none appearance-none">{accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon} {acc.name}</option>)}</select></div>
+        <div>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '日期' : 'DATE'}</label>
+          <input type="date" value={date} onChange={e => setDate(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} required />
+        </div>
+        <div>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '支付账户' : 'ACCOUNT'}</label>
+          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon} {acc.name}</option>)}</select>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <div><label className="text-[10px] font-black text-gray-400 mb-2 block">所属分类</label><select value={category} onChange={e => setCategory(e.target.value as Category)} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold focus:outline-none appearance-none">{CATEGORIES.map(c => <option key={c.label} value={c.label}>{c.icon} {c.label}</option>)}</select></div>
-        <div className="flex flex-col"><label className="text-[10px] font-black text-gray-400 mb-2 block">附件凭证</label><button type="button" onClick={() => setHasImage(!hasImage)} className={cn("p-4 rounded-2xl flex items-center justify-center transition-all", hasImage ? "bg-black text-white" : "bg-gray-50 text-gray-300")}><Camera size={20} /></button></div>
+        <div>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '所属分类' : 'CATEGORY'}</label>
+          <select value={category} onChange={e => setCategory(e.target.value as Category)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{CATEGORIES.map(c => <option key={c.label} value={c.label}>{c.icon} {c.label}</option>)}</select>
+        </div>
+        <div className="flex flex-col">
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '附件凭证' : 'ATTACHMENT'}</label>
+          <button type="button" onClick={() => setHasImage(!hasImage)} className={cn("p-4 rounded-2xl flex items-center justify-center transition-all", hasImage ? (isDarkMode ? "bg-white text-black" : "bg-black text-white") : (isDarkMode ? "bg-slate-700 text-slate-500" : "bg-gray-50 text-gray-300"))}><Camera size={20} /></button>
+        </div>
       </div>
       <div>
-        <label className="text-[10px] font-black text-gray-400 mb-2 block">备注与标签</label>
-        <textarea placeholder="输入账单详情（支持长文本）..." value={note} onChange={e => setNote(e.target.value)} className="w-full p-4 bg-gray-50 rounded-2xl text-xs font-bold focus:outline-none mb-2 min-h-[80px] resize-none" />
-        {suggestions.length > 0 && <div className="flex flex-wrap gap-2 mb-3">{suggestions.map((s, i) => <button key={i} type="button" onClick={() => setNote(s)} className="px-3 py-1 bg-gray-100 rounded-full text-[8px] font-bold text-gray-500">{s}</button>)}</div>}
-        <div className="relative"><Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={14} /><input type="text" placeholder="添加标签..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && tagInput) { e.preventDefault(); setTags([...tags, tagInput]); setTagInput(''); } }} className="w-full pl-9 pr-4 py-3 bg-gray-50 rounded-xl text-[10px] font-bold focus:outline-none" /></div>
+        <label className="text-[10px] font-black text-gray-400 mb-2 block">{lang === 'zh' ? '备注与标签' : 'NOTE & TAGS'}</label>
+        <textarea placeholder={lang === 'zh' ? '输入账单详情（支持长文本）...' : 'Add details (long text supported)...'} value={note} onChange={e => setNote(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none mb-2 min-h-[80px] resize-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
+        {suggestions.length > 0 && <div className="flex flex-wrap gap-2 mb-3">{suggestions.map((s, i) => <button key={i} type="button" onClick={() => setNote(s)} className={cn("px-3 py-1 rounded-full text-[8px] font-bold", isDarkMode ? "bg-slate-700 text-slate-400" : "bg-gray-100 text-gray-500")}>{s}</button>)}</div>}
+        <div className="relative">
+          <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={14} />
+          <input type="text" placeholder={lang === 'zh' ? '添加标签...' : 'Add tag...'} value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && tagInput) { e.preventDefault(); setTags([...tags, tagInput]); setTagInput(''); } }} className={cn("w-full pl-9 pr-4 py-3 rounded-xl text-[10px] font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
+        </div>
         <div className="flex flex-wrap gap-2 mt-3">{tags.map((tag, i) => <span key={i} className="px-2 py-1 bg-indigo-50 text-indigo-500 rounded-lg text-[10px] font-black flex items-center">#{tag} <X size={10} className="ml-1 cursor-pointer" onClick={() => setTags(tags.filter((_, idx) => idx !== i))} /></span>)}</div>
       </div>
       <div className="flex space-x-3 pt-4">
-        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2rem] font-black text-sm">删除</button>}
-        <button type="submit" className="flex-[2] py-5 bg-black text-white rounded-[2rem] font-black text-sm shadow-xl active:scale-95">保存账单</button>
+        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2rem] font-black text-sm">{lang === 'zh' ? '删除' : 'DELETE'}</button>}
+        <button type="submit" className={cn("flex-[2] py-5 rounded-[2rem] font-black text-sm shadow-xl active:scale-95", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{lang === 'zh' ? '保存账单' : 'SAVE'}</button>
       </div>
     </form>
   );
