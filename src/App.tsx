@@ -2,15 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
   Calendar,
-  Tag,
-  Utensils,
-  Car,
   ShoppingBag,
-  Gamepad2,
-  Stethoscope,
-  GraduationCap,
-  Wallet,
-  MoreHorizontal,
   X
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
@@ -24,15 +16,15 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const CATEGORIES: { label: Category; icon: React.ReactNode; color: string }[] = [
-  { label: '餐饮', icon: <Utensils size={18} />, color: 'bg-orange-100 text-orange-600' },
-  { label: '交通', icon: <Car size={18} />, color: 'bg-blue-100 text-blue-600' },
-  { label: '购物', icon: <ShoppingBag size={18} />, color: 'bg-purple-100 text-purple-600' },
-  { label: '娱乐', icon: <Gamepad2 size={18} />, color: 'bg-pink-100 text-pink-600' },
-  { label: '医疗', icon: <Stethoscope size={18} />, color: 'bg-red-100 text-red-600' },
-  { label: '教育', icon: <GraduationCap size={18} />, color: 'bg-indigo-100 text-indigo-600' },
-  { label: '收入', icon: <Wallet size={18} />, color: 'bg-green-100 text-green-600' },
-  { label: '其他', icon: <MoreHorizontal size={18} />, color: 'bg-gray-100 text-gray-600' },
+const CATEGORIES: { label: Category; icon: string; color: string }[] = [
+  { label: '餐饮', icon: '🍔', color: 'bg-orange-100' },
+  { label: '交通', icon: '🚗', color: 'bg-blue-100' },
+  { label: '购物', icon: '🛍️', color: 'bg-purple-100' },
+  { label: '娱乐', icon: '🎮', color: 'bg-pink-100' },
+  { label: '医疗', icon: '🏥', color: 'bg-red-100' },
+  { label: '教育', icon: '📚', color: 'bg-indigo-100' },
+  { label: '收入', icon: '💰', color: 'bg-green-100' },
+  { label: '其他', icon: '📦', color: 'bg-gray-100' },
 ];
 
 export default function App() {
@@ -77,7 +69,10 @@ export default function App() {
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
 
-    return { income, expense, balance: income - expense };
+    const budget = 5000; // Default monthly budget
+    const budgetUsage = Math.min((expense / budget) * 100, 100);
+
+    return { income, expense, balance: income - expense, budget, budgetUsage };
   }, [transactions]);
 
   const addTransaction = (t: Omit<Transaction, 'id'>) => {
@@ -108,6 +103,31 @@ export default function App() {
       {/* Header & Summary */}
       <header className="bg-white px-6 pt-12 pb-8 rounded-b-[2rem] shadow-sm">
         <h1 className="text-2xl font-bold mb-6">我的账本</h1>
+
+        {/* Budget Card */}
+        <div className="bg-black text-white p-6 rounded-[2rem] mb-6 shadow-xl">
+          <div className="flex justify-between items-end mb-4">
+            <div>
+              <p className="text-gray-400 text-xs mb-1">本月总预算</p>
+              <p className="text-2xl font-bold">¥{stats.budget.toLocaleString()}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-gray-400 text-xs mb-1">剩余</p>
+              <p className="text-lg font-medium">¥{(stats.budget - stats.expense).toLocaleString()}</p>
+            </div>
+          </div>
+          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full transition-all duration-500",
+                stats.budgetUsage > 90 ? "bg-red-500" : "bg-green-400"
+              )}
+              style={{ width: `${stats.budgetUsage}%` }}
+            />
+          </div>
+          <p className="text-[10px] text-gray-500 mt-2 text-right">已使用 {stats.budgetUsage.toFixed(1)}%</p>
+        </div>
+
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-red-50 p-4 rounded-2xl">
             <p className="text-xs text-red-500 font-medium mb-1">本月支出</p>
@@ -151,10 +171,10 @@ export default function App() {
                       onClick={() => deleteTransaction(item.id)}
                     >
                       <div className={cn(
-                        "w-10 h-10 rounded-full flex items-center justify-center mr-3",
-                        CATEGORIES.find(c => c.label === item.category)?.color || "bg-gray-100 text-gray-600"
+                        "w-10 h-10 rounded-full flex items-center justify-center mr-3 text-lg",
+                        CATEGORIES.find(c => c.label === item.category)?.color || "bg-gray-100"
                       )}>
-                        {CATEGORIES.find(c => c.label === item.category)?.icon || <Tag size={18} />}
+                        {CATEGORIES.find(c => c.label === item.category)?.icon || '❓'}
                       </div>
                       <div className="flex-1">
                         <p className="font-medium text-sm">{item.category}</p>
@@ -255,6 +275,7 @@ function TransactionForm({ onSubmit }: { onSubmit: (t: Omit<Transaction, 'id'>) 
           <input
             autoFocus
             type="number"
+            inputMode="decimal"
             step="0.01"
             placeholder="0.00"
             value={amount}
