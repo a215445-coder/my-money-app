@@ -16,7 +16,11 @@ import {
   History,
   Clock,
   BarChart3,
-  ChevronDown
+  ChevronDown,
+  Lock,
+  ShieldCheck,
+  Zap,
+  LineChart as LineIcon
 } from 'lucide-react';
 import {
   format,
@@ -33,7 +37,11 @@ import {
   addMonths,
   addDays,
   addWeeks,
-  addYears
+  addYears,
+  differenceInDays,
+  eachDayOfInterval,
+  subDays,
+  isSameDay
 } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
 import { clsx, type ClassValue } from 'clsx';
@@ -43,7 +51,12 @@ import {
   Pie,
   Cell,
   ResponsiveContainer,
-  Tooltip as RechartsTooltip
+  Tooltip as RechartsTooltip,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid
 } from 'recharts';
 import type { Transaction, Category, TransactionType } from './types';
 
@@ -51,6 +64,15 @@ import type { Transaction, Category, TransactionType } from './types';
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
+
+const THEMES = {
+  black: { primary: 'bg-black', text: 'text-black', border: 'border-black', shadow: 'shadow-black/20', ring: 'ring-black' },
+  gray: { primary: 'bg-slate-600', text: 'text-slate-600', border: 'border-slate-600', shadow: 'shadow-slate-600/20', ring: 'ring-slate-600' },
+  mint: { primary: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500', shadow: 'shadow-emerald-500/20', ring: 'ring-emerald-500' },
+  sakura: { primary: 'bg-pink-400', text: 'text-pink-400', border: 'border-pink-400', shadow: 'shadow-pink-400/20', ring: 'ring-pink-400' },
+};
+
+type ThemeKey = keyof typeof THEMES;
 
 const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[] = [
   { label: '餐饮', icon: '🍔', color: 'bg-orange-100', hex: '#f97316' },
@@ -85,6 +107,22 @@ export default function App() {
   const [filterType, setFilterType] = useState<FilterType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
 
+  // Privacy Lock States
+  const [isLocked, setIsLocked] = useState(() => {
+    const enabled = localStorage.getItem('privacy_lock_enabled') === 'true';
+    return enabled;
+  });
+  const [pin, setPin] = useState(() => localStorage.getItem('privacy_pin') || '');
+  const [isLockEnabled, setIsLockEnabled] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
+  const [inputPin, setInputPin] = useState('');
+  const [isSettingPin, setIsSettingPin] = useState(false);
+
+  // Theme State
+  const [themeKey, setThemeKey] = useState<ThemeKey>(() => {
+    return (localStorage.getItem('app_theme') as ThemeKey) || 'black';
+  });
+  const theme = THEMES[themeKey];
+
   // Persistence
   useEffect(() => {
     localStorage.setItem('transactions', JSON.stringify(transactions));
@@ -93,6 +131,37 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('monthly_budget', budget.toString());
   }, [budget]);
+
+  useEffect(() => {
+    localStorage.setItem('privacy_lock_enabled', isLockEnabled.toString());
+    localStorage.setItem('privacy_pin', pin);
+  }, [isLockEnabled, pin]);
+
+  useEffect(() => {
+    localStorage.setItem('app_theme', themeKey);
+  }, [themeKey]);
+
+  // Handle re-lock on background (simulated by visibility change)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isLockEnabled) {
+        setIsLocked(true);
+        setInputPin('');
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [isLockEnabled]);
+
+  const verifyPin = (p: string) => {
+    if (p === pin) {
+      setIsLocked(false);
+      setInputPin('');
+    } else {
+      alert('密码错误');
+      setInputPin('');
+    }
+  };
 
   // Date Filtering Logic
   const dateRange = useMemo(() => {
@@ -162,7 +231,27 @@ export default function App() {
     // Top 3 ranking
     const ranking = [...pieData].slice(0, 3);
 
-    return { income, expense, balance: income - expense, budgetUsage, pieData, ranking, filteredTransactions };
+    // Trend Analysis (Last 7 Days)
+    const last7Days = eachDayOfInterval({
+      start: subDays(new Date(), 6),
+      end: new Date()
+    });
+
+    const trendData = last7Days.map(day => {
+      const dayTotal = transactions
+        .filter(t => t.type === 'expense' && isSameDay(parseISO(t.date), day))
+        .reduce((sum, t) => sum + t.amount, 0);
+      return {
+        date: format(day, 'MM-dd'),
+        amount: dayTotal
+      };
+    });
+
+    // Daily suggested consumption
+    const daysInMonth = differenceInDays(endOfMonth(new Date()), new Date()) + 1;
+    const dailyBudget = Math.max((budget - expense) / daysInMonth, 0);
+
+    return { income, expense, balance: income - expense, budgetUsage, pieData, ranking, filteredTransactions, trendData, dailyBudget };
   }, [transactions, budget, dateRange]);
 
   const addOrUpdateTransaction = (t: Omit<Transaction, 'id'>) => {
@@ -223,7 +312,52 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-32">
+    <div className={cn("min-h-screen bg-gray-50 text-gray-900 font-sans pb-32 transition-colors duration-500")}>
+      {/* Privacy Lock Screen */}
+      {isLocked && (
+        <div className="fixed inset-0 z-[100] bg-white flex flex-col items-center justify-center p-8 animate-in fade-in duration-500">
+          <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-8 shadow-2xl animate-bounce", theme.primary)}>
+            <Lock className="text-white" size={32} />
+          </div>
+          <h2 className="text-2xl font-black mb-2">安全验证</h2>
+          <p className="text-gray-400 text-sm mb-12 font-medium">请输入 4 位数字密码解锁</p>
+
+          <div className="flex space-x-4 mb-12">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className={cn(
+                  "w-4 h-4 rounded-full border-2 transition-all duration-300",
+                  inputPin.length >= i ? theme.primary : "border-gray-200"
+                )}
+              />
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-6 w-full max-w-xs">
+            {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'del'].map((n, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  if (n === 'del') setInputPin(prev => prev.slice(0, -1));
+                  else if (typeof n === 'number') {
+                    const newPin = inputPin + n;
+                    if (newPin.length <= 4) setInputPin(newPin);
+                    if (newPin.length === 4) verifyPin(newPin);
+                  }
+                }}
+                className={cn(
+                  "w-16 h-16 rounded-full flex items-center justify-center text-xl font-black transition-all active:scale-90",
+                  n === '' ? "invisible" : "bg-gray-50 hover:bg-gray-100"
+                )}
+              >
+                {n === 'del' ? <X size={20} /> : n}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Hamburger Menu Sidebar */}
       <div
         className={cn(
@@ -313,27 +447,30 @@ export default function App() {
         </div>
 
         {/* Main Balance Card */}
-        <div className="bg-black text-white p-8 rounded-[2.5rem] mb-6 shadow-2xl relative">
+        <div className={cn("text-white p-8 rounded-[2.5rem] mb-6 shadow-2xl relative transition-all duration-500", theme.primary)}>
           <div className="flex justify-between items-start mb-6">
             <div>
-              <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">
+              <p className="text-white/60 text-xs font-bold uppercase tracking-widest mb-2">
                 {filterType === 'month' ? '本月' : filterType === 'today' ? '今日' : filterType === 'week' ? '本周' : '年度'}结余
               </p>
               <p className="text-4xl font-black">¥{formatCurrency(stats.balance)}</p>
             </div>
-            <div className="bg-white/10 p-3 rounded-2xl">
+            <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
               <Wallet className="text-white" size={24} />
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-gray-400 font-bold uppercase tracking-widest">
-                {filterType === 'month' ? '月度预算' : '预算消耗'}
-              </span>
+              <div className="flex items-center">
+                <span className="text-white/60 font-bold uppercase tracking-widest mr-2">预算进度</span>
+                {stats.budgetUsage >= 80 && (
+                  <Zap size={14} className="text-yellow-300 animate-pulse" />
+                )}
+              </div>
               <span className={cn(
-                "font-black px-2 py-0.5 rounded-full",
-                stats.budgetUsage > 90 ? "bg-red-500/20 text-red-400" : "bg-green-500/20 text-green-400"
+                "font-black px-2 py-0.5 rounded-full backdrop-blur-md",
+                stats.budgetUsage > 90 ? "bg-red-500 text-white" : "bg-white/20 text-white"
               )}>
                 {stats.budgetUsage.toFixed(0)}%
               </span>
@@ -341,11 +478,19 @@ export default function App() {
             <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden">
               <div
                 className={cn(
-                  "h-full transition-all duration-700 ease-out rounded-full",
-                  stats.budgetUsage > 90 ? "bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" : "bg-green-400 shadow-[0_0_10px_rgba(74,222,128,0.5)]"
+                  "h-full transition-all duration-1000 ease-out rounded-full",
+                  stats.budgetUsage > 90 ? "bg-red-500 animate-pulse shadow-[0_0_15px_rgba(239,68,68,0.8)]" : "bg-white shadow-[0_0_10px_rgba(255,255,255,0.3)]"
                 )}
                 style={{ width: `${stats.budgetUsage}%` }}
               />
+            </div>
+            <div className="pt-2 flex items-center justify-between border-t border-white/5 mt-2">
+              <p className="text-[10px] text-white/50 font-bold tracking-tight">
+                建议今日消费控制在：
+              </p>
+              <p className="text-sm font-black text-yellow-300">
+                ¥{formatCurrency(stats.dailyBudget)}
+              </p>
             </div>
           </div>
         </div>
@@ -429,6 +574,10 @@ export default function App() {
                       <div
                         key={item.id}
                         onClick={() => startEdit(item)}
+                        onContextMenu={(e) => {
+                          e.preventDefault();
+                          deleteTransaction(item.id, e as any);
+                        }}
                         className={cn(
                           "group flex items-center p-5 active:bg-gray-50 transition-all cursor-pointer",
                           idx !== data.items.length - 1 && "border-b border-gray-50"
@@ -468,6 +617,41 @@ export default function App() {
         ) : (
           /* Chart Tab */
           <div className="space-y-6">
+            {/* Trend Chart */}
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <h3 className="font-black text-lg mb-6 flex items-center">
+                <LineIcon className="mr-2 text-blue-500" size={20} />
+                最近 7 天消费趋势
+              </h3>
+              <div className="h-48 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={stats.trendData}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis
+                      dataKey="date"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }}
+                      dy={10}
+                    />
+                    <YAxis hide />
+                    <RechartsTooltip
+                      contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }}
+                      labelStyle={{ fontWeight: 'black', marginBottom: '4px' }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="amount"
+                      stroke="#000"
+                      strokeWidth={4}
+                      dot={{ r: 4, fill: '#000', strokeWidth: 2, stroke: '#fff' }}
+                      activeDot={{ r: 6, strokeWidth: 0 }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center justify-between mb-8">
                 <h3 className="font-black text-lg flex items-center">
@@ -588,9 +772,12 @@ export default function App() {
       <div className="fixed bottom-10 left-0 right-0 px-6 flex justify-center items-center pointer-events-none">
         <button
           onClick={() => { setEditingTransaction(null); setIsModalOpen(true); }}
-          className="w-20 h-20 bg-black text-white rounded-full flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-90 transition-all pointer-events-auto hover:bg-gray-900"
+          className={cn(
+            "w-20 h-20 text-white rounded-full flex items-center justify-center shadow-[0_20px_40px_rgba(0,0,0,0.3)] active:scale-90 transition-all pointer-events-auto hover:brightness-110",
+            theme.primary
+          )}
         >
-          <Plus size={40} strokeWidth={3} />
+          <Plus size={40} strokeWidth={3} className="animate-in zoom-in-50 duration-500" />
         </button>
       </div>
 
@@ -610,6 +797,7 @@ export default function App() {
             <TransactionForm
               onSubmit={addOrUpdateTransaction}
               initialData={editingTransaction || undefined}
+              transactions={transactions}
             />
           </div>
         </div>
@@ -643,6 +831,44 @@ export default function App() {
               </button>
 
               <div className="pt-4 border-t border-gray-100">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">应用主题</p>
+                <div className="grid grid-cols-4 gap-2 mb-6">
+                  {(Object.keys(THEMES) as ThemeKey[]).map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setThemeKey(t)}
+                      className={cn(
+                        "h-10 rounded-xl transition-all active:scale-90 border-2",
+                        THEMES[t].primary,
+                        themeKey === t ? "border-gray-900 scale-105" : "border-transparent opacity-60"
+                      )}
+                    />
+                  ))}
+                </div>
+
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">安全设置</p>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl mb-6">
+                  <div className="flex items-center space-x-3">
+                    <ShieldCheck size={20} className={theme.text} />
+                    <span className="text-sm font-bold">隐私锁 (4位密码)</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      if (!isLockEnabled) setIsSettingPin(true);
+                      else setIsLockEnabled(false);
+                    }}
+                    className={cn(
+                      "w-12 h-6 rounded-full relative transition-colors duration-300",
+                      isLockEnabled ? theme.primary : "bg-gray-200"
+                    )}
+                  >
+                    <div className={cn(
+                      "absolute top-1 w-4 h-4 bg-white rounded-full transition-all duration-300",
+                      isLockEnabled ? "left-7" : "left-1"
+                    )} />
+                  </button>
+                </div>
+
                 <button
                   onClick={handleReset}
                   className="w-full py-4 bg-rose-50 text-rose-500 rounded-2xl font-bold text-sm active:scale-95 transition-all flex items-center justify-center"
@@ -652,6 +878,38 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pin Setting Modal */}
+      {isSettingPin && (
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-md flex items-center justify-center p-6">
+          <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl animate-in zoom-in-95 duration-300">
+            <h2 className="text-xl font-black mb-2">设置新密码</h2>
+            <p className="text-gray-400 text-xs mb-8">请设置 4 位数字作为你的隐私锁密码</p>
+            <input
+              autoFocus
+              type="password"
+              maxLength={4}
+              inputMode="numeric"
+              placeholder="****"
+              className="w-full text-center text-4xl font-black tracking-[1rem] focus:outline-none border-b-4 border-gray-100 focus:border-black transition-colors pb-4 mb-8"
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val.length === 4) {
+                  setPin(val);
+                  setIsLockEnabled(true);
+                  setIsSettingPin(false);
+                }
+              }}
+            />
+            <button
+              onClick={() => setIsSettingPin(false)}
+              className="w-full py-4 bg-gray-100 rounded-2xl font-bold text-gray-500"
+            >
+              取消
+            </button>
           </div>
         </div>
       )}
@@ -727,16 +985,25 @@ export default function App() {
 
 function TransactionForm({
   onSubmit,
-  initialData
+  initialData,
+  transactions
 }: {
   onSubmit: (t: Omit<Transaction, 'id'>) => void,
-  initialData?: Transaction
+  initialData?: Transaction,
+  transactions: Transaction[]
 }) {
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(initialData?.amount.toString() || '');
   const [category, setCategory] = useState<Category>(initialData?.category || '餐饮');
   const [date, setDate] = useState(initialData?.date || format(new Date(), 'yyyy-MM-dd'));
   const [note, setNote] = useState(initialData?.note || '');
+
+  const suggestions = useMemo(() => {
+    const notes = transactions
+      .filter(t => t.category === category && t.note)
+      .map(t => t.note as string);
+    return Array.from(new Set(notes)).slice(0, 3);
+  }, [category, transactions]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -839,6 +1106,20 @@ function TransactionForm({
           onChange={e => setNote(e.target.value)}
           className="w-full p-5 bg-gray-50 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 ring-black/5"
         />
+        {suggestions.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-3">
+            {suggestions.map((s, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setNote(s)}
+                className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-full text-[10px] font-bold text-gray-500 transition-colors"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <button
