@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
   Calendar,
-  ShoppingBag,
   X,
   Trash2,
   PieChart as PieIcon,
@@ -43,16 +42,7 @@ const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[
 export default function App() {
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('transactions');
-    if (saved) return JSON.parse(saved);
-    const now = new Date();
-    const today = format(now, 'yyyy-MM-dd');
-    const yesterday = format(new Date(now.setDate(now.getDate() - 1)), 'yyyy-MM-dd');
-    return [
-      { id: '1', amount: 35, type: 'expense', category: '餐饮', date: today, note: '午餐' },
-      { id: '2', amount: 15, type: 'expense', category: '交通', date: today, note: '地铁' },
-      { id: '3', amount: 5000, type: 'income', category: '收入', date: yesterday, note: '工资' },
-      { id: '4', amount: 120, type: 'expense', category: '购物', date: yesterday, note: '超市' },
-    ];
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [budget, setBudget] = useState<number>(() => {
@@ -147,6 +137,10 @@ export default function App() {
     return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]));
   }, [transactions]);
 
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans pb-32">
       {/* Header & Stats Cards */}
@@ -167,7 +161,7 @@ export default function App() {
           <div className="flex justify-between items-start mb-6">
             <div>
               <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">本月结余</p>
-              <p className="text-4xl font-black">¥{stats.balance.toLocaleString()}</p>
+              <p className="text-4xl font-black">¥{formatCurrency(stats.balance)}</p>
             </div>
             <div className="bg-white/10 p-3 rounded-2xl">
               <Wallet className="text-white" size={24} />
@@ -203,14 +197,14 @@ export default function App() {
               <TrendingUp size={16} className="mr-1.5" />
               <span className="text-[10px] font-black uppercase tracking-widest">本月收入</span>
             </div>
-            <p className="text-xl font-black text-emerald-700">¥{stats.income.toLocaleString()}</p>
+            <p className="text-xl font-black text-emerald-700">¥{formatCurrency(stats.income)}</p>
           </div>
           <div className="bg-rose-50 p-5 rounded-3xl border border-rose-100 shadow-sm">
             <div className="flex items-center text-rose-600 mb-2">
               <TrendingDown size={16} className="mr-1.5" />
               <span className="text-[10px] font-black uppercase tracking-widest">本月支出</span>
             </div>
-            <p className="text-xl font-black text-rose-700">¥{stats.expense.toLocaleString()}</p>
+            <p className="text-xl font-black text-rose-700">¥{formatCurrency(stats.expense)}</p>
           </div>
         </div>
       </header>
@@ -241,9 +235,12 @@ export default function App() {
       <main className="px-6 mt-6">
         {activeTab === 'list' ? (
           transactions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-gray-300">
-              <ShoppingBag size={64} strokeWidth={1} className="mb-4 opacity-30" />
-              <p className="font-bold">空空如也，记一笔吧</p>
+            <div className="flex flex-col items-center justify-center py-32 text-gray-300 animate-in fade-in duration-700">
+              <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+                <span className="text-5xl">📥</span>
+              </div>
+              <p className="text-xl font-black text-gray-400 mb-2">暂无账单记录</p>
+              <p className="text-sm font-medium text-gray-400">点击下方按钮开始记第一笔账吧</p>
             </div>
           ) : (
             <div className="space-y-8">
@@ -258,7 +255,7 @@ export default function App() {
                       "text-xs font-bold",
                       data.total >= 0 ? "text-emerald-500" : "text-gray-400"
                     )}>
-                      {data.total > 0 ? '+' : ''}{data.total.toLocaleString()}
+                      {data.total > 0 ? '+' : ''}{formatCurrency(data.total)}
                     </span>
                   </div>
                   <div className="bg-white rounded-[2rem] overflow-hidden shadow-sm border border-gray-100">
@@ -286,7 +283,7 @@ export default function App() {
                             "font-black text-base",
                             item.type === 'expense' ? "text-rose-500" : "text-emerald-500"
                           )}>
-                            {item.type === 'expense' ? '-' : '+'}{item.amount.toLocaleString()}
+                            {item.type === 'expense' ? '-' : '+'}{formatCurrency(item.amount)}
                           </div>
                           <button
                             onClick={(e) => deleteTransaction(item.id, e)}
@@ -345,7 +342,7 @@ export default function App() {
                         <div className="w-2 h-2 rounded-full mr-2" style={{ backgroundColor: entry.color }} />
                         <span className="text-xs font-bold text-gray-600">{entry.name}</span>
                       </div>
-                      <span className="text-xs font-black">¥{entry.value.toLocaleString()}</span>
+                      <span className="text-xs font-black">¥{formatCurrency(entry.value)}</span>
                     </div>
                   ))}
                 </div>
