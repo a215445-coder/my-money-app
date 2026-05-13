@@ -57,8 +57,8 @@ import {
   Cell,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
   XAxis,
   YAxis,
   CartesianGrid
@@ -221,7 +221,18 @@ export default function App() {
       amount: transactions.filter(t => t.type === 'expense' && isSameDay(parseISO(t.date), day)).reduce((sum, t) => sum + t.amount, 0)
     }));
 
-    return { income, expense, balance: income - expense, budgetUsage: (expense / budget) * 100, momDiff, momChange, dailyBudget, pieData, filtered, trendData };
+    // Heatmap Data (Last 30 Days)
+    const last30Days = eachDayOfInterval({ start: subDays(new Date(), 29), end: new Date() });
+    const heatmapData = last30Days.map(day => {
+      const dayExpense = transactions.filter(t => t.type === 'expense' && isSameDay(parseISO(t.date), day)).reduce((sum, t) => sum + t.amount, 0);
+      return {
+        date: format(day, 'yyyy-MM-dd'),
+        count: dayExpense,
+        level: dayExpense === 0 ? 0 : dayExpense < 100 ? 1 : dayExpense < 500 ? 2 : dayExpense < 1000 ? 3 : 4
+      };
+    });
+
+    return { income, expense, balance: income - expense, budgetUsage: (expense / budget) * 100, momDiff, momChange, dailyBudget, pieData, filtered, trendData, heatmapData };
   }, [transactions, budget, currentDate, filterType, searchQuery]);
 
   const totalAssets = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
@@ -520,28 +531,79 @@ export default function App() {
           <div className="space-y-6 animate-in fade-in duration-500">
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-50">
               <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />消费趋势 (7天)</h3>
-              <div className="h-48 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={stats.trendData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
-                    <YAxis hide />
-                    <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                    <Line type="monotone" dataKey="amount" stroke={theme.text.replace('text-', '') === 'black' ? '#000' : theme.text.replace('text-', '')} strokeWidth={4} dot={{ r: 4, strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
-                  </LineChart>
-                </ResponsiveContainer>
+              {stats.trendData.some(d => d.amount > 0) ? (
+                <div className="h-48 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={stats.trendData}>
+                      <defs>
+                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor={themeKey === 'black' ? '#000' : theme.text.replace('text-', '')} stopOpacity={0.3} />
+                          <stop offset="95%" stopColor={themeKey === 'black' ? '#000' : theme.text.replace('text-', '')} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
+                      <YAxis hide />
+                      <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                      <Area type="monotone" dataKey="amount" stroke={themeKey === 'black' ? '#000' : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-48 flex flex-col items-center justify-center text-gray-300 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-100">
+                  <Smile size={32} className="mb-2 opacity-20" />
+                  <p className="text-xs font-bold">暂无消费数据，记一笔试试吧</p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-50">
+              <h3 className="font-black text-lg mb-6 flex items-center"><History size={20} className="mr-2 text-green-500" />消费热力图 (30天)</h3>
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                {stats.heatmapData.map((day) => (
+                  <div key={day.date} className={cn(
+                    "w-6 h-6 rounded-md transition-all relative group",
+                    day.level === 0 ? "bg-gray-100" :
+                      day.level === 1 ? "bg-green-200" :
+                        day.level === 2 ? "bg-green-400" :
+                          day.level === 3 ? "bg-green-600" : "bg-green-800"
+                  )}>
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black text-white text-[8px] rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-10">
+                      {day.date}: ¥{day.count}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 flex items-center justify-end space-x-2">
+                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">Less</span>
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 rounded-sm bg-gray-100" />
+                  <div className="w-2 h-2 rounded-sm bg-green-200" />
+                  <div className="w-2 h-2 rounded-sm bg-green-400" />
+                  <div className="w-2 h-2 rounded-sm bg-green-600" />
+                  <div className="w-2 h-2 rounded-sm bg-green-800" />
+                </div>
+                <span className="text-[8px] font-bold text-gray-400 uppercase tracking-widest">More</span>
               </div>
             </div>
+
             <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-gray-50">
               <h3 className="font-black text-lg mb-8 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />支出构成</h3>
               {stats.pieData.length > 0 ? (
                 <>
-                  <div className="h-64 w-full">
+                  <div className="h-64 w-full relative">
                     <ResponsiveContainer width="100%" height="100%">
-                      <PieChart><Pie data={stats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value">
-                        {stats.pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
-                      </Pie><RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} /></PieChart>
+                      <PieChart>
+                        <Pie data={stats.pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={8} dataKey="value">
+                          {stats.pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />)}
+                        </Pie>
+                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                      </PieChart>
                     </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">总支出</p>
+                      <p className="text-xl font-black">¥{formatCurrency(stats.expense)}</p>
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 mt-8">
                     {stats.pieData.map(entry => (
