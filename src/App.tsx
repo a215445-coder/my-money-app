@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   Plus,
-  Minus,
-  ArrowUpCircle,
-  ArrowDownCircle,
   Calendar,
   Tag,
   Utensils,
@@ -14,8 +11,7 @@ import {
   GraduationCap,
   Wallet,
   MoreHorizontal,
-  X,
-  ChevronRight
+  X
 } from 'lucide-react';
 import { format, parseISO, startOfMonth, endOfMonth, isWithinInterval } from 'date-fns';
 import { zhCN } from 'date-fns/locale';
