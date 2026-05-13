@@ -15,7 +15,8 @@ import {
   LayoutGrid,
   History,
   Clock,
-  BarChart3
+  BarChart3,
+  ChevronDown
 } from 'lucide-react';
 import {
   format,
@@ -78,6 +79,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'chart'>('list');
   const [filterType, setFilterType] = useState<FilterType>('month');
@@ -472,7 +474,29 @@ export default function App() {
                   <PieIcon className="mr-2 text-indigo-500" size={20} />
                   支出构成
                 </h3>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{getFilterLabel()}</span>
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center bg-gray-50 p-1 rounded-xl shadow-inner border border-gray-100">
+                    <button
+                      onClick={() => changeDate('prev')}
+                      className="p-1.5 hover:bg-white rounded-lg transition-all text-gray-400 hover:text-black"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <button
+                      onClick={() => setIsFilterModalOpen(true)}
+                      className="px-3 py-1.5 text-[10px] font-black uppercase tracking-widest flex items-center text-gray-600 hover:text-black transition-colors"
+                    >
+                      {getFilterLabel()}
+                      <ChevronDown size={12} className="ml-1 opacity-50" />
+                    </button>
+                    <button
+                      onClick={() => changeDate('next')}
+                      className="p-1.5 hover:bg-white rounded-lg transition-all text-gray-400 hover:text-black"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {stats.pieData.length > 0 ? (
@@ -625,6 +649,72 @@ export default function App() {
                 >
                   <Trash2 size={16} className="mr-2" />
                   清空所有账单并重新开始
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Time Filter Modal */}
+      {isFilterModalOpen && (
+        <div className="fixed inset-0 z-[90] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+          <div
+            className="absolute inset-0"
+            onClick={() => setIsFilterModalOpen(false)}
+          />
+          <div className="bg-white w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl animate-in slide-in-from-bottom duration-500 relative">
+            <div className="flex justify-between items-center mb-10">
+              <h2 className="text-2xl font-black">筛选时间维度</h2>
+              <button
+                onClick={() => setIsFilterModalOpen(false)}
+                className="p-3 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                { id: 'today', label: '今日', icon: '🕒' },
+                { id: 'week', label: '本周', icon: '📅' },
+                { id: 'month', label: '本月', icon: '📊' },
+                { id: 'year', label: '本年', icon: '🗓️' },
+              ].map((dim) => (
+                <button
+                  key={dim.id}
+                  onClick={() => {
+                    setFilterType(dim.id as FilterType);
+                    setCurrentDate(new Date());
+                    setIsFilterModalOpen(false);
+                  }}
+                  className={cn(
+                    "flex flex-col items-center justify-center p-6 rounded-[2rem] transition-all active:scale-95 border-2",
+                    filterType === dim.id
+                      ? "bg-black text-white border-black"
+                      : "bg-gray-50 text-gray-500 border-transparent hover:border-gray-200"
+                  )}
+                >
+                  <span className="text-2xl mb-2">{dim.icon}</span>
+                  <span className="font-black text-xs uppercase tracking-widest">{dim.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-8 pt-8 border-t border-gray-100">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 px-2">快捷切换</p>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => { changeDate('prev'); setIsFilterModalOpen(false); }}
+                  className="flex-1 py-4 bg-gray-100 rounded-2xl font-bold text-sm active:scale-95 transition-all"
+                >
+                  上一时段
+                </button>
+                <button
+                  onClick={() => { changeDate('next'); setIsFilterModalOpen(false); }}
+                  className="flex-1 py-4 bg-gray-100 rounded-2xl font-bold text-sm active:scale-95 transition-all"
+                >
+                  下一时段
                 </button>
               </div>
             </div>
