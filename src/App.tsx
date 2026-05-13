@@ -161,7 +161,7 @@ export default function App() {
           </button>
         </div>
 
-        <h1 className="text-2xl font-black mb-8 tracking-tight">我的资产</h1>
+        <h1 className="text-2xl font-black mb-8 tracking-tight">我的账本</h1>
 
         {/* Main Balance Card */}
         <div className="bg-black text-white p-8 rounded-[2.5rem] mb-6 shadow-2xl relative">
