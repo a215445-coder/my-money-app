@@ -742,6 +742,7 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(new Date());
+  const [homeModulesTick, setHomeModulesTick] = useState(0);
 
   const [hasOnboarded, setHasOnboarded] = useState(() => localStorage.getItem('onboarding_done') === 'true');
   const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
@@ -782,6 +783,12 @@ export default function App() {
       setWealthTip(WEALTH_TIPS[Math.floor(Math.random() * WEALTH_TIPS.length)]);
     }
   }, [activeTab, WEALTH_TIPS]);
+
+  useEffect(() => {
+    if (activeTab === 'list') {
+      setHomeModulesTick(v => v + 1);
+    }
+  }, [activeTab]);
 
   const wealthMarquee = useMemo(() => WEALTH_TIPS.join('  ·  '), [WEALTH_TIPS]);
 
@@ -1284,6 +1291,59 @@ export default function App() {
     };
   }, [transactions, accounts, totalAssets]);
 
+  const moduleQuery = searchQuery.trim().toLowerCase();
+  const matchesModuleQuery = (t: Transaction) => {
+    if (!moduleQuery) return true;
+    const note = (t.note || '').toLowerCase();
+    const category = (t.category || '').toLowerCase();
+    const tags = (t.tags || []).map(x => x.toLowerCase());
+    return note.includes(moduleQuery) || category.includes(moduleQuery) || tags.some(tag => tag.includes(moduleQuery));
+  };
+
+  const homeToday = useMemo(() => {
+    const today = new Date();
+    const items = transactions.filter(t => isSameDay(parseISO(t.date), today) && matchesModuleQuery(t));
+    const expense = items.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+    return { expense, count: items.length };
+  }, [transactions, moduleQuery]);
+
+  const homeMonth = useMemo(() => {
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+    const items = transactions.filter(t => isWithinInterval(parseISO(t.date), { start, end }) && matchesModuleQuery(t));
+    const expenseItems = items.filter(t => t.type === 'expense');
+    const expense = expenseItems.reduce((s, t) => s + t.amount, 0);
+    const usedPct = budget <= 0 ? 0 : clamp(expense / budget, 0, 1) * 100;
+    const remaining = Math.max(budget - expense, 0);
+
+    const categoryTotals: Record<string, number> = {};
+    expenseItems.forEach(t => {
+      categoryTotals[t.category] = (categoryTotals[t.category] || 0) + t.amount;
+    });
+    const topCategories = Object.entries(categoryTotals)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 3)
+      .map(item => {
+        const pct = expense <= 0 ? 0 : (item.value / expense) * 100;
+        const meta = CATEGORIES.find(c => c.label === item.name);
+        return { ...item, pct, color: meta?.hex || '#6366f1', icon: meta?.icon || '•' };
+      });
+
+    return { expense, usedPct, remaining, topCategories };
+  }, [transactions, currentDate, budget, moduleQuery]);
+
+  const homeWeekSeries = useMemo(() => {
+    const now = new Date();
+    const days = eachDayOfInterval({ start: subDays(now, 6), end: now });
+    return days.map(d => {
+      const amount = transactions
+        .filter(t => t.type === 'expense' && isSameDay(parseISO(t.date), d) && matchesModuleQuery(t))
+        .reduce((s, t) => s + t.amount, 0);
+      return { date: format(d, 'MM-dd'), amount };
+    });
+  }, [transactions, moduleQuery]);
+
   // --- Handlers ---
   const changeDate = (direction: 'prev' | 'next') => {
     const amount = direction === 'prev' ? -1 : 1;
@@ -1567,6 +1627,190 @@ export default function App() {
           >
             {activeTab === 'list' && (
               <div className="space-y-8">
+                <motion.div
+                  key={`home-modules-${homeModulesTick}`}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center justify-between px-1">
+                    <div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日看板</div>
+                      <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
+                        {moduleQuery ? `已筛选：${searchQuery}` : '横滑查看关键指标'}
+                      </div>
+                    </div>
+                    {moduleQuery && (
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => setSearchQuery('')}
+                        className={cn(
+                          "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                          isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
+                        )}
+                      >
+                        清除筛选
+                      </motion.button>
+                    )}
+                  </div>
+
+                  <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+                    <motion.div
+                      layout
+                      className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日支出</div>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd')}</div>
+                      </div>
+                      <div className="mt-3 text-2xl font-black tracking-tight">¥{formatCurrency(homeToday.expense)}</div>
+                      <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>打开搜索会同步影响此处统计</div>
+                    </motion.div>
+
+                    <motion.div
+                      layout
+                      className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>本月剩余预算</div>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{Math.max(0, 100 - homeMonth.usedPct).toFixed(0)}%</div>
+                      </div>
+                      <div className="mt-3 flex items-end justify-between">
+                        <div className="text-lg font-black">¥{formatCurrency(homeMonth.remaining)}</div>
+                        <div className={cn("text-[10px] font-bold", mutedText)}>已用 ¥{formatCurrency(homeMonth.expense)}</div>
+                      </div>
+                      <div className={cn("mt-4 h-3 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min(homeMonth.usedPct, 100)}%` }}
+                          transition={{ duration: 1.2, ease: "easeOut" }}
+                          className={cn("h-full", homeMonth.usedPct > 90 ? "bg-rose-500" : theme.primary)}
+                        />
+                      </div>
+                      <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>进度条从 0 渐进生长</div>
+                    </motion.div>
+
+                    <motion.div
+                      layout
+                      className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                    >
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日已记账</div>
+                      <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} 笔</div>
+                      <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>点击分类热区可快速筛选账单</div>
+                    </motion.div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <motion.div layout className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>消费足迹</div>
+                          <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>最近 7 天开支波动</div>
+                        </div>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>7D</div>
+                      </div>
+
+                      {(() => {
+                        const w = 320;
+                        const h = 72;
+                        const max = Math.max(...homeWeekSeries.map(d => d.amount), 1);
+                        const step = homeWeekSeries.length > 1 ? w / (homeWeekSeries.length - 1) : w;
+                        const points = homeWeekSeries.map((d, i) => {
+                          const x = i * step;
+                          const y = h - (d.amount / max) * (h - 10) - 5;
+                          return { x, y };
+                        });
+                        const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+                        return (
+                          <div>
+                            <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[80px]">
+                              <defs>
+                                <linearGradient id="weekLineFill" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor={accentHex} stopOpacity={0.25} />
+                                  <stop offset="100%" stopColor={accentHex} stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <motion.path
+                                d={d}
+                                fill="none"
+                                stroke={accentHex}
+                                strokeWidth="4"
+                                strokeLinecap="round"
+                                initial={{ pathLength: 0, opacity: 0.0 }}
+                                animate={{ pathLength: 1, opacity: 1 }}
+                                transition={{ duration: 0.9, ease: "easeOut" }}
+                              />
+                              <motion.path
+                                d={`${d} L ${w} ${h} L 0 ${h} Z`}
+                                fill="url(#weekLineFill)"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.7, ease: "easeOut", delay: 0.12 }}
+                              />
+                            </svg>
+                            <div className="mt-3 flex items-center justify-between">
+                              <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>最近 7 天合计</div>
+                              <div className="text-sm font-black">¥{formatCurrency(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </motion.div>
+
+                    <motion.div layout className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>快捷分类汇总</div>
+                          <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>本月支出最多的 3 个分类</div>
+                        </div>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>TOP3</div>
+                      </div>
+
+                      {homeMonth.topCategories.length === 0 ? (
+                        <div className={cn("p-6 rounded-2xl border-2 border-dashed text-center", isDarkUI ? "border-slate-700 text-white/50" : "border-gray-100 text-gray-400")}>
+                          <div className="text-xs font-bold">本月暂无支出数据</div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {homeMonth.topCategories.map((c, idx) => (
+                            <button
+                              key={c.name}
+                              type="button"
+                              onClick={() => { setSearchQuery(c.name); setFilterType('month'); }}
+                              className={cn(
+                                "w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.99]",
+                                isDarkUI ? "bg-slate-800/40 border-slate-700 hover:bg-slate-800/55" : "bg-white/60 border-white/70 hover:bg-white/80"
+                              )}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-6 h-6 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${c.color}22`, color: c.color }}>
+                                    <span className="text-sm">{c.icon}</span>
+                                  </div>
+                                  <div className="text-sm font-black">{t(`categories.${c.name}`)}</div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{c.pct.toFixed(0)}%</div>
+                                </div>
+                                <div className={cn("text-[10px] font-black", mutedText)}>¥{formatCurrency(c.value)}</div>
+                              </div>
+                              <div className={cn("mt-3 h-2 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${clamp(c.pct, 0, 100)}%` }}
+                                  transition={{ duration: 0.9, ease: "easeOut", delay: 0.06 + idx * 0.04 }}
+                                  className="h-full"
+                                  style={{ backgroundColor: c.color }}
+                                />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                      <div className={cn("mt-4 text-[10px] font-bold", mutedText)}>点击分类：自动联动筛选 + 切换到本月</div>
+                    </motion.div>
+                  </div>
+                </motion.div>
+
                 {/* Summary Card */}
                 <motion.div
                   initial={{ scale: 0.9, opacity: 0 }}
