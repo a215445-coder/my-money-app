@@ -1809,6 +1809,27 @@ export default function App() {
     );
   };
 
+  const assetWaveEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
+  const assetWaveContainer = {
+    hidden: {},
+    show: {
+      transition: { staggerChildren: 0.1 }
+    },
+  } as const;
+  const assetWaveItem = {
+    hidden: { x: 36, opacity: 0, filter: 'blur(10px)' },
+    show: {
+      x: 0,
+      opacity: 1,
+      filter: 'blur(0px)',
+      transition: {
+        x: { type: 'spring', stiffness: 100, damping: 20 },
+        opacity: { duration: 0.35, ease: assetWaveEase },
+        filter: { duration: 0.35, ease: assetWaveEase },
+      },
+    },
+  } as const;
+
   const GoldCoin = ({
     coinId,
     seed,
@@ -2398,19 +2419,39 @@ export default function App() {
                                   transition={{ duration: 2.6, ease: 'linear', repeat: Infinity }}
                                 />
 
-                                <div className="flex justify-between items-start mb-12 relative z-10">
+                                <motion.div
+                                  variants={assetWaveContainer}
+                                  initial="hidden"
+                                  animate="show"
+                                  className="flex justify-between items-start mb-12 relative z-10"
+                                  style={{ translateZ: 0 }}
+                                >
                                   <div>
-                                    <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", "text-white/60")}>{t('total_assets')}</p>
-                                    <div className="text-5xl font-black tracking-tighter drop-shadow-lg flex items-end">
+                                    <motion.p
+                                      variants={assetWaveItem}
+                                      className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3 will-change-transform", "text-white/60")}
+                                      style={{ translateZ: 0 }}
+                                    >
+                                      {t('total_assets')}
+                                    </motion.p>
+                                    <motion.div
+                                      variants={assetWaveItem}
+                                      className="text-5xl font-black tracking-tighter drop-shadow-lg flex items-end will-change-transform"
+                                      style={{ translateZ: 0 }}
+                                    >
                                       <span className="mr-1">¥</span>
                                       <RollingNumber value={totalAssets} />
-                                    </div>
+                                    </motion.div>
                                   </div>
-                                  <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
+                                  <motion.div
+                                    variants={assetWaveItem}
+                                    className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2 will-change-transform"
+                                    style={{ translateZ: 0 }}
+                                  >
                                     <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                                     <span>{i18n.language}</span>
-                                  </div>
-                                </div>
+                                  </motion.div>
+                                </motion.div>
 
                                 <div className="grid grid-cols-2 gap-10 relative z-10">
                                   <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
