@@ -569,14 +569,47 @@ const CURRENCIES: Currency[] = [
 
 const THEMES = {
   black: { primary: 'bg-black', text: 'text-black', border: 'border-black', shadow: 'shadow-black/20', ring: 'ring-black' },
-  blackGold: { primary: 'bg-gradient-to-r from-black via-zinc-950 to-amber-950', text: 'text-amber-500', border: 'border-amber-500', shadow: 'shadow-amber-500/20', ring: 'ring-amber-500' },
-  whiteMinimal: { primary: 'bg-white', text: 'text-gray-900', border: 'border-gray-900', shadow: 'shadow-black/10', ring: 'ring-gray-900' },
+  blackGold: {
+    primary: 'lux-gold',
+    text: 'text-[#D4AF37]',
+    border: 'border-[#D4AF37]',
+    shadow: 'shadow-[#D4AF37]/20',
+    ring: 'ring-[#D4AF37]',
+    appBg: 'bg-[#1A1A1A]',
+    appText: 'text-[#F5F5F5]',
+    surface: 'lux-carbon',
+    surfaceSoft: 'lux-carbon-soft',
+    surfaceBorder: 'border-[#2A2A2A]',
+    mutedText: 'text-[#F5F5F5]/60',
+  },
+  whiteMinimal: {
+    primary: 'bg-[#C9CDD3]',
+    text: 'text-[#111827]',
+    border: 'border-[#111827]',
+    shadow: 'shadow-black/10',
+    ring: 'ring-[#111827]',
+    appBg: 'bg-[#FAFAFB]',
+    appText: 'text-[#111827]',
+    surface: 'bg-[#F3F4F6]',
+    surfaceSoft: 'bg-[#F3F4F6]/70',
+    surfaceBorder: 'border-[#E5E7EB]',
+    mutedText: 'text-[#111827]/55',
+  },
   gray: { primary: 'bg-slate-600', text: 'text-slate-600', border: 'border-slate-600', shadow: 'shadow-slate-600/20', ring: 'ring-slate-600' },
   mint: { primary: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500', shadow: 'shadow-emerald-500/20', ring: 'ring-emerald-500' },
   sakura: { primary: 'bg-pink-400', text: 'text-pink-400', border: 'border-pink-400', shadow: 'shadow-pink-400/20', ring: 'ring-pink-400' },
 };
 
 type ThemeKey = keyof typeof THEMES;
+
+const THEME_ACCENT_HEX: Record<ThemeKey, string> = {
+  black: '#000000',
+  blackGold: '#D4AF37',
+  whiteMinimal: '#9CA3AF',
+  gray: '#475569',
+  mint: '#10b981',
+  sakura: '#f472b6',
+};
 
 const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[] = [
   { label: '餐饮', icon: '🍔', color: 'bg-orange-100', hex: '#f97316' },
@@ -640,7 +673,6 @@ export default function App() {
   const [isProMember, setIsProMember] = useState(() => localStorage.getItem('pro_member') === 'true');
   const [isProPaywallOpen, setIsProPaywallOpen] = useState(false);
   const [exportCount, setExportCount] = useState(() => Number(localStorage.getItem('export_count') || '0'));
-  const [pendingExport, setPendingExport] = useState<'image' | 'csv' | 'pdf'>('image');
   const [timeContext, setTimeContext] = useState<'morning' | 'afternoon' | 'evening'>(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'morning';
@@ -673,6 +705,11 @@ export default function App() {
 
   const wealthMarquee = useMemo(() => WEALTH_TIPS.join('  ·  '), [WEALTH_TIPS]);
 
+  // --- Settings & i18n ---
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('app_dark_mode') === 'true');
+  const [isLangPickerOpen, setIsLangPickerOpen] = useState(false);
+  const [showOriginalCurrency, setShowOriginalCurrency] = useState<Record<string, boolean>>({});
+
   // --- Privacy & Theme ---
   const [isLocked, setIsLocked] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
   const [pin] = useState(() => localStorage.getItem('privacy_pin') || '');
@@ -680,11 +717,34 @@ export default function App() {
   const [inputPin, setInputPin] = useState('');
   const [themeKey, setThemeKey] = useState<ThemeKey>(() => (localStorage.getItem('app_theme') as ThemeKey) || 'black');
   const theme = THEMES[themeKey];
+  const isBlackGold = themeKey === 'blackGold';
+  const isMinimalWhite = themeKey === 'whiteMinimal';
+  const isDarkUI = isDarkMode || isBlackGold;
+  const accentHex = themeKey === 'black' ? (isDarkUI ? '#FFFFFF' : '#000000') : THEME_ACCENT_HEX[themeKey];
 
-  // --- Settings & i18n ---
-  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('app_dark_mode') === 'true');
-  const [isLangPickerOpen, setIsLangPickerOpen] = useState(false);
-  const [showOriginalCurrency, setShowOriginalCurrency] = useState<Record<string, boolean>>({});
+  const mutedText = isBlackGold
+    ? ((theme as any).mutedText || "text-[#F5F5F5]/60")
+    : isMinimalWhite
+      ? ((theme as any).mutedText || "text-[#111827]/55")
+      : (isDarkMode ? "text-white/50" : "text-gray-400");
+
+  const chipNeutral = isBlackGold
+    ? "bg-white/10 text-white/70"
+    : isMinimalWhite
+      ? "bg-black/5 text-gray-700"
+      : (isDarkMode ? "bg-slate-700 text-white/70" : "bg-gray-100 text-gray-400");
+
+  const surfaceCard = (...extra: ClassValue[]) => cn(
+    "border",
+    isBlackGold
+      ? cn((theme as any).surfaceSoft || 'lux-carbon-soft', (theme as any).surfaceBorder || 'border-[#2A2A2A]', (theme as any).appText || 'text-[#F5F5F5]')
+      : isMinimalWhite
+        ? cn((theme as any).surface || 'bg-[#F3F4F6]', (theme as any).surfaceBorder || 'border-[#E5E7EB]', (theme as any).appText || 'text-[#111827]')
+        : isDarkMode
+          ? "bg-slate-800 border-slate-700 text-white"
+          : "bg-white border-gray-50 text-gray-900",
+    ...extra
+  );
 
   const toggleCurrency = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -859,27 +919,27 @@ export default function App() {
     if (kind === 'pdf') await exportAsPDF();
   };
 
+  const consumeFreeExportAndRun = async (kind: 'image' | 'csv' | 'pdf') => {
+    if (remainingFreeExports <= 0) {
+      setIsProPaywallOpen(true);
+      return;
+    }
+    const next = exportCount + 1;
+    setExportCount(next);
+    localStorage.setItem('export_count', String(next));
+    await doExport(kind);
+  };
+
   const requestExport = (kind: 'image' | 'csv' | 'pdf' = 'image') => {
-    setPendingExport(kind);
     if (isProMember) {
       doExport(kind);
       return;
     }
-    setIsProPaywallOpen(true);
-  };
-
-  const proceedFreeExport = async () => {
-    if (isProMember) {
-      setIsProPaywallOpen(false);
-      await doExport(pendingExport);
+    if (remainingFreeExports > 0) {
+      consumeFreeExportAndRun(kind);
       return;
     }
-    if (remainingFreeExports <= 0) return;
-    const next = exportCount + 1;
-    setExportCount(next);
-    localStorage.setItem('export_count', String(next));
-    setIsProPaywallOpen(false);
-    await doExport(pendingExport);
+    setIsProPaywallOpen(true);
   };
 
   const purchasePro = () => {
@@ -901,6 +961,11 @@ export default function App() {
   useEffect(() => localStorage.setItem('app_dark_mode', isDarkMode.toString()), [isDarkMode]);
   useEffect(() => localStorage.setItem('pro_member', isProMember.toString()), [isProMember]);
   useEffect(() => localStorage.setItem('export_count', String(exportCount)), [exportCount]);
+
+  useEffect(() => {
+    if (themeKey === 'blackGold') setIsDarkMode(true);
+    if (themeKey === 'whiteMinimal') setIsDarkMode(false);
+  }, [themeKey]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1201,15 +1266,31 @@ export default function App() {
   return (
     <div className={cn(
       "min-h-screen transition-all duration-1000 pb-32 font-sans relative overflow-hidden",
-      isDarkMode ? "bg-slate-900 text-white" : "bg-gray-50 text-gray-900",
-      !isDarkMode && timeContext === 'morning' && "bg-gradient-to-br from-orange-50 via-white to-blue-50",
-      !isDarkMode && timeContext === 'afternoon' && "bg-gradient-to-br from-blue-50 via-white to-emerald-50",
-      !isDarkMode && timeContext === 'evening' && "bg-gradient-to-br from-indigo-50 via-slate-100 to-purple-50",
-      isDarkMode && "bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950"
+      isBlackGold && cn((theme as any).appBg || "bg-[#1A1A1A]", (theme as any).appText || "text-[#F5F5F5]"),
+      isMinimalWhite && cn((theme as any).appBg || "bg-[#FAFAFB]", (theme as any).appText || "text-[#111827]"),
+      !isBlackGold && !isMinimalWhite && (isDarkMode ? "bg-slate-900 text-white" : "bg-gray-50 text-gray-900"),
+      !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'morning' && "bg-gradient-to-br from-orange-50 via-white to-blue-50",
+      !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'afternoon' && "bg-gradient-to-br from-blue-50 via-white to-emerald-50",
+      !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'evening' && "bg-gradient-to-br from-indigo-50 via-slate-100 to-purple-50",
+      !isBlackGold && !isMinimalWhite && isDarkMode && "bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950"
     )}>
       {/* Decorative background blobs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-400/10 rounded-full blur-[120px] pointer-events-none" />
+      {isBlackGold ? (
+        <>
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-[#D4AF37]/8 rounded-full blur-[160px] pointer-events-none" />
+        </>
+      ) : isMinimalWhite ? (
+        <>
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-black/5 rounded-full blur-[140px] pointer-events-none" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-black/5 rounded-full blur-[160px] pointer-events-none" />
+        </>
+      ) : (
+        <>
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-400/10 rounded-full blur-[120px] pointer-events-none" />
+        </>
+      )}
 
       {/* Privacy Lock Screen */}
       {isLocked && (
@@ -1247,7 +1328,13 @@ export default function App() {
       <div className={cn("fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity", isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none")} onClick={() => setIsMenuOpen(false)} />
       <aside className={cn(
         "fixed top-0 left-0 h-full w-[280px] z-[70] shadow-2xl transition-transform duration-500 rounded-r-[2.5rem] p-8",
-        isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900",
+        isBlackGold
+          ? cn((theme as any).surface || 'lux-carbon', (theme as any).surfaceBorder || 'border-[#2A2A2A]', (theme as any).appText || 'text-[#F5F5F5]', "border-r")
+          : isMinimalWhite
+            ? cn("bg-white", (theme as any).appText || "text-[#111827]")
+            : isDarkMode
+              ? "bg-slate-800 text-white"
+              : "bg-white text-gray-900",
         isMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex justify-between items-center mb-12">
@@ -1436,31 +1523,31 @@ export default function App() {
                       return acc;
                     }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
                       <div key={date}>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">{format(parseISO(date), 'MM月dd日 EEEE', { locale: i18n.language === 'zh-CN' ? zhCN : undefined })}</p>
-                        <div className={cn("rounded-[2.5rem] shadow-sm border overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), 'MM月dd日 EEEE', { locale: i18n.language === 'zh-CN' ? zhCN : undefined })}</p>
+                        <div className={cn("rounded-[2.5rem] shadow-sm overflow-hidden", surfaceCard())}>
                           {items.map((item, idx) => (
-                            <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center active:bg-gray-50 transition-colors group", idx !== items.length - 1 && "border-b", isDarkMode ? "border-slate-700" : "border-gray-50")}>
+                            <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center transition-colors group", idx !== items.length - 1 && "border-b", isBlackGold ? "border-[#2A2A2A]" : isDarkMode ? "border-slate-700" : "border-gray-50")}>
                               <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm mr-4", CATEGORIES.find(c => c.label === item.category)?.color)}>
                                 {CATEGORIES.find(c => c.label === item.category)?.icon}
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center space-x-2">
                                   <span className="font-bold text-sm">{t(`categories.${item.category}`)}</span>
-                                  <span className="text-[8px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-bold uppercase">{t(`accounts.${accounts.find(a => a.id === item.accountId)?.name}`)}</span>
+                                  <span className={cn("text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase", chipNeutral)}>{t(`accounts.${accounts.find(a => a.id === item.accountId)?.name}`)}</span>
                                   {item.mood && (
                                     <span className="text-[10px] ml-1 opacity-80">
                                       {item.mood === 'happy' ? '😊' : item.mood === 'neutral' ? '😐' : '😭'}
                                     </span>
                                   )}
                                 </div>
-                                {item.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{item.note}</p>}
+                                {item.note && <p className={cn("text-[10px] mt-1 line-clamp-1", mutedText)}>{item.note}</p>}
                                 <div className="flex flex-wrap gap-1 mt-1 items-center">
                                   {item.tags?.map(tag => <span key={tag} className="text-[8px] text-indigo-400 font-bold">#{tag}</span>)}
                                   {item.hasImage && <Camera size={10} className="text-gray-300 ml-1" />}
                                   {item.currency && item.currency !== 'CNY' && (
-                                    <div className="flex items-center space-x-1 ml-1 bg-blue-50 px-1.5 py-0.5 rounded-md">
-                                      <Globe size={8} className="text-blue-400" />
-                                      <span className="text-[8px] text-blue-400 font-black">{CURRENCIES.find(c => c.code === item.currency)?.flag} {item.originalAmount?.toFixed(2)}</span>
+                                    <div className={cn("flex items-center space-x-1 ml-1 px-1.5 py-0.5 rounded-md", isBlackGold ? "bg-white/10" : "bg-blue-50")}>
+                                      <Globe size={8} className={cn(isBlackGold ? "text-[#D4AF37]" : "text-blue-400")} />
+                                      <span className={cn("text-[8px] font-black", isBlackGold ? "text-[#D4AF37]" : "text-blue-400")}>{CURRENCIES.find(c => c.code === item.currency)?.flag} {item.originalAmount?.toFixed(2)}</span>
                                     </div>
                                   )}
                                 </div>
@@ -1479,12 +1566,12 @@ export default function App() {
                                     }
                                   </div>
                                   {item.currency && item.currency !== 'CNY' && (
-                                    <p className="text-[8px] text-gray-400 font-bold mt-0.5">
+                                    <p className={cn("text-[8px] font-bold mt-0.5", mutedText)}>
                                       {showOriginalCurrency[item.id] ? `≈ ¥${formatCurrency(item.amount)}` : `${CURRENCIES.find(c => c.code === item.currency)?.flag} ${item.originalAmount?.toFixed(2)}`}
                                     </p>
                                   )}
                                 </motion.div>
-                                <button onClick={(e) => deleteTransaction(item.id, e)} className="p-2 text-gray-200 hover:text-red-400 transition-opacity opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                                <button onClick={(e) => deleteTransaction(item.id, e)} className={cn("p-2 transition-opacity opacity-0 group-hover:opacity-100", isBlackGold ? "text-white/40 hover:text-[#D4AF37]" : "text-gray-200 hover:text-red-400")}><Trash2 size={14} /></button>
                               </div>
                             </div>
                           ))}
@@ -1501,25 +1588,25 @@ export default function App() {
                 <div className="flex items-center justify-between">
                   <button
                     onClick={() => setActiveTab('discovery')}
-                    className={cn("p-2 rounded-2xl border active:scale-95 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                    className={cn("p-2 rounded-2xl active:scale-95 transition-all", surfaceCard("rounded-2xl"))}
                   >
-                    <ChevronLeft size={18} className={cn(isDarkMode ? "text-white" : "text-gray-900")} />
+                    <ChevronLeft size={18} className={cn(isDarkUI ? "text-white" : "text-gray-900")} />
                   </button>
                   <div className="text-center">
-                    <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>资产大盘</p>
-                    <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>总览 · 近 30 天</p>
+                    <p className={cn("text-sm font-black", isDarkUI ? "text-white" : "text-gray-900")}>资产大盘</p>
+                    <p className={cn("text-[10px] font-bold", mutedText)}>总览 · 近 30 天</p>
                   </div>
                   <div className="w-10" />
                 </div>
 
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-end justify-between mb-6">
                     <div>
-                      <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>当前总资产</p>
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>当前总资产</p>
                       <p className="text-3xl font-black">¥{formatCurrency(totalAssets)}</p>
                     </div>
                     <div className="text-right">
-                      <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>净资产</p>
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>净资产</p>
                       <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
                     </div>
                   </div>
@@ -1528,22 +1615,22 @@ export default function App() {
                       <AreaChart data={assetDashboard.netWorthSeries}>
                         <defs>
                           <linearGradient id="assetsLine" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0.25} />
-                            <stop offset="95%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0} />
+                            <stop offset="5%" stopColor={accentHex} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={accentHex} stopOpacity={0} />
                           </linearGradient>
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkUI ? "#334155" : "#f1f5f9"} />
                         <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
                         <YAxis hide />
-                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                        <Area type="monotone" dataKey="value" stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#assetsLine)" strokeWidth={4} />
+                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                        <Area type="monotone" dataKey="value" stroke={accentHex} fillOpacity={1} fill="url(#assetsLine)" strokeWidth={4} />
                       </AreaChart>
                     </ResponsiveContainer>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                     <h3 className="font-black text-lg mb-4 flex items-center"><PieIcon size={20} className="mr-2 text-emerald-500" />负债 / 净资产</h3>
                     <div className="h-52 w-full">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1553,23 +1640,23 @@ export default function App() {
                               <Cell key={d.name} fill={d.color} />
                             ))}
                           </Pie>
-                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>负债</p>
+                      <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>负债</p>
                         <p className="text-lg font-black text-rose-500">¥{formatCurrency(assetDashboard.liabilities)}</p>
                       </div>
-                      <div className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>净资产</p>
+                      <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>净资产</p>
                         <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                     <h3 className="font-black text-lg mb-4 flex items-center"><Wallet size={20} className="mr-2 text-indigo-500" />资产分布比例</h3>
                     <div className="h-52 w-full">
                       <ResponsiveContainer width="100%" height="100%">
@@ -1579,7 +1666,7 @@ export default function App() {
                               <Cell key={d.name} fill={d.color} />
                             ))}
                           </Pie>
-                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
                         </PieChart>
                       </ResponsiveContainer>
                     </div>
@@ -1591,9 +1678,9 @@ export default function App() {
                           <div key={d.name} className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                              <span className={cn("text-xs font-bold", isDarkMode ? "text-white/80" : "text-gray-700")}>{d.name}</span>
+                              <span className={cn("text-xs font-bold", isDarkUI ? "text-white/80" : "text-gray-700")}>{d.name}</span>
                             </div>
-                            <span className={cn("text-xs font-black", isDarkMode ? "text-white/60" : "text-gray-500")}>{pct.toFixed(0)}%</span>
+                            <span className={cn("text-xs font-black", mutedText)}>{pct.toFixed(0)}%</span>
                           </div>
                         );
                       })}
@@ -1632,7 +1719,7 @@ export default function App() {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
                   >
                     <div className="absolute top-0 right-0 p-4">
                       <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Pro Analysis</div>
@@ -1640,7 +1727,7 @@ export default function App() {
                     <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
                     <div className="flex items-end justify-between mb-4">
                       <div>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">预计本月总支出</p>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>预计本月总支出</p>
                         <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
                       </div>
                       <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
@@ -1648,14 +1735,14 @@ export default function App() {
                         <p className="text-lg font-black">{stats.isOverBudgetRisk ? '极高 ⚠️' : '极低 ✅'}</p>
                       </div>
                     </div>
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className={cn("w-full h-2 rounded-full overflow-hidden", isBlackGold ? "bg-white/10" : "bg-gray-100")}>
                       <motion.div
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
                         className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
                       />
                     </div>
-                    <p className="mt-4 text-[10px] text-gray-400 font-bold leading-relaxed">
+                    <p className={cn("mt-4 text-[10px] font-bold leading-relaxed", mutedText)}>
                       基于您本月前 {differenceInDays(new Date(), startOfMonth(currentDate)) + 1} 天的消费频率，预测月底总额将达到 ¥{formatCurrency(stats.predictedTotal)}。
                       {stats.isOverBudgetRisk ? "建议削减非必要开支。" : "目前预算控制良好，请继续保持。"}
                     </p>
@@ -1664,13 +1751,13 @@ export default function App() {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
                     <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-                    <p className={cn("text-sm font-bold leading-relaxed", isDarkMode ? "text-white/60" : "text-gray-500")}>永久会员解锁：消费预测、超支风险与更深度的财富趋势洞察。</p>
+                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>永久会员解锁：消费预测、超支风险与更深度的财富趋势洞察。</p>
                     <div className="mt-5 flex items-center justify-between">
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>高级理财实验室</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>高级理财实验室</div>
                       <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
                         ￥60 永久解锁
                       </motion.button>
@@ -1684,7 +1771,7 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}
                   >
                     <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
                     <div className="h-64 w-full">
@@ -1695,8 +1782,8 @@ export default function App() {
                           <Radar
                             name="本月"
                             dataKey="A"
-                            stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
-                            fill={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
+                            stroke={accentHex}
+                            fill={accentHex}
                             fillOpacity={0.6}
                           />
                           <Radar
@@ -1706,18 +1793,18 @@ export default function App() {
                             fill="#94a3b8"
                             fillOpacity={0.3}
                           />
-                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
                         </RadarChart>
                       </ResponsiveContainer>
                     </div>
                     <div className="flex justify-center space-x-6 mt-4">
                       <div className="flex items-center space-x-2">
                         <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
-                        <span className="text-[10px] font-black text-gray-400">本月</span>
+                        <span className={cn("text-[10px] font-black", mutedText)}>本月</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 rounded-full bg-gray-300" />
-                        <span className="text-[10px] font-black text-gray-400">上月</span>
+                        <span className={cn("text-[10px] font-black", mutedText)}>上月</span>
                       </div>
                     </div>
                   </motion.div>
@@ -1726,12 +1813,12 @@ export default function App() {
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.1 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
                   >
                     <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-                    <p className={cn("text-sm font-bold leading-relaxed", isDarkMode ? "text-white/60" : "text-gray-500")}>永久会员解锁：本月 vs 上月消费构成雷达图，对比习惯变化。</p>
+                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>永久会员解锁：本月 vs 上月消费构成雷达图，对比习惯变化。</p>
                     <div className="mt-5 flex items-center justify-between">
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>Pro 可视化</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>Pro 可视化</div>
                       <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
                         ￥60 永久解锁
                       </motion.button>
@@ -1739,7 +1826,7 @@ export default function App() {
                   </motion.div>
                 )}
 
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                   <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
                   {stats.trendData.some(d => d.amount > 0) ? (
                     <div className="h-48 w-full">
@@ -1747,15 +1834,15 @@ export default function App() {
                         <AreaChart data={stats.trendData}>
                           <defs>
                             <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0.3} />
-                              <stop offset="95%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0} />
+                              <stop offset="5%" stopColor={accentHex} stopOpacity={0.3} />
+                              <stop offset="95%" stopColor={accentHex} stopOpacity={0} />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkUI ? "#334155" : "#f1f5f9"} />
                           <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
                           <YAxis hide />
-                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                          <Area type="monotone" dataKey="amount" stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                          <Area type="monotone" dataKey="amount" stroke={accentHex} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
@@ -1769,7 +1856,7 @@ export default function App() {
 
                 <div className="flex justify-center pt-4">
                   <button
-                    onClick={exportAsImage}
+                    onClick={() => requestExport('image')}
                     className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all", theme.primary, "text-white font-black")}
                   >
                     <Share2 size={20} />
@@ -1803,7 +1890,7 @@ export default function App() {
                             </div>
                           )}
                         </div>
-                        <p className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/60" : "text-gray-500")}>
+                        <p className={cn("text-[10px] font-bold mt-1", mutedText)}>
                           {timeContext === 'morning' ? '早安' : timeContext === 'afternoon' ? '午安' : '晚安'}，欢迎回来
                         </p>
                       </div>
@@ -1815,7 +1902,7 @@ export default function App() {
                           onClick={() => setIsProPaywallOpen(true)}
                           className={cn(
                             "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                            isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-white/50 border-white/60 text-gray-600"
+                            isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : isMinimalWhite ? "bg-black/5 border-black/10 text-gray-700" : (isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-white/50 border-white/60 text-gray-600")
                           )}
                         >
                           升级 PRO
@@ -1826,13 +1913,10 @@ export default function App() {
                 </div>
 
                 {/* Quick Tools Grid */}
-                <div className={cn(
-                  "rounded-[2.5rem] p-6 border shadow-sm",
-                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
-                )}>
+                <div className={cn("rounded-[2.5rem] p-6 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-sm font-black">常用功能</h3>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Toolkit</span>
+                    <span className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>Toolkit</span>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     {[
@@ -1849,26 +1933,23 @@ export default function App() {
                         onClick={item.onClick}
                         className={cn(
                           "p-4 rounded-[1.75rem] border flex flex-col items-center justify-center space-y-2 transition-all",
-                          isDarkMode ? "bg-slate-700/60 border-slate-600 hover:bg-slate-700" : "bg-gray-50 border-gray-100 hover:bg-gray-100"
+                          isBlackGold ? "lux-carbon border-[#2A2A2A]" : isMinimalWhite ? "bg-[#F3F4F6] border-[#E5E7EB] hover:bg-[#EDEEF1]" : (isDarkMode ? "bg-slate-700/60 border-slate-600 hover:bg-slate-700" : "bg-gray-50 border-gray-100 hover:bg-gray-100")
                         )}
                       >
                         <div className={cn(
                           "w-10 h-10 rounded-2xl flex items-center justify-center border",
-                          isDarkMode ? "bg-slate-800/70 border-slate-600 text-white" : "bg-white border-white text-gray-800"
+                          isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : isMinimalWhite ? "bg-white border-white text-gray-800" : (isDarkMode ? "bg-slate-800/70 border-slate-600 text-white" : "bg-white border-white text-gray-800")
                         )}>
                           <item.Icon size={18} />
                         </div>
-                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/80" : "text-gray-700")}>{item.label}</span>
+                        <span className={cn("text-[10px] font-black", isBlackGold ? "text-[#F5F5F5]" : isDarkMode ? "text-white/80" : "text-gray-700")}>{item.label}</span>
                       </motion.button>
                     ))}
                   </div>
                 </div>
 
                 {/* Pro Perks */}
-                <div className={cn(
-                  "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden relative",
-                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
-                )}>
+                <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-center justify-between mb-5">
                     <h3 className="text-sm font-black">永久会员专属特权</h3>
                     <motion.button
@@ -2638,18 +2719,6 @@ export default function App() {
                 </div>
 
                 <div className="mt-6 grid grid-cols-1 gap-3">
-                  {!isProMember && remainingFreeExports > 0 && (
-                    <motion.button
-                      whileTap={{ scale: 0.96 }}
-                      onClick={proceedFreeExport}
-                      className={cn(
-                        "py-4 rounded-2xl font-black text-xs border active:scale-95 transition-all",
-                        isDarkMode ? "bg-slate-800 border-slate-700 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700"
-                      )}
-                    >
-                      继续免费导出（剩余 {remainingFreeExports} 次）
-                    </motion.button>
-                  )}
                   <motion.button
                     whileTap={{ scale: 0.96 }}
                     onClick={purchasePro}

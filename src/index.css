@@ -2,6 +2,7 @@
 
 @theme {
   --animate-gradient-x: gradient-x 3s ease infinite;
+  --animate-lux-shine: lux-shine 2.8s linear infinite;
 
   @keyframes gradient-x {
 
@@ -16,6 +17,15 @@
       background-position: right center;
     }
   }
+
+  @keyframes lux-shine {
+    0% {
+      background-position: 0% 50%;
+    }
+    100% {
+      background-position: 200% 50%;
+    }
+  }
 }
 
 @layer utilities {
@@ -26,6 +36,37 @@
   .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  .lux-gold {
+    background-color: #d4af37;
+    background-image: linear-gradient(
+      120deg,
+      #d4af37 0%,
+      #f6e6b0 18%,
+      #d4af37 36%,
+      #caa24a 54%,
+      #f6e6b0 72%,
+      #d4af37 100%
+    );
+    background-size: 200% 200%;
+    animation: var(--animate-lux-shine);
+  }
+
+  .lux-carbon {
+    background-color: #111111;
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.06) 0 1px, rgba(0,0,0,0) 1px 6px),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.035) 0 1px, rgba(0,0,0,0) 1px 7px),
+      radial-gradient(circle at 30% 20%, rgba(212,175,55,0.09), rgba(0,0,0,0) 60%);
+  }
+
+  .lux-carbon-soft {
+    background-color: rgba(17,17,17,0.72);
+    background-image:
+      repeating-linear-gradient(135deg, rgba(255,255,255,0.05) 0 1px, rgba(0,0,0,0) 1px 6px),
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.03) 0 1px, rgba(0,0,0,0) 1px 7px);
+    backdrop-filter: blur(24px);
   }
 }
 
