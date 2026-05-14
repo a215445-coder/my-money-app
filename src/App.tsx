@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
   Calendar as CalendarIcon,
@@ -569,6 +569,7 @@ const CURRENCIES: Currency[] = [
 
 const THEMES = {
   black: { primary: 'bg-black', text: 'text-black', border: 'border-black', shadow: 'shadow-black/20', ring: 'ring-black' },
+  custom: { primary: 'accent-bg accent-on', text: 'accent-text', border: 'accent-border', shadow: 'accent-glow-soft', ring: 'accent-ring' },
   blackGold: {
     primary: 'lux-gold',
     text: 'text-[#D4AF37]',
@@ -604,11 +605,90 @@ type ThemeKey = keyof typeof THEMES;
 
 const THEME_ACCENT_HEX: Record<ThemeKey, string> = {
   black: '#000000',
+  custom: '#6366f1',
   blackGold: '#D4AF37',
   whiteMinimal: '#9CA3AF',
   gray: '#475569',
   mint: '#10b981',
   sakura: '#f472b6',
+};
+
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
+
+const hexToRgb = (hex: string) => {
+  const normalized = hex.replace('#', '').trim();
+  if (normalized.length !== 6) return { r: 99, g: 102, b: 241 };
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return { r, g, b };
+};
+
+const hexToRgba = (hex: string, a: number) => {
+  const rgb = hexToRgb(hex);
+  return `rgba(${Math.round(rgb.r)}, ${Math.round(rgb.g)}, ${Math.round(rgb.b)}, ${clamp01(a)})`;
+};
+
+const rgbToHex = (r: number, g: number, b: number) => {
+  const to = (n: number) => n.toString(16).padStart(2, '0');
+  return `#${to(clamp(Math.round(r), 0, 255))}${to(clamp(Math.round(g), 0, 255))}${to(clamp(Math.round(b), 0, 255))}`;
+};
+
+const mix = (a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }, t: number) => {
+  const tt = clamp01(t);
+  return {
+    r: a.r + (b.r - a.r) * tt,
+    g: a.g + (b.g - a.g) * tt,
+    b: a.b + (b.b - a.b) * tt,
+  };
+};
+
+const relLuminance = (rgb: { r: number; g: number; b: number }) => {
+  const srgb = [rgb.r, rgb.g, rgb.b].map(v => v / 255).map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
+  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
+};
+
+const bestTextOn = (hex: string) => {
+  const lum = relLuminance(hexToRgb(hex));
+  return lum < 0.5 ? '#F5F5F5' : '#111827';
+};
+
+const hsvToHex = (h: number, s: number, v: number) => {
+  const hh = ((h % 360) + 360) % 360;
+  const ss = clamp01(s);
+  const vv = clamp01(v);
+  const c = vv * ss;
+  const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+  const m = vv - c;
+  let r1 = 0, g1 = 0, b1 = 0;
+  if (hh < 60) { r1 = c; g1 = x; b1 = 0; }
+  else if (hh < 120) { r1 = x; g1 = c; b1 = 0; }
+  else if (hh < 180) { r1 = 0; g1 = c; b1 = x; }
+  else if (hh < 240) { r1 = 0; g1 = x; b1 = c; }
+  else if (hh < 300) { r1 = x; g1 = 0; b1 = c; }
+  else { r1 = c; g1 = 0; b1 = x; }
+  return rgbToHex((r1 + m) * 255, (g1 + m) * 255, (b1 + m) * 255);
+};
+
+const rgbToHsv = (rgb: { r: number; g: number; b: number }) => {
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  const s = max === 0 ? 0 : d / max;
+  const v = max;
+  return { h, s, v };
 };
 
 const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[] = [
@@ -719,8 +799,49 @@ export default function App() {
   const theme = THEMES[themeKey];
   const isBlackGold = themeKey === 'blackGold';
   const isMinimalWhite = themeKey === 'whiteMinimal';
+  const isCustomTheme = themeKey === 'custom';
   const isDarkUI = isDarkMode || isBlackGold;
-  const accentHex = themeKey === 'black' ? (isDarkUI ? '#FFFFFF' : '#000000') : THEME_ACCENT_HEX[themeKey];
+  const [customAccent, setCustomAccent] = useState(() => localStorage.getItem('custom_accent') || '#6366F1');
+  const [customHS, setCustomHS] = useState(() => {
+    const hsv = rgbToHsv(hexToRgb(localStorage.getItem('custom_accent') || '#6366F1'));
+    return { h: hsv.h, s: hsv.s };
+  });
+  const accentHex = isCustomTheme ? customAccent : (themeKey === 'black' ? (isDarkUI ? '#FFFFFF' : '#000000') : THEME_ACCENT_HEX[themeKey]);
+
+  const derivedTheme = useMemo(() => {
+    const base = hexToRgb(accentHex);
+    const bgMix = mix(base, { r: 255, g: 255, b: 255 }, 0.2);
+    const bg20 = rgbToHex(bgMix.r, bgMix.g, bgMix.b);
+    const shadow30 = mix(base, { r: 0, g: 0, b: 0 }, 0.3);
+    const shadowRgba = `rgba(${Math.round(shadow30.r)}, ${Math.round(shadow30.g)}, ${Math.round(shadow30.b)}, 0.35)`;
+    const text = bestTextOn(accentHex);
+    return { accent: accentHex, accentBg: bg20, accentText: text, accentShadow: shadowRgba };
+  }, [accentHex]);
+
+  const [inkTick, setInkTick] = useState(0);
+  useEffect(() => {
+    setInkTick(v => v + 1);
+  }, [derivedTheme.accent]);
+
+  const colorPickerRef = useRef<HTMLDivElement>(null);
+  const isPickingRef = useRef(false);
+
+  const pickAccentAt = (clientX: number, clientY: number) => {
+    const el = colorPickerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = clientX - cx;
+    const dy = clientY - cy;
+    const r = Math.sqrt(dx * dx + dy * dy);
+    const s = clamp01(r / (rect.width / 2));
+    let h = (Math.atan2(dy, dx) * 180) / Math.PI;
+    if (h < 0) h += 360;
+    setCustomHS({ h, s });
+    setCustomAccent(hsvToHex(h, s, 0.92).toUpperCase());
+    setThemeKey('custom');
+  };
 
   const mutedText = isBlackGold
     ? ((theme as any).mutedText || "text-[#F5F5F5]/60")
@@ -740,9 +861,11 @@ export default function App() {
       ? cn((theme as any).surfaceSoft || 'lux-carbon-soft', (theme as any).surfaceBorder || 'border-[#2A2A2A]', (theme as any).appText || 'text-[#F5F5F5]')
       : isMinimalWhite
         ? cn((theme as any).surface || 'bg-[#F3F4F6]', (theme as any).surfaceBorder || 'border-[#E5E7EB]', (theme as any).appText || 'text-[#111827]')
-        : isDarkMode
-          ? "bg-slate-800 border-slate-700 text-white"
-          : "bg-white border-gray-50 text-gray-900",
+        : isCustomTheme
+          ? cn(isDarkMode ? "bg-slate-800/80 border-slate-700 text-white" : "bg-white/70 border-white/60 text-gray-900", "backdrop-blur-2xl", "accent-glow-soft")
+          : isDarkMode
+            ? "bg-slate-800 border-slate-700 text-white"
+            : "bg-white border-gray-50 text-gray-900",
     ...extra
   );
 
@@ -961,11 +1084,17 @@ export default function App() {
   useEffect(() => localStorage.setItem('app_dark_mode', isDarkMode.toString()), [isDarkMode]);
   useEffect(() => localStorage.setItem('pro_member', isProMember.toString()), [isProMember]);
   useEffect(() => localStorage.setItem('export_count', String(exportCount)), [exportCount]);
+  useEffect(() => localStorage.setItem('custom_accent', customAccent), [customAccent]);
 
   useEffect(() => {
     if (themeKey === 'blackGold') setIsDarkMode(true);
     if (themeKey === 'whiteMinimal') setIsDarkMode(false);
   }, [themeKey]);
+
+  useEffect(() => {
+    const hsv = rgbToHsv(hexToRgb(customAccent));
+    setCustomHS({ h: hsv.h, s: hsv.s });
+  }, [customAccent]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -1264,16 +1393,49 @@ export default function App() {
   }
 
   return (
-    <div className={cn(
-      "min-h-screen transition-all duration-1000 pb-32 font-sans relative overflow-hidden",
-      isBlackGold && cn((theme as any).appBg || "bg-[#1A1A1A]", (theme as any).appText || "text-[#F5F5F5]"),
-      isMinimalWhite && cn((theme as any).appBg || "bg-[#FAFAFB]", (theme as any).appText || "text-[#111827]"),
-      !isBlackGold && !isMinimalWhite && (isDarkMode ? "bg-slate-900 text-white" : "bg-gray-50 text-gray-900"),
-      !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'morning' && "bg-gradient-to-br from-orange-50 via-white to-blue-50",
-      !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'afternoon' && "bg-gradient-to-br from-blue-50 via-white to-emerald-50",
-      !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'evening' && "bg-gradient-to-br from-indigo-50 via-slate-100 to-purple-50",
-      !isBlackGold && !isMinimalWhite && isDarkMode && "bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950"
-    )}>
+    <motion.div
+      className={cn(
+        "min-h-screen transition-all duration-1000 pb-32 font-sans relative overflow-hidden",
+        isBlackGold && cn((theme as any).appBg || "bg-[#1A1A1A]", (theme as any).appText || "text-[#F5F5F5]"),
+        isMinimalWhite && cn((theme as any).appBg || "bg-[#FAFAFB]", (theme as any).appText || "text-[#111827]"),
+        !isBlackGold && !isMinimalWhite && (isDarkMode ? "bg-slate-900 text-white" : "bg-gray-50 text-gray-900"),
+        !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'morning' && "bg-gradient-to-br from-orange-50 via-white to-blue-50",
+        !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'afternoon' && "bg-gradient-to-br from-blue-50 via-white to-emerald-50",
+        !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'evening' && "bg-gradient-to-br from-indigo-50 via-slate-100 to-purple-50",
+        !isBlackGold && !isMinimalWhite && isDarkMode && "bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950"
+      )}
+      style={{
+        ['--accent' as any]: derivedTheme.accent,
+        ['--accentBg' as any]: derivedTheme.accentBg,
+        ['--accentText' as any]: derivedTheme.accentText,
+        ['--accentShadow' as any]: derivedTheme.accentShadow,
+      }}
+      animate={{
+        ['--accent' as any]: derivedTheme.accent,
+        ['--accentBg' as any]: derivedTheme.accentBg,
+        ['--accentText' as any]: derivedTheme.accentText,
+        ['--accentShadow' as any]: derivedTheme.accentShadow,
+      }}
+      transition={{ duration: 0.5, ease: 'linear' }}
+    >
+      <AnimatePresence initial={false}>
+        {isCustomTheme && (
+          <motion.div
+            key={inkTick}
+            className="absolute inset-0 pointer-events-none"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 0.22, scale: 1.02 }}
+            exit={{ opacity: 0, scale: 1.06 }}
+            transition={{ duration: 0.5, ease: 'linear' }}
+            style={{
+              backgroundImage: `radial-gradient(circle at 42% 34%, ${hexToRgba(derivedTheme.accent, 0.38)} 0%, transparent 58%), radial-gradient(circle at 70% 76%, ${hexToRgba(derivedTheme.accent, 0.22)} 0%, transparent 60%)`,
+              filter: 'blur(24px) saturate(118%)',
+              mixBlendMode: 'normal',
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Decorative background blobs */}
       {isBlackGold ? (
         <>
@@ -1296,7 +1458,7 @@ export default function App() {
       {isLocked && (
         <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", isDarkMode ? "bg-slate-900" : "bg-white")}>
           <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-8 shadow-2xl animate-bounce", theme.primary)}>
-            <Lock className="text-white" size={32} />
+            <Lock className={cn(!isCustomTheme && "text-white")} size={32} />
           </div>
           <h2 className="text-2xl font-black mb-2">安全验证</h2>
           <div className="flex space-x-4 mb-12">
@@ -1360,7 +1522,7 @@ export default function App() {
               setIsMenuOpen(false);
             }} className={cn(
               "w-full flex items-center space-x-4 p-4 rounded-2xl font-bold transition-all",
-              activeTab === item.id ? theme.primary + " text-white shadow-lg" : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50")
+              activeTab === item.id ? cn(theme.primary, !isCustomTheme && "text-white", "shadow-lg") : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50")
             )}>
               {item.icon}
               <span>{item.label}</span>
@@ -1411,8 +1573,9 @@ export default function App() {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", damping: 20, stiffness: 200 }}
                   className={cn(
-                    "p-10 rounded-[4rem] shadow-2xl text-white relative overflow-hidden group border border-white/20",
-                    theme.primary
+                    "p-10 rounded-[4rem] shadow-2xl relative overflow-hidden group border border-white/20",
+                    theme.primary,
+                    !isCustomTheme && "text-white"
                   )}
                 >
                   <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
@@ -1420,7 +1583,7 @@ export default function App() {
 
                   <div className="flex justify-between items-start mb-12 relative z-10">
                     <div>
-                      <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-3">{t('total_assets')}</p>
+                      <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('total_assets')}</p>
                       <p className="text-5xl font-black tracking-tighter drop-shadow-lg">¥{formatCurrency(totalAssets)}</p>
                     </div>
                     <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
@@ -1435,7 +1598,7 @@ export default function App() {
                         <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
                           <TrendingDown size={12} className="text-red-200" />
                         </div>
-                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('expense')}</span>
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('expense')}</span>
                       </div>
                       <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
                     </div>
@@ -1444,7 +1607,7 @@ export default function App() {
                         <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
                           <TrendingUp size={12} className="text-green-200" />
                         </div>
-                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('income')}</span>
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('income')}</span>
                       </div>
                       <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
                     </div>
@@ -1458,13 +1621,14 @@ export default function App() {
                   transition={{ delay: 0.1, type: "spring" }}
                   className={cn(
                     "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
-                    isDarkMode ? "bg-slate-800/40 border-slate-700/50" : "bg-white/40 border-white/50"
+                    isDarkMode ? "bg-slate-800/40 border-slate-700/50" : "bg-white/40 border-white/50",
+                    isCustomTheme && "accent-glow-soft"
                   )}
                 >
                   <div className="flex justify-between items-center mb-6">
                     <div className="flex items-center space-x-3">
                       <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                        <PieIcon size={20} className="text-white" />
+                        <PieIcon size={20} className={cn(!isCustomTheme && "text-white")} />
                       </div>
                       <div>
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
@@ -1473,7 +1637,7 @@ export default function App() {
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-black text-gray-400 uppercase mb-1">剩余额度</p>
-                      <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : "text-indigo-500")}>
+                      <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : (isCustomTheme ? "accent-text" : "text-indigo-500"))}>
                         ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
                       </p>
                     </div>
@@ -1486,7 +1650,7 @@ export default function App() {
                       transition={{ duration: 1.5, ease: "easeOut" }}
                       className={cn(
                         "h-full rounded-full transition-all relative overflow-hidden",
-                        stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : "bg-gradient-to-r from-indigo-500 to-purple-400"
+                        stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : (isCustomTheme ? "accent-bg" : "bg-gradient-to-r from-indigo-500 to-purple-400")
                       )}
                     >
                       <div className="absolute inset-0 bg-white/20 animate-pulse" />
@@ -1697,7 +1861,7 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                        <Wallet size={24} className="text-white" />
+                        <Wallet size={24} className={cn(!isCustomTheme && "text-white")} />
                       </div>
                       <div>
                         <h1 className="text-2xl font-black tracking-tighter">我的账本 · 专业版</h1>
@@ -1857,7 +2021,7 @@ export default function App() {
                 <div className="flex justify-center pt-4">
                   <button
                     onClick={() => requestExport('image')}
-                    className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all", theme.primary, "text-white font-black")}
+                    className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all font-black", theme.primary, !isCustomTheme && "text-white")}
                   >
                     <Share2 size={20} />
                     <span>生成精美账单长图</span>
@@ -2150,12 +2314,12 @@ export default function App() {
                       const dayData = transactions.filter(t => isSameDay(parseISO(t.date), day));
                       const dayExpense = dayData.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
                       return (
-                        <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? theme.primary + " text-white" : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
+                        <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? cn(theme.primary, !isCustomTheme && "text-white") : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
                           <span className="text-xs font-black">{format(day, 'd')}</span>
                           {dayExpense > 0 && (
                             <span className={cn(
                               "text-[6px] font-black absolute bottom-1",
-                              isSameDay(day, selectedCalendarDate) ? "text-white/80" : "text-red-400"
+                              isSameDay(day, selectedCalendarDate) ? (isCustomTheme ? "accent-on opacity-80" : "text-white/80") : "text-red-400"
                             )}>
                               -{Math.floor(dayExpense)}
                             </span>
@@ -2481,24 +2645,24 @@ export default function App() {
                 />
                 <div className="flex items-center space-x-4 relative z-10">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center relative">
-                    <User className="text-white" size={28} />
+                    <User className={cn(!isCustomTheme && "text-white")} size={28} />
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center border-2 border-white">
                       <Star className="text-white" size={10} fill="currentColor" />
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <p className="text-white font-black">{t('user_nickname')}</p>
-                      <span className="text-[8px] bg-white/20 text-white px-1.5 py-0.5 rounded-full font-black">PRO</span>
+                      <p className={cn("font-black", !isCustomTheme && "text-white")}>{t('user_nickname')}</p>
+                      <span className={cn("text-[8px] bg-white/20 px-1.5 py-0.5 rounded-full font-black", !isCustomTheme && "text-white")}>PRO</span>
                     </div>
-                    <p className="text-white/60 text-[10px] font-bold">已激活永久高级会员</p>
+                    <p className={cn("text-[10px] font-bold", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>已激活永久高级会员</p>
                   </div>
                 </div>
                 <div className="mt-4 flex space-x-2">
-                  <div className="flex-1 py-2 bg-white/10 rounded-xl text-white text-[8px] font-black uppercase text-center backdrop-blur-sm">
+                  <div className={cn("flex-1 py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", !isCustomTheme && "text-white")}>
                     云端同步中...
                   </div>
-                  <div className="flex-1 py-2 bg-white/20 rounded-xl text-white text-[8px] font-black uppercase text-center backdrop-blur-sm">
+                  <div className={cn("flex-1 py-2 bg-white/20 rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", !isCustomTheme && "text-white")}>
                     自动冷备份
                   </div>
                 </div>
@@ -2548,6 +2712,125 @@ export default function App() {
                       <button onClick={() => setIsDarkMode(!isDarkMode)} className={cn("w-12 h-6 rounded-full relative transition-colors", isDarkMode ? theme.primary : "bg-gray-300")}>
                         <div className={cn("absolute top-1 w-4 h-4 bg-white rounded-full transition-all shadow-sm", isDarkMode ? "left-7" : "left-1")} />
                       </button>
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">主题与调色盘</label>
+                  <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
+                    <div className="p-5 border-b border-black/5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: derivedTheme.accentBg }}>
+                            <Palette size={18} style={{ color: derivedTheme.accentText }} />
+                          </div>
+                          <div>
+                            <div className="text-sm font-black">全能调色盘</div>
+                            <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/50" : "text-gray-500")}>
+                              主色 {derivedTheme.accent.toUpperCase()} · 浅 20% 背景 · 深 30% 阴影 · 自动反色
+                            </div>
+                          </div>
+                        </div>
+                        <motion.button
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setThemeKey('custom')}
+                          className={cn(
+                            "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                            isCustomTheme ? "lux-gold border-[#D4AF37] text-black" : (isDarkMode ? "bg-slate-800 border-slate-600 text-white/70" : "bg-white border-gray-100 text-gray-700")
+                          )}
+                        >
+                          {isCustomTheme ? '已启用' : '启用'}
+                        </motion.button>
+                      </div>
+                    </div>
+
+                    <div className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>选择主色</div>
+                          <div className={cn("text-xs font-black", isDarkMode ? "text-white/80" : "text-gray-700")}>拖动或点击色盘实时预览</div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-9 h-9 rounded-2xl border" style={{ backgroundColor: derivedTheme.accent, borderColor: derivedTheme.accentBg }} />
+                          <div className="w-9 h-9 rounded-2xl border" style={{ backgroundColor: derivedTheme.accentBg, borderColor: derivedTheme.accentBg }} />
+                          <div className="w-9 h-9 rounded-2xl border" style={{ backgroundColor: derivedTheme.accentText, borderColor: derivedTheme.accentBg }} />
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const size = 220;
+                        const radius = size / 2;
+                        const angle = (customHS.h * Math.PI) / 180;
+                        const x = Math.cos(angle) * (customHS.s * (radius - 14));
+                        const y = Math.sin(angle) * (customHS.s * (radius - 14));
+                        return (
+                          <div className="mt-6 flex justify-center">
+                            <div
+                              ref={colorPickerRef}
+                              onPointerDown={(e) => {
+                                e.preventDefault();
+                                isPickingRef.current = true;
+                                (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+                                pickAccentAt(e.clientX, e.clientY);
+                              }}
+                              onPointerMove={(e) => {
+                                if (!isPickingRef.current) return;
+                                if (e.pointerType !== 'touch' && e.buttons === 0) return;
+                                pickAccentAt(e.clientX, e.clientY);
+                              }}
+                              onPointerUp={(e) => {
+                                isPickingRef.current = false;
+                                try {
+                                  (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+                                } catch { }
+                              }}
+                              onPointerCancel={(e) => {
+                                isPickingRef.current = false;
+                                try {
+                                  (e.currentTarget as HTMLDivElement).releasePointerCapture(e.pointerId);
+                                } catch { }
+                              }}
+                              className="relative"
+                              style={{
+                                width: size,
+                                height: size,
+                                borderRadius: size,
+                                touchAction: 'none',
+                                backgroundImage:
+                                  "radial-gradient(circle at center, rgba(255,255,255,1) 0%, rgba(255,255,255,0) 55%), conic-gradient(from 180deg, #ff004c, #ff7a00, #ffee00, #36d000, #00e5ff, #1c55ff, #b000ff, #ff004c)",
+                              }}
+                            >
+                              <div className="absolute inset-0 rounded-full border border-black/10 backdrop-blur-[1px]" />
+                              <motion.div
+                                layout
+                                transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                                className="absolute w-7 h-7 rounded-full border-2 shadow-xl"
+                                style={{
+                                  left: radius + x - 14,
+                                  top: radius + y - 14,
+                                  backgroundColor: derivedTheme.accent,
+                                  borderColor: derivedTheme.accentText,
+                                  boxShadow: `0 16px 40px ${derivedTheme.accentShadow}`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <div className="mt-6 flex items-center justify-between">
+                        <motion.button
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => { setCustomAccent('#6366F1'); setThemeKey('custom'); }}
+                          className={cn("px-4 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-800 border-slate-600 text-white/70" : "bg-white border-gray-100 text-gray-700")}
+                        >
+                          重置为默认
+                        </motion.button>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>
+                          0.5s 墨水晕开过渡
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -2803,7 +3086,7 @@ export default function App() {
                     onClick={() => { i18n.changeLanguage(l.id); setIsLangPickerOpen(false); }}
                     className={cn(
                       "w-full p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 transition-all border",
-                      i18n.language === l.id ? theme.primary + " text-white border-transparent" : (isDarkMode ? "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600" : "bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100")
+                      i18n.language === l.id ? cn(theme.primary, !isCustomTheme && "text-white", "border-transparent") : (isDarkMode ? "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600" : "bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100")
                     )}
                   >
                     <span className="text-2xl">{l.flag}</span>
@@ -2862,8 +3145,9 @@ export default function App() {
                     whileTap={{ scale: 0.9 }}
                     onClick={() => { setEditingTransaction(null); setIsModalOpen(true); }}
                     className={cn(
-                      "w-16 h-16 text-white rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-white dark:border-slate-900 transition-all pointer-events-auto",
-                      theme.primary
+                      "w-16 h-16 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-white dark:border-slate-900 transition-all pointer-events-auto",
+                      theme.primary,
+                      !isCustomTheme && "text-white"
                     )}
                   >
                     <Plus size={32} strokeWidth={3} />
@@ -2894,7 +3178,7 @@ export default function App() {
           })}
         </div>
       </nav>
-    </div>
+    </motion.div>
   );
 }
 
