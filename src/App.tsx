@@ -2825,7 +2825,7 @@ export default function App() {
                                   <div className="bg-white/10 backdrop-blur-[2vw] p-[4vw] rounded-[7vw] border-[0.35vw] border-white/10 transition-transform hover:scale-105 overflow-hidden">
                                     <div className="flex items-center space-x-[2vw] mb-[2vw] min-w-0 overflow-hidden">
                                       <div className="w-[6vw] h-[6vw] bg-red-400/20 rounded-[2vw] flex items-center justify-center flex-shrink-0 text-[4vw]">
-                                        <TrendingDown size="1em" className="text-red-200 max-w-full h-auto" />
+                                        <TrendingDown size="4vw" className="text-red-200 max-w-full h-auto" />
                                       </div>
                                       <span className={cn("text-[3.2vw] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('expense')}</span>
                                     </div>
@@ -2834,7 +2834,7 @@ export default function App() {
                                   <div className="bg-white/10 backdrop-blur-[2vw] p-[4vw] rounded-[7vw] border-[0.35vw] border-white/10 transition-transform hover:scale-105 overflow-hidden">
                                     <div className="flex items-center space-x-[2vw] mb-[2vw] min-w-0 overflow-hidden">
                                       <div className="w-[6vw] h-[6vw] bg-green-400/20 rounded-[2vw] flex items-center justify-center flex-shrink-0 text-[4vw]">
-                                        <TrendingUp size="1em" className="text-green-200 max-w-full h-auto" />
+                                        <TrendingUp size="4vw" className="text-green-200 max-w-full h-auto" />
                                       </div>
                                       <span className={cn("text-[3.2vw] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('income')}</span>
                                     </div>
