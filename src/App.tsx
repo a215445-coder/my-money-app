@@ -33,7 +33,6 @@ import {
   Compass,
   Zap as ZapIcon,
   Calculator,
-  AlertTriangle,
 } from 'lucide-react';
 import {
   format,
@@ -616,6 +615,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
+  const [discoveryTool, setDiscoveryTool] = useState<null | 'categories' | 'exchange' | 'calculator'>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'calendar' | 'discovery'>('list');
   const [filterType, setFilterType] = useState<FilterType>('month');
@@ -660,6 +660,8 @@ export default function App() {
       setWealthTip(WEALTH_TIPS[Math.floor(Math.random() * WEALTH_TIPS.length)]);
     }
   }, [activeTab, WEALTH_TIPS]);
+
+  const wealthMarquee = useMemo(() => WEALTH_TIPS.join('  ·  '), [WEALTH_TIPS]);
 
   // --- Privacy & Theme ---
   const [isLocked, setIsLocked] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
@@ -1474,64 +1476,137 @@ export default function App() {
 
             {activeTab === 'discovery' && (
               <div className="space-y-6">
-                {/* Wealth Tip Card */}
-                <div className={cn("p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden", theme.primary)}>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12" />
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Smile className="text-white" size={24} />
-                    <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">理财实验室 · 省钱小贴士</span>
-                  </div>
-                  <p className="text-white text-lg font-black leading-relaxed italic">“{wealthTip}”</p>
-                </div>
-
-                {/* Wealth Calculator Card */}
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-                  <h3 className="font-black text-lg mb-6 flex items-center"><Calculator size={20} className="mr-2 text-indigo-500" />财富自测 (5:3:2)</h3>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">输入预计月薪</label>
-                      <input
-                        type="number"
-                        value={monthlySalary}
-                        onChange={e => setSalary(Number(e.target.value))}
-                        className={cn("w-full bg-transparent text-3xl font-black focus:outline-none border-b-2 transition-colors pb-2", isDarkMode ? "border-slate-700 focus:border-white" : "border-gray-100 focus:border-black")}
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 gap-3">
-                      {[
-                        { label: '生活开支 (50%)', amount: monthlySalary * 0.5, color: 'text-blue-500', bg: 'bg-blue-50' },
-                        { label: '理财储蓄 (30%)', amount: monthlySalary * 0.3, color: 'text-green-500', bg: 'bg-green-50' },
-                        { label: '娱乐享受 (20%)', amount: monthlySalary * 0.2, color: 'text-pink-500', bg: 'bg-pink-50' },
-                      ].map(item => (
-                        <div key={item.label} className={cn("p-4 rounded-2xl flex justify-between items-center", isDarkMode ? "bg-slate-700" : item.bg)}>
-                          <span className="text-xs font-bold opacity-60">{item.label}</span>
-                          <span className={cn("text-lg font-black", isDarkMode ? "text-white" : item.color)}>¥{formatCurrency(item.amount)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Spending Warning Card */}
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-                  <h3 className="font-black text-lg mb-6 flex items-center"><AlertTriangle size={20} className="mr-2 text-orange-500" />消费预警</h3>
-                  <div className="flex flex-col items-center py-6">
-                    <div className={cn(
-                      "w-32 h-32 rounded-full border-[10px] flex flex-col items-center justify-center transition-all",
-                      stats.weekChange > 20 ? "border-red-500 bg-red-50" : "border-green-500 bg-green-50"
-                    )}>
-                      <span className={cn("text-2xl font-black", stats.weekChange > 20 ? "text-red-500" : "text-green-500")}>
-                        {stats.weekChange > 0 ? '+' : ''}{stats.weekChange.toFixed(0)}%
-                      </span>
-                    </div>
-                    <p className="mt-6 text-sm font-bold text-gray-400">
-                      较上周同期 {stats.weekChange > 0 ? '多花' : '少花'} ¥{formatCurrency(Math.abs(stats.weekChange * 100))}
-                    </p>
-                    {stats.weekChange > 20 && (
-                      <div className="mt-4 px-4 py-2 bg-red-100 text-red-500 rounded-full text-[10px] font-black uppercase flex items-center">
-                        <ZapIcon size={12} className="mr-1" /> 剁手警报：最近花钱有点猛！
+                {/* User Header */}
+                <div className={cn(
+                  "rounded-[2.5rem] p-6 border shadow-xl overflow-hidden relative",
+                  isDarkMode ? "bg-slate-800/50 border-slate-700/50" : "bg-white/50 border-white/60"
+                )}>
+                  <div className="absolute inset-0 backdrop-blur-2xl" />
+                  <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full blur-[90px] opacity-40 bg-gradient-to-br from-indigo-500 to-fuchsia-500" />
+                  <div className="relative flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 rounded-[1.5rem] bg-white/30 border border-white/30 backdrop-blur-xl flex items-center justify-center">
+                        <User size={24} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
                       </div>
-                    )}
+                      <div>
+                        <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>理财达人</p>
+                        <p className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/60" : "text-gray-500")}>
+                          {timeContext === 'morning' ? '早安' : timeContext === 'afternoon' ? '午安' : '晚安'}，欢迎回来
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className={cn("px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-white/50 border-white/60 text-gray-600")}>
+                        PRO
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Tools Grid */}
+                <div className={cn(
+                  "rounded-[2.5rem] p-6 border shadow-sm",
+                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
+                )}>
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-sm font-black">常用功能</h3>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Toolkit</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { key: 'assets', label: '资产分析', Icon: LineIcon, onClick: () => setActiveTab('chart') },
+                      { key: 'budget', label: '预算设置', Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
+                      { key: 'export', label: '账单导出', Icon: Share2, onClick: exportAsImage },
+                      { key: 'categories', label: '分类管理', Icon: Hash, onClick: () => setDiscoveryTool('categories') },
+                      { key: 'fx', label: '汇率换算', Icon: ArrowRightLeft, onClick: () => setDiscoveryTool('exchange') },
+                      { key: 'calc', label: '理财计算器', Icon: Calculator, onClick: () => setDiscoveryTool('calculator') },
+                    ].map(item => (
+                      <motion.button
+                        key={item.key}
+                        whileTap={{ scale: 0.96 }}
+                        onClick={item.onClick}
+                        className={cn(
+                          "p-4 rounded-[1.75rem] border flex flex-col items-center justify-center space-y-2 transition-all",
+                          isDarkMode ? "bg-slate-700/60 border-slate-600 hover:bg-slate-700" : "bg-gray-50 border-gray-100 hover:bg-gray-100"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-2xl flex items-center justify-center border",
+                          isDarkMode ? "bg-slate-800/70 border-slate-600 text-white" : "bg-white border-white text-gray-800"
+                        )}>
+                          <item.Icon size={18} />
+                        </div>
+                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/80" : "text-gray-700")}>{item.label}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Finance Management Card */}
+                <div className={cn(
+                  "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden relative",
+                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
+                )}>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="font-black text-sm">理财管理</h3>
+                    <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>
+                      Health
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 items-center">
+                    <div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>财务健康度</div>
+                      <div className="flex items-end space-x-2">
+                        <div className={cn("text-4xl font-black", stats.budgetUsage > 90 ? "text-rose-500" : theme.text)}>
+                          {Math.max(0, Math.min(100, Math.round(100 - stats.budgetUsage)))}
+                        </div>
+                        <div className={cn("text-xs font-black mb-1", isDarkMode ? "text-white/50" : "text-gray-400")}>/ 100</div>
+                      </div>
+                      <div className="mt-4 w-full h-2 rounded-full overflow-hidden bg-gray-100/60 dark:bg-slate-700/60">
+                        <div
+                          className={cn("h-full rounded-full", stats.budgetUsage > 90 ? "bg-rose-500" : theme.primary)}
+                          style={{ width: `${Math.max(0, Math.min(100, 100 - stats.budgetUsage))}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className={cn("rounded-[2rem] p-4 border", isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-3", isDarkMode ? "text-white/50" : "text-gray-400")}>近 7 天支出</div>
+                      <div className="flex items-end justify-between h-14">
+                        {stats.trendData.map((d, idx) => (
+                          <div key={d.date + idx} className="flex-1 flex justify-center">
+                            <div
+                              className={cn("w-2 rounded-full", idx === stats.trendData.length - 1 ? theme.primary : (isDarkMode ? "bg-white/20" : "bg-gray-300/70"))}
+                              style={{ height: `${Math.min(56, Math.max(6, d.amount / 20))}px` }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Tips Marquee */}
+                <div className={cn(
+                  "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden",
+                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
+                )}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                      <Smile size={18} className={cn(isDarkMode ? "text-white/60" : "text-gray-700")} />
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>省钱小贴士</span>
+                    </div>
+                    <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>“{wealthTip}”</span>
+                  </div>
+                  <div className="relative overflow-hidden">
+                    <motion.div
+                      animate={{ x: ['0%', '-50%'] }}
+                      transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+                      className={cn("whitespace-nowrap text-sm font-black", isDarkMode ? "text-white/70" : "text-gray-700")}
+                    >
+                      <span>{wealthMarquee}</span>
+                      <span className="mx-6 opacity-60">·</span>
+                      <span>{wealthMarquee}</span>
+                    </motion.div>
                   </div>
                 </div>
               </div>
@@ -1974,6 +2049,89 @@ export default function App() {
           </motion.div>
         </div>
       )}
+
+      <AnimatePresence>
+        {discoveryTool && (
+          <div className="fixed inset-0 z-[180] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-md" onClick={() => setDiscoveryTool(null)}>
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 240 }}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl border",
+                isDarkMode ? "bg-slate-800/95 border-slate-700 text-white" : "bg-white/95 border-gray-100 text-gray-900"
+              )}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-black">
+                  {discoveryTool === 'categories' ? '分类管理' : discoveryTool === 'exchange' ? '汇率换算' : '理财计算器'}
+                </h3>
+                <button onClick={() => setDiscoveryTool(null)} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {discoveryTool === 'categories' && (
+                <div className={cn("p-6 rounded-[2rem] border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-600")}>
+                  <p className="text-sm font-bold leading-relaxed">分类管理功能即将上线。当前版本可在记账时选择分类，并在统计页查看分类构成。</p>
+                </div>
+              )}
+
+              {discoveryTool === 'exchange' && (
+                <div className="space-y-3">
+                  {[
+                    { code: 'USD', name: '美元' },
+                    { code: 'EUR', name: '欧元' },
+                    { code: 'JPY', name: '日元' },
+                    { code: 'HKD', name: '港币' },
+                  ].map(c => (
+                    <div key={c.code} className={cn("p-4 rounded-2xl border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                      <div className="flex items-center space-x-3">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                          <Globe size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-black">{c.name}</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>1 {c.code} ≈</p>
+                        </div>
+                      </div>
+                      <p className={cn("text-sm font-black", theme.text)}>¥{rates[c.code]?.toFixed(4) || '--'}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {discoveryTool === 'calculator' && (
+                <div className="space-y-5">
+                  <div>
+                    <label className={cn("text-[10px] font-black uppercase tracking-widest block mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>输入预计月薪</label>
+                    <input
+                      type="number"
+                      value={monthlySalary}
+                      onChange={e => setSalary(Number(e.target.value))}
+                      className={cn("w-full bg-transparent text-3xl font-black focus:outline-none border-b-2 transition-colors pb-2", isDarkMode ? "border-slate-700 focus:border-white" : "border-gray-100 focus:border-black")}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 gap-3">
+                    {[
+                      { label: '生活开支 (50%)', amount: monthlySalary * 0.5, color: 'text-blue-500', bg: 'bg-blue-50' },
+                      { label: '理财储蓄 (30%)', amount: monthlySalary * 0.3, color: 'text-green-500', bg: 'bg-green-50' },
+                      { label: '娱乐享受 (20%)', amount: monthlySalary * 0.2, color: 'text-pink-500', bg: 'bg-pink-50' },
+                    ].map(item => (
+                      <div key={item.label} className={cn("p-4 rounded-2xl flex justify-between items-center", isDarkMode ? "bg-slate-700" : item.bg)}>
+                        <span className={cn("text-xs font-bold", isDarkMode ? "text-white/60" : "opacity-60")}>{item.label}</span>
+                        <span className={cn("text-lg font-black", isDarkMode ? "text-white" : item.color)}>¥{formatCurrency(item.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isLogoutDialogOpen && (
