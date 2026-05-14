@@ -4,6 +4,7 @@
   --animate-gradient-x: gradient-x 3s ease infinite;
   --animate-lux-shine: lux-shine 2.8s linear infinite;
   --animate-lux-gold-breathe: lux-gold-breathe 3.2s ease-in-out infinite;
+  --animate-ai-voice-standby: ai-voice-standby 2.8s ease-in-out infinite;
 
   @keyframes gradient-x {
 
@@ -52,6 +53,18 @@
 
     100% {
       background-position: 92% 18%;
+    }
+  }
+
+  @keyframes ai-voice-standby {
+
+    0%,
+    100% {
+      filter: drop-shadow(0 0 0.6rem rgba(212, 175, 55, 0.22));
+    }
+
+    50% {
+      filter: drop-shadow(0 0 1.05rem rgba(212, 175, 55, 0.40));
     }
   }
 
@@ -108,6 +121,11 @@
     background-image: linear-gradient(135deg, #1a1a1a, #2a2417, #1a1a1a);
     background-size: 400% 400%;
     animation: WaveMove 8s ease-in-out infinite;
+  }
+
+  .ai-voice-standby {
+    animation: var(--animate-ai-voice-standby);
+    will-change: filter;
   }
 }
 
