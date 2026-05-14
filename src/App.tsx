@@ -2847,29 +2847,50 @@ export default function App() {
                             {wid === 'budgetProgress' && (
                               <div
                                 className={cn(
-                                  "p-8 backdrop-blur-xl transition-all",
+                                  "p-[5vw] backdrop-blur-[3vw] transition-all",
                                   surfaceCard()
                                 )}
                               >
-                                <div className="flex justify-between items-center mb-6">
-                                  <div className="flex items-center space-x-3">
-                                    <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                                      <PieIcon size={20} className="text-white" />
+                                <div className="flex flex-col mb-[4vw]">
+                                  <div className="flex justify-between items-baseline gap-[4vw]">
+                                    <div className="min-w-0 flex items-baseline space-x-[2.5vw] overflow-hidden">
+                                      <div className={cn("w-[7vw] h-[7vw] rounded-[2.8vw] flex items-center justify-center shadow-[0_1vw_3vw_rgba(0,0,0,0.25)] flex-shrink-0 text-[4vw]", theme.primary)}>
+                                        <PieIcon size="1em" className="text-white max-w-full h-auto" />
+                                      </div>
+                                      <div className="min-w-0 overflow-hidden">
+                                        <div className="text-[3.2vw] leading-none font-black text-gray-400 uppercase tracking-widest max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                          {t('monthly_budget')}
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div>
-                                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
-                                      <p className="text-lg font-black">¥{formatCurrency(budget)}</p>
+                                    <div className="min-w-0 overflow-hidden text-right">
+                                      <div className="text-[3.2vw] leading-none font-black text-gray-400 uppercase tracking-widest max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                        {t('budget_remaining')}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">{t('budget_remaining')}</p>
-                                    <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : "text-[#D4AF37]")}>
+
+                                  <div className="flex justify-between items-baseline gap-[4vw] mt-[1.8vw]">
+                                    <div className="min-w-0 flex items-baseline space-x-[2.5vw] overflow-hidden">
+                                      <div aria-hidden className="w-[7vw] h-[7vw] flex-shrink-0" />
+                                      <div className="min-w-0 overflow-hidden flex-shrink">
+                                        <p className="text-[4.5vw] leading-none font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                          ¥{formatCurrency(budget)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <p
+                                      className={cn(
+                                        "text-[4.5vw] leading-none font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap",
+                                        stats.budgetUsage > 90 ? "text-red-500" : "text-[#D4AF37]"
+                                      )}
+                                    >
                                       ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
                                     </p>
                                   </div>
                                 </div>
 
-                                <div className="w-full h-4 bg-gray-100/50 rounded-full overflow-hidden mb-6 p-1">
+                                <div className="w-full h-[2.2vw] bg-gray-100/50 rounded-full overflow-hidden mb-[4vw] p-[0.6vw]">
                                   <motion.div
                                     initial={{ width: 0 }}
                                     animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
@@ -2883,15 +2904,19 @@ export default function App() {
                                   </motion.div>
                                 </div>
 
-                                <div className="flex justify-between items-center px-1">
-                                  <div className="flex items-center space-x-2">
-                                    <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
+                                <div className="flex justify-between items-center px-[1vw]">
+                                  <div className="flex items-center space-x-[2vw] min-w-0 overflow-hidden">
+                                    <div className={cn("px-[2vw] py-[1vw] rounded-[1.5vw] text-[2.8vw] leading-none font-black uppercase whitespace-nowrap", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
                                       {t('home_widgets.used_prefix')} {stats.budgetUsage.toFixed(1)}%
                                     </div>
                                   </div>
-                                  <div className="flex items-center space-x-1.5 text-gray-500">
-                                    <Calculator size={14} />
-                                    <span className="text-[10px] font-black uppercase tracking-tight">{t('daily_available', { amount: stats.dailyBudget.toFixed(0) })}</span>
+                                  <div className="flex items-center space-x-[1.5vw] text-gray-500 min-w-0 overflow-hidden">
+                                    <span className="text-[3.4vw] leading-none flex-shrink-0">
+                                      <Calculator size="1em" className="max-w-full h-auto" />
+                                    </span>
+                                    <span className="text-[3.2vw] leading-none font-black uppercase tracking-tight max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                      {t('daily_available', { amount: stats.dailyBudget.toFixed(0) })}
+                                    </span>
                                   </div>
                                 </div>
                               </div>
