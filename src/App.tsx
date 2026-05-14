@@ -38,6 +38,7 @@ import {
   Zap as ZapIcon,
   Calculator,
   GripVertical,
+  Users,
 } from 'lucide-react';
 import {
   format,
@@ -767,6 +768,33 @@ const normalizeHomeWidgetConfig = (raw: any): HomeWidgetConfig => {
   return { order, enabled };
 };
 
+type GroupSavingMember = { id: string; name: string; color: string; emoji: string };
+type GroupSavingGroup = {
+  id: string;
+  name: string;
+  code: string;
+  members: GroupSavingMember[];
+  publicBudget: number;
+  createdAt: number;
+};
+type GroupActivity = {
+  id: string;
+  ts: number;
+  actorId: string;
+  actorName: string;
+  action: 'add' | 'edit' | 'delete';
+  type: TransactionType;
+  category: Category;
+  amount: number;
+  note?: string;
+  toGroupPool: boolean;
+  likes: string[];
+  urges: string[];
+};
+
+const GROUP_SAVING_STORAGE_KEY = 'group_saving_v1';
+const groupActivitiesKey = (groupId: string) => `group_saving_activities_${groupId}`;
+
 export default function App() {
   const { t, i18n } = useTranslation();
   // --- Core State ---
@@ -791,7 +819,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
-  const [discoveryTool, setDiscoveryTool] = useState<null | 'categories' | 'exchange' | 'calculator'>(null);
+  const [discoveryTool, setDiscoveryTool] = useState<null | 'categories' | 'exchange' | 'calculator' | 'groupSaving'>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'calendar' | 'discovery' | 'assets'>('list');
   const [filterType, setFilterType] = useState<FilterType>('month');
@@ -813,6 +841,35 @@ export default function App() {
   const homeLongPressTimeoutRef = useRef<number | null>(null);
   const homeLongPressStartRef = useRef<{ x: number; y: number } | null>(null);
   const homeLongPressFiredRef = useRef(false);
+
+  const [localUserId] = useState(() => {
+    const existing = localStorage.getItem('local_user_id');
+    if (existing) return existing;
+    const next = crypto.randomUUID();
+    localStorage.setItem('local_user_id', next);
+    return next;
+  });
+  const [localUserName] = useState(() => {
+    const existing = localStorage.getItem('local_user_name');
+    if (existing) return existing;
+    const next = '理财达人';
+    localStorage.setItem('local_user_name', next);
+    return next;
+  });
+
+  const GROUP_SAVING_POOL_KEY = 'group_saving_pool_v1';
+  const [groupSaving, setGroupSaving] = useState<GroupSavingGroup | null>(() => {
+    const saved = localStorage.getItem(GROUP_SAVING_STORAGE_KEY);
+    if (!saved) return null;
+    try {
+      return JSON.parse(saved) as GroupSavingGroup;
+    } catch {
+      return null;
+    }
+  });
+  const [groupActivities, setGroupActivities] = useState<GroupActivity[]>([]);
+  const [groupDraftName, setGroupDraftName] = useState('');
+  const [groupJoinCode, setGroupJoinCode] = useState('');
 
   const [hasOnboarded, setHasOnboarded] = useState(() => localStorage.getItem('onboarding_done') === 'true');
   const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
@@ -861,6 +918,33 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(HOME_WIDGETS_STORAGE_KEY, JSON.stringify(homeWidgetConfig));
   }, [homeWidgetConfig]);
+
+  useEffect(() => {
+    if (groupSaving) localStorage.setItem(GROUP_SAVING_STORAGE_KEY, JSON.stringify(groupSaving));
+    else localStorage.removeItem(GROUP_SAVING_STORAGE_KEY);
+  }, [groupSaving]);
+
+  useEffect(() => {
+    if (!groupSaving) {
+      setGroupActivities([]);
+      return;
+    }
+    const saved = localStorage.getItem(groupActivitiesKey(groupSaving.id));
+    if (!saved) {
+      setGroupActivities([]);
+      return;
+    }
+    try {
+      setGroupActivities(JSON.parse(saved) as GroupActivity[]);
+    } catch {
+      setGroupActivities([]);
+    }
+  }, [groupSaving?.id]);
+
+  useEffect(() => {
+    if (!groupSaving) return;
+    localStorage.setItem(groupActivitiesKey(groupSaving.id), JSON.stringify(groupActivities));
+  }, [groupSaving?.id, groupActivities]);
 
   useEffect(() => {
     if (activeTab !== 'list') {
@@ -1423,6 +1507,148 @@ export default function App() {
     });
   }, [transactions, moduleQuery]);
 
+  const groupMonthPoolSpent = useMemo(() => {
+    if (!groupSaving) return 0;
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+    return transactions
+      .filter(t =>
+        t.type === 'expense'
+        && t.visibility === 'group'
+        && t.groupId === groupSaving.id
+        && !!t.toGroupPool
+        && isWithinInterval(parseISO(t.date), { start, end })
+      )
+      .reduce((s, t) => s + t.amount, 0);
+  }, [transactions, currentDate, groupSaving?.id]);
+
+  const groupWeekPoolSpent = useMemo(() => {
+    if (!groupSaving) return 0;
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    const end = endOfWeek(new Date(), { weekStartsOn: 1 });
+    return transactions
+      .filter(t =>
+        t.type === 'expense'
+        && t.visibility === 'group'
+        && t.groupId === groupSaving.id
+        && !!t.toGroupPool
+        && isWithinInterval(parseISO(t.date), { start, end })
+      )
+      .reduce((s, t) => s + t.amount, 0);
+  }, [transactions, groupSaving?.id]);
+
+  const groupMonthProgressPct = groupSaving?.publicBudget
+    ? clamp((groupMonthPoolSpent / Math.max(groupSaving.publicBudget, 1)) * 100, 0, 100)
+    : 0;
+
+  const groupWeekSaved = useMemo(() => {
+    if (!groupSaving?.publicBudget) return 0;
+    const weeklyBudget = groupSaving.publicBudget / 4;
+    return Math.max(weeklyBudget - groupWeekPoolSpent, 0);
+  }, [groupSaving?.publicBudget, groupWeekPoolSpent]);
+
+  const appendGroupActivity = (action: GroupActivity['action'], tx: Transaction) => {
+    if (!groupSaving) return;
+    const activity: GroupActivity = {
+      id: crypto.randomUUID(),
+      ts: Date.now(),
+      actorId: localUserId,
+      actorName: localUserName,
+      action,
+      type: tx.type,
+      category: tx.category,
+      amount: tx.amount,
+      note: tx.note,
+      toGroupPool: !!tx.toGroupPool,
+      likes: [],
+      urges: [],
+    };
+    setGroupActivities(prev => [activity, ...prev].slice(0, 80));
+  };
+
+  const toggleGroupReaction = (activityId: string, kind: 'like' | 'urge') => {
+    setGroupActivities(prev => prev.map(a => {
+      if (a.id !== activityId) return a;
+      const key = kind === 'like' ? 'likes' : 'urges';
+      const current = a[key];
+      const has = current.includes(localUserId);
+      const next = has ? current.filter(x => x !== localUserId) : [...current, localUserId];
+      return { ...a, [key]: next } as GroupActivity;
+    }));
+  };
+
+  const loadGroupPool = (): Record<string, GroupSavingGroup> => {
+    const raw = localStorage.getItem(GROUP_SAVING_POOL_KEY);
+    if (!raw) return {};
+    try {
+      return JSON.parse(raw) as Record<string, GroupSavingGroup>;
+    } catch {
+      return {};
+    }
+  };
+
+  const saveGroupPool = (pool: Record<string, GroupSavingGroup>) => {
+    localStorage.setItem(GROUP_SAVING_POOL_KEY, JSON.stringify(pool));
+  };
+
+  const createGroupSaving = (name: string) => {
+    const code = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const id = crypto.randomUUID();
+    const palette = ['#60a5fa', '#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#fb7185'];
+    const emojis = ['🍀', '🧋', '🏡', '✨', '🧸', '🌿'];
+    const memberMe: GroupSavingMember = { id: localUserId, name: localUserName, color: palette[0], emoji: '🧑' };
+    const memberA: GroupSavingMember = { id: crypto.randomUUID(), name: '小李', color: palette[1], emoji: emojis[1] };
+    const memberB: GroupSavingMember = { id: crypto.randomUUID(), name: '小陈', color: palette[2], emoji: emojis[0] };
+    const group: GroupSavingGroup = {
+      id,
+      name: name.trim() || '一起省钱小组',
+      code,
+      members: [memberMe, memberA, memberB],
+      publicBudget: 3000,
+      createdAt: Date.now(),
+    };
+    const pool = loadGroupPool();
+    pool[code] = group;
+    saveGroupPool(pool);
+    setGroupSaving(group);
+    setDiscoveryTool('groupSaving');
+    setGroupActivities([]);
+  };
+
+  const joinGroupSaving = (codeRaw: string) => {
+    const code = codeRaw.trim().toUpperCase();
+    if (!code) return;
+    const pool = loadGroupPool();
+    const found = pool[code];
+    if (!found) {
+      alert('未找到该小组邀请码（仅本设备演示版）。可先创建一个小组再加入。');
+      return;
+    }
+    const already = found.members.some(m => m.id === localUserId);
+    const next: GroupSavingGroup = already ? found : { ...found, members: [{ id: localUserId, name: localUserName, color: '#60a5fa', emoji: '🧑' }, ...found.members] };
+    pool[code] = next;
+    saveGroupPool(pool);
+    setGroupSaving(next);
+    setDiscoveryTool('groupSaving');
+  };
+
+  const updateGroupSaving = (patch: Partial<GroupSavingGroup>) => {
+    setGroupSaving(prev => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      const pool = loadGroupPool();
+      pool[next.code] = next;
+      saveGroupPool(pool);
+      return next;
+    });
+  };
+
+  const leaveGroupSaving = () => {
+    if (!confirm('确定要退出小组吗？（本地数据仍会保留在组件库中）')) return;
+    setGroupSaving(null);
+    setGroupActivities([]);
+  };
+
   const enabledHomeWidgetOrder = useMemo(
     () => homeWidgetConfig.order.filter(id => homeWidgetConfig.enabled[id]),
     [homeWidgetConfig]
@@ -1499,7 +1725,10 @@ export default function App() {
 
   const addOrUpdateTransaction = (t: Omit<Transaction, 'id'>) => {
     const id = editingTransaction?.id || crypto.randomUUID();
-    const newTransaction = { ...t, id };
+    const normalizedVisibility = t.visibility || 'private';
+    const normalizedGroupId = normalizedVisibility === 'group' ? (t.groupId || groupSaving?.id) : undefined;
+    const normalizedToPool = normalizedVisibility === 'group' ? !!t.toGroupPool : false;
+    const newTransaction: Transaction = { ...t, id, visibility: normalizedVisibility, groupId: normalizedGroupId, toGroupPool: normalizedToPool };
 
     const updatedAccounts = accounts.map(acc => {
       if (acc.id === t.accountId) {
@@ -1515,8 +1744,14 @@ export default function App() {
     });
 
     if (editingTransaction) {
+      const wasGroup = editingTransaction.visibility === 'group' && !!editingTransaction.groupId;
+      const nowGroup = newTransaction.visibility === 'group' && !!newTransaction.groupId;
+      if (!wasGroup && nowGroup && newTransaction.groupId === groupSaving?.id) appendGroupActivity('add', newTransaction);
+      else if (wasGroup && !nowGroup && editingTransaction.groupId === groupSaving?.id) appendGroupActivity('delete', editingTransaction);
+      else if (wasGroup && nowGroup && newTransaction.groupId === groupSaving?.id) appendGroupActivity('edit', newTransaction);
       setTransactions(transactions.map(item => item.id === id ? newTransaction : item));
     } else {
+      if (newTransaction.visibility === 'group' && newTransaction.groupId === groupSaving?.id) appendGroupActivity('add', newTransaction);
       setTransactions([newTransaction, ...transactions]);
     }
     setAccounts(updatedAccounts);
@@ -1529,6 +1764,7 @@ export default function App() {
     if (confirm('确定要删除这笔账单吗？')) {
       const toDelete = transactions.find(t => t.id === id);
       if (toDelete) {
+        if (toDelete.visibility === 'group' && toDelete.groupId === groupSaving?.id) appendGroupActivity('delete', toDelete);
         const updatedAccounts = accounts.map(acc => {
           if (acc.id === toDelete.accountId) {
             const impact = toDelete.type === 'expense' ? -toDelete.amount : toDelete.amount;
@@ -2677,6 +2913,55 @@ export default function App() {
                   </div>
                 </div>
 
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setDiscoveryTool('groupSaving')}
+                  className={cn(
+                    "w-full rounded-[2.5rem] p-6 border shadow-sm overflow-hidden relative text-left",
+                    isDarkMode
+                      ? "bg-gradient-to-br from-slate-800/70 via-slate-900/60 to-emerald-950/40 border-slate-700/60"
+                      : "bg-gradient-to-br from-rose-50 via-white to-emerald-50 border-white/70"
+                  )}
+                >
+                  <div className="absolute inset-0 backdrop-blur-2xl" />
+                  <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full blur-[90px] opacity-50 bg-gradient-to-br from-emerald-400 to-sky-400" />
+                  <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full blur-[90px] opacity-40 bg-gradient-to-br from-rose-400 to-amber-300" />
+                  <div className="relative flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="relative h-12">
+                        {(groupSaving?.members?.length ? groupSaving.members : [
+                          { id: 'ghost-1', name: '甜蜜情侣', color: '#f472b6', emoji: '💞' },
+                          { id: 'ghost-2', name: '合租室友', color: '#60a5fa', emoji: '🏡' },
+                          { id: 'ghost-3', name: '省钱搭子', color: '#34d399', emoji: '🍀' },
+                        ]).slice(0, 3).map((m, idx) => (
+                          <div
+                            key={m.id}
+                            className="w-10 h-10 rounded-2xl border-2 border-white/70 flex items-center justify-center text-sm font-black shadow-sm absolute top-1"
+                            style={{ left: idx * 18, backgroundColor: `${m.color}22`, color: m.color }}
+                          >
+                            <span>{m.emoji}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <div className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>一起省钱 · 小组账本</div>
+                        <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/60" : "text-gray-600")}>
+                          {groupSaving ? `${groupSaving.name} · 邀请码 ${groupSaving.code}` : '创建/加入小组，共同预算 + 动态流 + 隐私保护'}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center space-x-2",
+                      groupSaving
+                        ? (isDarkMode ? "bg-slate-800/70 border-slate-700 text-white/70" : "bg-white/60 border-white/80 text-gray-700")
+                        : "bg-emerald-500 text-black border-emerald-400 shadow-lg"
+                    )}>
+                      <Users size={14} />
+                      <span>{groupSaving ? '进入' : '立即开启'}</span>
+                    </div>
+                  </div>
+                </motion.button>
+
                 {/* Quick Tools Grid */}
                 <div className={cn("rounded-[2.5rem] p-6 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-center justify-between mb-5">
@@ -2686,6 +2971,7 @@ export default function App() {
                   <div className="grid grid-cols-3 gap-3">
                     {[
                       { key: 'assets', label: '资产分析', Icon: LineIcon, onClick: () => setActiveTab('assets') },
+                      { key: 'groupSaving', label: '一起省钱', Icon: Users, onClick: () => setDiscoveryTool('groupSaving') },
                       { key: 'budget', label: '设置', Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
                       { key: 'export', label: '账单导出', Icon: Share2, onClick: () => requestExport('image') },
                       { key: 'categories', label: '分类管理', Icon: Hash, onClick: () => setDiscoveryTool('categories') },
@@ -3126,6 +3412,7 @@ export default function App() {
                 initialData={editingTransaction || undefined}
                 onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
                 isDarkMode={isDarkMode}
+                groupSaving={groupSaving}
               />
             </div>
           </motion.div>
@@ -3478,12 +3765,233 @@ export default function App() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-black">
-                  {discoveryTool === 'categories' ? '分类管理' : discoveryTool === 'exchange' ? '汇率换算' : '理财计算器'}
+                  {discoveryTool === 'groupSaving' ? '一起省钱' : discoveryTool === 'categories' ? '分类管理' : discoveryTool === 'exchange' ? '汇率换算' : '理财计算器'}
                 </h3>
                 <button onClick={() => setDiscoveryTool(null)} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
                   <X size={18} />
                 </button>
               </div>
+
+              {discoveryTool === 'groupSaving' && (
+                <div className="space-y-5">
+                  {!groupSaving ? (
+                    <>
+                      <div className={cn("p-5 rounded-[2rem] border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="text-sm font-black mb-2">创建小组</div>
+                        <div className={cn("text-[10px] font-bold mb-4", isDarkMode ? "text-white/50" : "text-gray-500")}>
+                          适合情侣 / 合租室友 / 省钱搭子：共用预算 + 动态流 + 隐私开关
+                        </div>
+                        <div className="flex space-x-2">
+                          <input
+                            value={groupDraftName}
+                            onChange={(e) => setGroupDraftName(e.target.value)}
+                            placeholder="例如：甜蜜情侣 / 合租室友"
+                            className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold focus:outline-none", isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900 border border-gray-100")}
+                          />
+                          <motion.button
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => createGroupSaving(groupDraftName)}
+                            className={cn("px-5 py-3 rounded-2xl text-xs font-black shadow-lg", theme.primary, !isCustomTheme && "text-white")}
+                          >
+                            创建
+                          </motion.button>
+                        </div>
+                      </div>
+
+                      <div className={cn("p-5 rounded-[2rem] border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="text-sm font-black mb-2">加入小组</div>
+                        <div className={cn("text-[10px] font-bold mb-4", isDarkMode ? "text-white/50" : "text-gray-500")}>
+                          输入邀请码加入（本地演示：仅能加入本设备创建过的小组）
+                        </div>
+                        <div className="flex space-x-2">
+                          <input
+                            value={groupJoinCode}
+                            onChange={(e) => setGroupJoinCode(e.target.value.toUpperCase())}
+                            placeholder="邀请码（6 位）"
+                            className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold focus:outline-none tracking-widest uppercase", isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900 border border-gray-100")}
+                          />
+                          <motion.button
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => joinGroupSaving(groupJoinCode)}
+                            className={cn("px-5 py-3 rounded-2xl text-xs font-black shadow-lg", isDarkMode ? "bg-white text-black" : "bg-black text-white")}
+                          >
+                            加入
+                          </motion.button>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className={cn(
+                        "p-6 rounded-[2.25rem] border overflow-hidden relative",
+                        isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-white border-gray-100"
+                      )}>
+                        <div className="absolute -top-12 -right-12 w-48 h-48 rounded-full blur-[90px] opacity-50 bg-gradient-to-br from-emerald-400 to-sky-400" />
+                        <div className="relative">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <div className="flex items-center space-x-2">
+                                <div className="text-lg font-black">{groupSaving.name}</div>
+                                <span className={cn("text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-xl border", isDarkMode ? "bg-slate-800/70 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-600")}>
+                                  {groupSaving.code}
+                                </span>
+                              </div>
+                              <div className={cn("text-[10px] font-bold mt-2", isDarkMode ? "text-white/50" : "text-gray-500")}>
+                                记账时选择“加入小组 / 加入公账”即可同步到动态流与公共资金池
+                              </div>
+                            </div>
+                            <motion.button
+                              whileTap={{ scale: 0.96 }}
+                              onClick={leaveGroupSaving}
+                              className={cn("px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-800/70 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-700")}
+                            >
+                              退出
+                            </motion.button>
+                          </div>
+
+                          <div className="mt-5 flex items-center justify-between">
+                            <div className="flex -space-x-3">
+                              {groupSaving.members.slice(0, 6).map((m) => (
+                                <div
+                                  key={m.id}
+                                  className="w-11 h-11 rounded-2xl border-2 border-white/80 flex items-center justify-center text-sm font-black shadow-sm"
+                                  style={{ backgroundColor: `${m.color}22`, color: m.color }}
+                                >
+                                  <span>{m.emoji}</span>
+                                </div>
+                              ))}
+                            </div>
+                            <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>
+                              {groupSaving.members.length} 人
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={cn("p-6 rounded-[2.25rem] border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="flex items-center justify-between mb-4">
+                          <div>
+                            <div className="text-sm font-black">公共资金池</div>
+                            <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/50" : "text-gray-500")}>本月预算与进度（仅统计“加入公账”的支出）</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-[10px] font-black uppercase tracking-widest opacity-70">已用</div>
+                            <div className="text-sm font-black">¥{formatCurrency(groupMonthPoolSpent)}</div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2 mb-4">
+                          <input
+                            type="number"
+                            value={groupSaving.publicBudget}
+                            onChange={(e) => updateGroupSaving({ publicBudget: Number(e.target.value) || 0 })}
+                            className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-black focus:outline-none", isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900 border border-gray-100")}
+                          />
+                          <div className={cn("px-3 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest", isDarkMode ? "bg-slate-800/70 text-white/60" : "bg-white/70 text-gray-600 border border-white/70")}>
+                            月预算
+                          </div>
+                        </div>
+
+                        <div className={cn("w-full h-3 rounded-full overflow-hidden", isDarkMode ? "bg-white/10" : "bg-black/5")}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${groupMonthProgressPct}%` }}
+                            transition={{ duration: 0.9, ease: "easeOut" }}
+                            className={cn("h-full", groupMonthProgressPct > 90 ? "bg-rose-500" : theme.primary)}
+                          />
+                        </div>
+                        <div className="mt-3 flex items-center justify-between">
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-500")}>进度</div>
+                          <div className="text-[10px] font-black">{groupMonthProgressPct.toFixed(0)}%</div>
+                        </div>
+                      </div>
+
+                      <div className={cn("p-6 rounded-[2.25rem] border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-black">省钱进度墙</div>
+                            <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/50" : "text-gray-500")}>本周已省下</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-black text-emerald-500">¥{formatCurrency(groupWeekSaved)}</div>
+                            <div className={cn("text-[10px] font-bold", isDarkMode ? "text-white/40" : "text-gray-400")}>本周公账支出 ¥{formatCurrency(groupWeekPoolSpent)}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between px-1">
+                          <div className="text-sm font-black">消费动态流</div>
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>Live</div>
+                        </div>
+
+                        {groupActivities.length === 0 ? (
+                          <div className={cn("p-6 rounded-[2rem] border text-center", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/60" : "bg-white border-gray-100 text-gray-500")}>
+                            <div className="text-sm font-black mb-2">还没有动态</div>
+                            <div className="text-[10px] font-bold opacity-70">去记一笔，并选择“加入小组 / 加入公账”</div>
+                          </div>
+                        ) : (
+                          <div className="space-y-3 max-h-[42vh] overflow-y-auto no-scrollbar pr-1">
+                            {groupActivities.map((a) => (
+                              <div key={a.id} className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-white border-gray-100")}>
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <div className="text-xs font-black">
+                                      {a.actorName}
+                                      <span className={cn("ml-2 text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>
+                                        {a.action === 'add' ? '记了一笔' : a.action === 'edit' ? '更新了一笔' : '删除了一笔'}
+                                      </span>
+                                    </div>
+                                    <div className={cn("text-[10px] font-bold mt-2", isDarkMode ? "text-white/70" : "text-gray-700")}>
+                                      {t(`categories.${a.category}`)} · {a.type === 'expense' ? '-' : '+'}¥{formatCurrency(a.amount)}
+                                      {a.toGroupPool && <span className="ml-2 text-emerald-500 font-black">· 公账</span>}
+                                    </div>
+                                    {a.note && (
+                                      <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/40" : "text-gray-400")}>
+                                        {a.note}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className={cn("text-[10px] font-bold", isDarkMode ? "text-white/40" : "text-gray-400")}>
+                                    {format(new Date(a.ts), 'MM-dd HH:mm')}
+                                  </div>
+                                </div>
+
+                                <div className="mt-3 flex items-center space-x-2">
+                                  <motion.button
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={() => toggleGroupReaction(a.id, 'like')}
+                                    className={cn(
+                                      "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                                      a.likes.includes(localUserId)
+                                        ? "bg-emerald-500 text-black border-emerald-400"
+                                        : (isDarkMode ? "bg-slate-800/70 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-700")
+                                    )}
+                                  >
+                                    点赞 {a.likes.length}
+                                  </motion.button>
+                                  <motion.button
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={() => toggleGroupReaction(a.id, 'urge')}
+                                    className={cn(
+                                      "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                                      a.urges.includes(localUserId)
+                                        ? "bg-rose-500 text-white border-rose-400"
+                                        : (isDarkMode ? "bg-slate-800/70 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-700")
+                                    )}
+                                  >
+                                    督促 {a.urges.length}
+                                  </motion.button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
 
               {discoveryTool === 'categories' && (
                 <div className={cn("p-6 rounded-[2rem] border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-600")}>
@@ -3790,7 +4298,8 @@ function TransactionForm({
   onSubmit,
   initialData,
   onDelete,
-  isDarkMode
+  isDarkMode,
+  groupSaving
 }: {
   accounts: Account[],
   transactions: Transaction[],
@@ -3798,7 +4307,8 @@ function TransactionForm({
   onSubmit: (t: Omit<Transaction, 'id'>) => void,
   initialData?: Transaction,
   onDelete?: () => void,
-  isDarkMode: boolean
+  isDarkMode: boolean,
+  groupSaving?: GroupSavingGroup | null
 }) {
   const { t, i18n } = useTranslation();
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
@@ -3813,6 +4323,8 @@ function TransactionForm({
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(initialData?.imageData || null);
   const [mood, setMood] = useState<'happy' | 'neutral' | 'sad'>(initialData?.mood || 'happy');
+  const [visibility, setVisibility] = useState<'private' | 'group'>(initialData?.visibility || 'private');
+  const [toGroupPool, setToGroupPool] = useState<boolean>(!!initialData?.toGroupPool);
 
   useEffect(() => {
     return () => {
@@ -3878,6 +4390,9 @@ function TransactionForm({
     }
 
     localStorage.setItem('last_used_currency', currencyCode);
+    const finalVisibility = groupSaving ? visibility : 'private';
+    const finalGroupId = finalVisibility === 'group' ? groupSaving?.id : undefined;
+    const finalToGroupPool = finalVisibility === 'group' ? toGroupPool : false;
     onSubmit({
       amount: convertedCNY,
       type,
@@ -3891,7 +4406,10 @@ function TransactionForm({
       mood,
       originalAmount: Number(amount),
       currency: currencyCode,
-      exchangeRate: rates[currencyCode]
+      exchangeRate: rates[currencyCode],
+      visibility: finalVisibility,
+      groupId: finalGroupId,
+      toGroupPool: finalToGroupPool
     });
   };
 
@@ -4049,6 +4567,71 @@ function TransactionForm({
         </div>
         <div className="flex flex-wrap gap-2 mt-3">{tags.map((tag, i) => <span key={i} className="px-2 py-1 bg-indigo-50 text-indigo-500 rounded-lg text-[10px] font-black flex items-center">#{tag} <X size={10} className="ml-1 cursor-pointer" onClick={() => setTags(tags.filter((_, idx) => idx !== i))} /></span>)}</div>
       </div>
+
+      <div>
+        <label className="text-[10px] font-black text-gray-400 mb-2 block">隐私与小组</label>
+        <div className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+          {!groupSaving ? (
+            <div className={cn("text-[10px] font-bold", isDarkMode ? "text-white/60" : "text-gray-500")}>
+              尚未加入“一起省钱”小组：本笔账单默认仅自己可见。
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className={cn("flex p-1.5 rounded-2xl", isDarkMode ? "bg-slate-800/70" : "bg-white")}>
+                <button
+                  type="button"
+                  onClick={() => { setVisibility('private'); setToGroupPool(false); }}
+                  className={cn(
+                    "flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    visibility === 'private'
+                      ? (isDarkMode ? "bg-slate-700 shadow-md text-white" : "bg-black shadow-md text-white")
+                      : (isDarkMode ? "text-white/50" : "text-gray-400")
+                  )}
+                >
+                  仅自己可见
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility('group')}
+                  className={cn(
+                    "flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    visibility === 'group'
+                      ? (isDarkMode ? "bg-slate-700 shadow-md text-emerald-300" : "bg-white shadow-md text-emerald-600")
+                      : (isDarkMode ? "text-white/50" : "text-gray-400")
+                  )}
+                >
+                  加入小组
+                </button>
+              </div>
+
+              {visibility === 'group' && (
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/60" : "text-gray-600")}>加入公账</div>
+                    <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/40" : "text-gray-400")}>计入公共资金池进度（适合房租水电等）</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setToGroupPool(v => !v)}
+                    className={cn(
+                      "w-12 h-7 rounded-full relative transition-colors",
+                      toGroupPool ? "bg-emerald-500" : (isDarkMode ? "bg-slate-600" : "bg-gray-200")
+                    )}
+                  >
+                    <motion.div
+                      layout
+                      className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm"
+                      style={{ left: toGroupPool ? 26 : 4 }}
+                      transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                    />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
       <div>
         <label className="text-[10px] font-black text-gray-400 mb-2 block">附件凭证</label>
         <div className="relative group">

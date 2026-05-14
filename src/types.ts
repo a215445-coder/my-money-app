@@ -36,4 +36,7 @@ export interface Transaction {
   currency?: CurrencyCode;
   exchangeRate?: number;
   mood?: 'happy' | 'neutral' | 'sad';
+  visibility?: 'private' | 'group';
+  groupId?: string;
+  toGroupPool?: boolean;
 }
