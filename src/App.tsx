@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
+  PlusCircle,
   Calendar as CalendarIcon,
   X,
+  Minus,
   Trash2,
   PieChart as PieIcon,
   TrendingUp,
@@ -35,6 +37,7 @@ import {
   Compass,
   Zap as ZapIcon,
   Calculator,
+  GripVertical,
 } from 'lucide-react';
 import {
   format,
@@ -77,7 +80,7 @@ import {
   PolarGrid,
   PolarAngleAxis,
 } from 'recharts';
-import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useScroll, useTransform } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { useTranslation } from 'react-i18next';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
@@ -711,6 +714,59 @@ const DEFAULT_ACCOUNTS: Account[] = [
 
 type FilterType = 'today' | 'week' | 'month' | 'year';
 
+type HomeWidgetId = 'todayBoard' | 'weekTrend' | 'topCategories' | 'miniCalendar' | 'summary' | 'budgetProgress';
+type HomeWidgetConfig = { order: HomeWidgetId[]; enabled: Record<HomeWidgetId, boolean> };
+
+const HOME_WIDGETS_STORAGE_KEY = 'home_widgets_v1';
+
+const HOME_WIDGET_META: Record<HomeWidgetId, { title: string; desc: string }> = {
+  todayBoard: { title: '今日看板', desc: '今日支出 / 本月剩余预算 / 今日记账笔数' },
+  weekTrend: { title: '消费足迹', desc: '最近 7 天开支波动迷你趋势' },
+  topCategories: { title: '快捷分类汇总', desc: '本月 Top3 分类占比，点击筛选' },
+  miniCalendar: { title: '日历微缩图', desc: '当前月概览，点选快速跳转' },
+  summary: { title: '资产总览', desc: '收入/支出/总资产摘要卡片' },
+  budgetProgress: { title: '预算进度条', desc: '本月预算使用进度与日均可用' },
+};
+
+const DEFAULT_HOME_WIDGET_CONFIG: HomeWidgetConfig = {
+  order: ['todayBoard', 'weekTrend', 'topCategories', 'summary', 'budgetProgress', 'miniCalendar'],
+  enabled: {
+    todayBoard: true,
+    weekTrend: true,
+    topCategories: true,
+    miniCalendar: false,
+    summary: true,
+    budgetProgress: true,
+  },
+};
+
+const normalizeHomeWidgetConfig = (raw: any): HomeWidgetConfig => {
+  const allIds = new Set<HomeWidgetId>(DEFAULT_HOME_WIDGET_CONFIG.order);
+  const rawOrder = Array.isArray(raw?.order) ? raw.order : [];
+  const order: HomeWidgetId[] = [];
+  const seen = new Set<HomeWidgetId>();
+  rawOrder.forEach((id: any) => {
+    if (allIds.has(id) && !seen.has(id)) {
+      order.push(id);
+      seen.add(id);
+    }
+  });
+  DEFAULT_HOME_WIDGET_CONFIG.order.forEach((id) => {
+    if (!seen.has(id)) order.push(id);
+  });
+
+  const enabled = { ...DEFAULT_HOME_WIDGET_CONFIG.enabled };
+  const rawEnabled = raw?.enabled || {};
+  (Object.keys(enabled) as HomeWidgetId[]).forEach((id) => {
+    if (typeof rawEnabled[id] === 'boolean') enabled[id] = rawEnabled[id];
+  });
+
+  const anyEnabled = order.some(id => enabled[id]);
+  if (!anyEnabled) enabled.todayBoard = true;
+
+  return { order, enabled };
+};
+
 export default function App() {
   const { t, i18n } = useTranslation();
   // --- Core State ---
@@ -742,7 +798,21 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(new Date());
-  const [homeModulesTick, setHomeModulesTick] = useState(0);
+  const [isHomeEditMode, setIsHomeEditMode] = useState(false);
+  const [isWidgetCenterOpen, setIsWidgetCenterOpen] = useState(false);
+  const [homeWidgetConfig, setHomeWidgetConfig] = useState<HomeWidgetConfig>(() => {
+    const saved = localStorage.getItem(HOME_WIDGETS_STORAGE_KEY);
+    if (!saved) return DEFAULT_HOME_WIDGET_CONFIG;
+    try {
+      return normalizeHomeWidgetConfig(JSON.parse(saved));
+    } catch {
+      return DEFAULT_HOME_WIDGET_CONFIG;
+    }
+  });
+
+  const homeLongPressTimeoutRef = useRef<number | null>(null);
+  const homeLongPressStartRef = useRef<{ x: number; y: number } | null>(null);
+  const homeLongPressFiredRef = useRef(false);
 
   const [hasOnboarded, setHasOnboarded] = useState(() => localStorage.getItem('onboarding_done') === 'true');
   const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
@@ -785,8 +855,17 @@ export default function App() {
   }, [activeTab, WEALTH_TIPS]);
 
   useEffect(() => {
-    if (activeTab === 'list') {
-      setHomeModulesTick(v => v + 1);
+    if (activeTab === 'list') setIsHomeEditMode(false);
+  }, [activeTab]);
+
+  useEffect(() => {
+    localStorage.setItem(HOME_WIDGETS_STORAGE_KEY, JSON.stringify(homeWidgetConfig));
+  }, [homeWidgetConfig]);
+
+  useEffect(() => {
+    if (activeTab !== 'list') {
+      setIsHomeEditMode(false);
+      setIsWidgetCenterOpen(false);
     }
   }, [activeTab]);
 
@@ -1344,6 +1423,69 @@ export default function App() {
     });
   }, [transactions, moduleQuery]);
 
+  const enabledHomeWidgetOrder = useMemo(
+    () => homeWidgetConfig.order.filter(id => homeWidgetConfig.enabled[id]),
+    [homeWidgetConfig]
+  );
+
+  const setHomeWidgetEnabled = (id: HomeWidgetId, enabled: boolean) => {
+    setHomeWidgetConfig(prev => {
+      const nextEnabled = { ...prev.enabled, [id]: enabled };
+      const anyEnabled = prev.order.some(w => nextEnabled[w]);
+      if (!anyEnabled) nextEnabled.todayBoard = true;
+      return { ...prev, enabled: nextEnabled };
+    });
+  };
+
+  const handleHomeWidgetsReorder = (nextEnabledOrder: HomeWidgetId[]) => {
+    setHomeWidgetConfig(prev => {
+      let i = 0;
+      const nextOrder = prev.order.map(id => (prev.enabled[id] ? nextEnabledOrder[i++] : id));
+      return { ...prev, order: nextOrder };
+    });
+  };
+
+  const clearHomeLongPress = () => {
+    if (homeLongPressTimeoutRef.current != null) {
+      window.clearTimeout(homeLongPressTimeoutRef.current);
+      homeLongPressTimeoutRef.current = null;
+    }
+    homeLongPressStartRef.current = null;
+    homeLongPressFiredRef.current = false;
+  };
+
+  const beginHomeLongPress = (e: React.PointerEvent) => {
+    if (isHomeEditMode) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    homeLongPressStartRef.current = { x: e.clientX, y: e.clientY };
+    homeLongPressFiredRef.current = false;
+    if (homeLongPressTimeoutRef.current != null) window.clearTimeout(homeLongPressTimeoutRef.current);
+    homeLongPressTimeoutRef.current = window.setTimeout(() => {
+      homeLongPressFiredRef.current = true;
+      setIsHomeEditMode(true);
+    }, 420);
+  };
+
+  const moveHomeLongPress = (e: React.PointerEvent) => {
+    if (!homeLongPressStartRef.current) return;
+    const dx = e.clientX - homeLongPressStartRef.current.x;
+    const dy = e.clientY - homeLongPressStartRef.current.y;
+    if (dx * dx + dy * dy > 12 * 12) {
+      clearHomeLongPress();
+    }
+  };
+
+  const endHomeLongPress = () => {
+    if (!homeLongPressFiredRef.current) clearHomeLongPress();
+    else {
+      if (homeLongPressTimeoutRef.current != null) {
+        window.clearTimeout(homeLongPressTimeoutRef.current);
+        homeLongPressTimeoutRef.current = null;
+      }
+      homeLongPressStartRef.current = null;
+    }
+  };
+
   // --- Handlers ---
   const changeDate = (direction: 'prev' | 'next') => {
     const amount = direction === 'prev' ? -1 : 1;
@@ -1627,292 +1769,507 @@ export default function App() {
           >
             {activeTab === 'list' && (
               <div className="space-y-8">
-                <motion.div
-                  key={`home-modules-${homeModulesTick}`}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
-                  className="space-y-4"
-                >
+                {isHomeEditMode && (
+                  <motion.div
+                    className="fixed inset-0 z-[80] bg-black/25 backdrop-blur-sm"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                    onClick={() => setIsHomeEditMode(false)}
+                  />
+                )}
+
+                <div className="relative z-[90] space-y-4">
                   <div className="flex items-center justify-between px-1">
                     <div>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日看板</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>首页组件</div>
                       <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
-                        {moduleQuery ? `已筛选：${searchQuery}` : '横滑查看关键指标'}
+                        {isHomeEditMode ? '拖拽排序 / 点红色减号移除 / 完成后自动保存' : '长按任意板块进入编辑模式'}
                       </div>
                     </div>
-                    {moduleQuery && (
+                    <div className="flex items-center space-x-2">
                       <motion.button
                         whileTap={{ scale: 0.96 }}
-                        onClick={() => setSearchQuery('')}
+                        onClick={() => setIsWidgetCenterOpen(true)}
                         className={cn(
-                          "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                          "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center space-x-1.5",
                           isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
                         )}
                       >
-                        清除筛选
+                        <PlusCircle size={14} />
+                        <span>添加组件</span>
                       </motion.button>
-                    )}
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => setIsHomeEditMode(v => !v)}
+                        className={cn(
+                          "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                          isHomeEditMode ? "bg-rose-500 border-rose-500 text-white" : (isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700")
+                        )}
+                      >
+                        {isHomeEditMode ? '完成' : '编辑'}
+                      </motion.button>
+                    </div>
                   </div>
 
-                  <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
-                    <motion.div
-                      layout
-                      className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日支出</div>
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd')}</div>
-                      </div>
-                      <div className="mt-3 text-2xl font-black tracking-tight">¥{formatCurrency(homeToday.expense)}</div>
-                      <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>打开搜索会同步影响此处统计</div>
-                    </motion.div>
-
-                    <motion.div
-                      layout
-                      className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>本月剩余预算</div>
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{Math.max(0, 100 - homeMonth.usedPct).toFixed(0)}%</div>
-                      </div>
-                      <div className="mt-3 flex items-end justify-between">
-                        <div className="text-lg font-black">¥{formatCurrency(homeMonth.remaining)}</div>
-                        <div className={cn("text-[10px] font-bold", mutedText)}>已用 ¥{formatCurrency(homeMonth.expense)}</div>
-                      </div>
-                      <div className={cn("mt-4 h-3 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+                  <Reorder.Group axis="y" values={enabledHomeWidgetOrder} onReorder={handleHomeWidgetsReorder} className="space-y-4">
+                    {enabledHomeWidgetOrder.map((wid) => (
+                      <Reorder.Item
+                        key={wid}
+                        value={wid}
+                        as="div"
+                        layout
+                        dragListener={isHomeEditMode}
+                        whileDrag={{ scale: 1.02 }}
+                        transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                        onPointerDown={beginHomeLongPress}
+                        onPointerMove={moveHomeLongPress}
+                        onPointerUp={(e) => {
+                          if (homeLongPressFiredRef.current) { e.preventDefault(); e.stopPropagation(); }
+                          endHomeLongPress();
+                        }}
+                        onPointerCancel={clearHomeLongPress}
+                        className="relative"
+                      >
                         <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(homeMonth.usedPct, 100)}%` }}
-                          transition={{ duration: 1.2, ease: "easeOut" }}
-                          className={cn("h-full", homeMonth.usedPct > 90 ? "bg-rose-500" : theme.primary)}
-                        />
-                      </div>
-                      <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>进度条从 0 渐进生长</div>
-                    </motion.div>
+                          animate={isHomeEditMode ? { rotate: [-0.6, 0.6, -0.6] } : { rotate: 0 }}
+                          transition={isHomeEditMode ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18 }}
+                          className="relative"
+                        >
+                          {isHomeEditMode && (
+                            <>
+                              <motion.button
+                                whileTap={{ scale: 0.9 }}
+                                onClick={(e) => { e.stopPropagation(); setHomeWidgetEnabled(wid, false); }}
+                                className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-rose-500 border-4 border-white/90 shadow-xl flex items-center justify-center z-10"
+                                aria-label="remove"
+                              >
+                                <Minus size={16} className="text-white" strokeWidth={4} />
+                              </motion.button>
+                              <div className={cn("absolute -top-2 -left-2 w-9 h-9 rounded-full border-4 shadow-xl flex items-center justify-center z-10", isDarkUI ? "bg-slate-900/80 border-slate-900" : "bg-white/80 border-white")}>
+                                <GripVertical size={16} className={cn(isDarkUI ? "text-white/70" : "text-gray-700")} />
+                              </div>
+                            </>
+                          )}
 
-                    <motion.div
-                      layout
-                      className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
-                    >
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日已记账</div>
-                      <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} 笔</div>
-                      <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>点击分类热区可快速筛选账单</div>
-                    </motion.div>
-                  </div>
+                          {wid === 'todayBoard' && (
+                            <div className="space-y-4">
+                              <div className="flex items-center justify-between px-1">
+                                <div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日看板</div>
+                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
+                                    {moduleQuery ? `已筛选：${searchQuery}` : '横滑查看关键指标'}
+                                  </div>
+                                </div>
+                                {moduleQuery && (
+                                  <motion.button
+                                    whileTap={{ scale: 0.96 }}
+                                    onClick={(e) => { e.stopPropagation(); setSearchQuery(''); }}
+                                    className={cn(
+                                      "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                                      isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
+                                    )}
+                                  >
+                                    清除筛选
+                                  </motion.button>
+                                )}
+                              </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <motion.div layout className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>消费足迹</div>
-                          <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>最近 7 天开支波动</div>
-                        </div>
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>7D</div>
-                      </div>
+                              <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+                                <motion.div
+                                  layout
+                                  className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日支出</div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd')}</div>
+                                  </div>
+                                  <div className="mt-3 text-2xl font-black tracking-tight">¥{formatCurrency(homeToday.expense)}</div>
+                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>打开搜索会同步影响此处统计</div>
+                                </motion.div>
 
-                      {(() => {
-                        const w = 320;
-                        const h = 72;
-                        const max = Math.max(...homeWeekSeries.map(d => d.amount), 1);
-                        const step = homeWeekSeries.length > 1 ? w / (homeWeekSeries.length - 1) : w;
-                        const points = homeWeekSeries.map((d, i) => {
-                          const x = i * step;
-                          const y = h - (d.amount / max) * (h - 10) - 5;
-                          return { x, y };
-                        });
-                        const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
-                        return (
-                          <div>
-                            <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[80px]">
-                              <defs>
-                                <linearGradient id="weekLineFill" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="0%" stopColor={accentHex} stopOpacity={0.25} />
-                                  <stop offset="100%" stopColor={accentHex} stopOpacity={0} />
-                                </linearGradient>
-                              </defs>
-                              <motion.path
-                                d={d}
-                                fill="none"
-                                stroke={accentHex}
-                                strokeWidth="4"
-                                strokeLinecap="round"
-                                initial={{ pathLength: 0, opacity: 0.0 }}
-                                animate={{ pathLength: 1, opacity: 1 }}
-                                transition={{ duration: 0.9, ease: "easeOut" }}
-                              />
-                              <motion.path
-                                d={`${d} L ${w} ${h} L 0 ${h} Z`}
-                                fill="url(#weekLineFill)"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                transition={{ duration: 0.7, ease: "easeOut", delay: 0.12 }}
-                              />
-                            </svg>
-                            <div className="mt-3 flex items-center justify-between">
-                              <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>最近 7 天合计</div>
-                              <div className="text-sm font-black">¥{formatCurrency(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
+                                <motion.div
+                                  layout
+                                  className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                >
+                                  <div className="flex items-center justify-between">
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>本月剩余预算</div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{Math.max(0, 100 - homeMonth.usedPct).toFixed(0)}%</div>
+                                  </div>
+                                  <div className="mt-3 flex items-end justify-between">
+                                    <div className="text-lg font-black">¥{formatCurrency(homeMonth.remaining)}</div>
+                                    <div className={cn("text-[10px] font-bold", mutedText)}>已用 ¥{formatCurrency(homeMonth.expense)}</div>
+                                  </div>
+                                  <div className={cn("mt-4 h-3 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+                                    <motion.div
+                                      initial={{ width: 0 }}
+                                      animate={{ width: `${Math.min(homeMonth.usedPct, 100)}%` }}
+                                      transition={{ duration: 1.2, ease: "easeOut" }}
+                                      className={cn("h-full", homeMonth.usedPct > 90 ? "bg-rose-500" : theme.primary)}
+                                    />
+                                  </div>
+                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>进度条从 0 渐进生长</div>
+                                </motion.div>
+
+                                <motion.div
+                                  layout
+                                  className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                >
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日已记账</div>
+                                  <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} 笔</div>
+                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>点击分类热区可快速筛选账单</div>
+                                </motion.div>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })()}
-                    </motion.div>
+                          )}
 
-                    <motion.div layout className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                      <div className="flex items-center justify-between mb-4">
-                        <div>
-                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>快捷分类汇总</div>
-                          <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>本月支出最多的 3 个分类</div>
-                        </div>
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>TOP3</div>
-                      </div>
+                          {wid === 'weekTrend' && (
+                            <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>消费足迹</div>
+                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>最近 7 天开支波动</div>
+                                </div>
+                                <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>7D</div>
+                              </div>
 
-                      {homeMonth.topCategories.length === 0 ? (
-                        <div className={cn("p-6 rounded-2xl border-2 border-dashed text-center", isDarkUI ? "border-slate-700 text-white/50" : "border-gray-100 text-gray-400")}>
-                          <div className="text-xs font-bold">本月暂无支出数据</div>
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          {homeMonth.topCategories.map((c, idx) => (
-                            <button
-                              key={c.name}
-                              type="button"
-                              onClick={() => { setSearchQuery(c.name); setFilterType('month'); }}
+                              {(() => {
+                                const w = 320;
+                                const h = 72;
+                                const max = Math.max(...homeWeekSeries.map(d => d.amount), 1);
+                                const step = homeWeekSeries.length > 1 ? w / (homeWeekSeries.length - 1) : w;
+                                const points = homeWeekSeries.map((d, i) => {
+                                  const x = i * step;
+                                  const y = h - (d.amount / max) * (h - 10) - 5;
+                                  return { x, y };
+                                });
+                                const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+                                return (
+                                  <div>
+                                    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[80px]">
+                                      <defs>
+                                        <linearGradient id={`weekLineFill-${wid}`} x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="0%" stopColor={accentHex} stopOpacity={0.25} />
+                                          <stop offset="100%" stopColor={accentHex} stopOpacity={0} />
+                                        </linearGradient>
+                                      </defs>
+                                      <motion.path
+                                        d={d}
+                                        fill="none"
+                                        stroke={accentHex}
+                                        strokeWidth="4"
+                                        strokeLinecap="round"
+                                        initial={{ pathLength: 0, opacity: 0.0 }}
+                                        animate={{ pathLength: 1, opacity: 1 }}
+                                        transition={{ duration: 0.9, ease: "easeOut" }}
+                                      />
+                                      <motion.path
+                                        d={`${d} L ${w} ${h} L 0 ${h} Z`}
+                                        fill={`url(#weekLineFill-${wid})`}
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        transition={{ duration: 0.7, ease: "easeOut", delay: 0.12 }}
+                                      />
+                                    </svg>
+                                    <div className="mt-3 flex items-center justify-between">
+                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>最近 7 天合计</div>
+                                      <div className="text-sm font-black">¥{formatCurrency(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {wid === 'topCategories' && (
+                            <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>快捷分类汇总</div>
+                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>本月支出最多的 3 个分类</div>
+                                </div>
+                                <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>TOP3</div>
+                              </div>
+
+                              {homeMonth.topCategories.length === 0 ? (
+                                <div className={cn("p-6 rounded-2xl border-2 border-dashed text-center", isDarkUI ? "border-slate-700 text-white/50" : "border-gray-100 text-gray-400")}>
+                                  <div className="text-xs font-bold">本月暂无支出数据</div>
+                                </div>
+                              ) : (
+                                <div className="space-y-3">
+                                  {homeMonth.topCategories.map((c, idx) => (
+                                    <button
+                                      key={c.name}
+                                      type="button"
+                                      onClick={(e) => { e.stopPropagation(); setSearchQuery(c.name); setFilterType('month'); }}
+                                      className={cn(
+                                        "w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.99]",
+                                        isDarkUI ? "bg-slate-800/40 border-slate-700 hover:bg-slate-800/55" : "bg-white/60 border-white/70 hover:bg-white/80"
+                                      )}
+                                    >
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex items-center space-x-2">
+                                          <div className="w-6 h-6 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${c.color}22`, color: c.color }}>
+                                            <span className="text-sm">{c.icon}</span>
+                                          </div>
+                                          <div className="text-sm font-black">{t(`categories.${c.name}`)}</div>
+                                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{c.pct.toFixed(0)}%</div>
+                                        </div>
+                                        <div className={cn("text-[10px] font-black", mutedText)}>¥{formatCurrency(c.value)}</div>
+                                      </div>
+                                      <div className={cn("mt-3 h-2 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+                                        <motion.div
+                                          initial={{ width: 0 }}
+                                          animate={{ width: `${clamp(c.pct, 0, 100)}%` }}
+                                          transition={{ duration: 0.9, ease: "easeOut", delay: 0.06 + idx * 0.04 }}
+                                          className="h-full"
+                                          style={{ backgroundColor: c.color }}
+                                        />
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                              <div className={cn("mt-4 text-[10px] font-bold", mutedText)}>点击分类：自动联动筛选 + 切换到本月</div>
+                            </div>
+                          )}
+
+                          {wid === 'miniCalendar' && (
+                            <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                              <div className="flex items-center justify-between mb-4">
+                                <div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>日历微缩图</div>
+                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{format(new Date(), 'yyyy年MM月')}</div>
+                                </div>
+                                <motion.button
+                                  whileTap={{ scale: 0.96 }}
+                                  onClick={(e) => { e.stopPropagation(); setActiveTab('calendar'); }}
+                                  className={cn(
+                                    "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                                    isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
+                                  )}
+                                >
+                                  打开
+                                </motion.button>
+                              </div>
+
+                              {(() => {
+                                const base = new Date();
+                                const start = startOfMonth(base);
+                                const end = endOfMonth(base);
+                                const days = eachDayOfInterval({ start, end });
+                                const first = (start.getDay() + 6) % 7;
+                                const blanks = Array.from({ length: first });
+                                const hasTx = (d: Date) => transactions.some(t => isSameDay(parseISO(t.date), d) && matchesModuleQuery(t));
+                                return (
+                                  <div className="grid grid-cols-7 gap-1">
+                                    {['一', '二', '三', '四', '五', '六', '日'].map(x => (
+                                      <div key={x} className={cn("text-center text-[8px] font-black pb-1", mutedText)}>{x}</div>
+                                    ))}
+                                    {blanks.map((_, i) => <div key={`b-${i}`} />)}
+                                    {days.map(d => {
+                                      const active = isSameDay(d, selectedCalendarDate);
+                                      return (
+                                        <button
+                                          key={d.toISOString()}
+                                          type="button"
+                                          onClick={(e) => { e.stopPropagation(); setSelectedCalendarDate(d); setCurrentDate(d); setActiveTab('calendar'); }}
+                                          className={cn(
+                                            "aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all",
+                                            active ? cn(theme.primary, !isCustomTheme && "text-white") : (isDarkUI ? "bg-white/5 hover:bg-white/10" : "bg-black/5 hover:bg-black/10")
+                                          )}
+                                        >
+                                          <span className="text-[10px] font-black">{format(d, 'd')}</span>
+                                          {hasTx(d) && (
+                                            <span className={cn("absolute bottom-1 w-1.5 h-1.5 rounded-full", active ? (isCustomTheme ? "accent-on" : "bg-white") : "bg-emerald-400")} />
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          )}
+
+                          {wid === 'summary' && (
+                            <div
                               className={cn(
-                                "w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.99]",
-                                isDarkUI ? "bg-slate-800/40 border-slate-700 hover:bg-slate-800/55" : "bg-white/60 border-white/70 hover:bg-white/80"
+                                "p-10 rounded-[4rem] shadow-2xl relative overflow-hidden group border border-white/20",
+                                theme.primary,
+                                !isCustomTheme && "text-white"
                               )}
                             >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2">
-                                  <div className="w-6 h-6 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${c.color}22`, color: c.color }}>
-                                    <span className="text-sm">{c.icon}</span>
-                                  </div>
-                                  <div className="text-sm font-black">{t(`categories.${c.name}`)}</div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{c.pct.toFixed(0)}%</div>
+                              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
+                              <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
+
+                              <div className="flex justify-between items-start mb-12 relative z-10">
+                                <div>
+                                  <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('total_assets')}</p>
+                                  <p className="text-5xl font-black tracking-tighter drop-shadow-lg">¥{formatCurrency(totalAssets)}</p>
                                 </div>
-                                <div className={cn("text-[10px] font-black", mutedText)}>¥{formatCurrency(c.value)}</div>
+                                <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
+                                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                  <span>{i18n.language}</span>
+                                </div>
                               </div>
-                              <div className={cn("mt-3 h-2 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+
+                              <div className="grid grid-cols-2 gap-10 relative z-10">
+                                <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
+                                      <TrendingDown size={12} className="text-red-200" />
+                                    </div>
+                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('expense')}</span>
+                                  </div>
+                                  <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
+                                </div>
+                                <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
+                                  <div className="flex items-center space-x-2 mb-2">
+                                    <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
+                                      <TrendingUp size={12} className="text-green-200" />
+                                    </div>
+                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('income')}</span>
+                                  </div>
+                                  <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {wid === 'budgetProgress' && (
+                            <div
+                              className={cn(
+                                "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
+                                isDarkMode ? "bg-slate-800/40 border-slate-700/50" : "bg-white/40 border-white/50",
+                                isCustomTheme && "accent-glow-soft"
+                              )}
+                            >
+                              <div className="flex justify-between items-center mb-6">
+                                <div className="flex items-center space-x-3">
+                                  <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
+                                    <PieIcon size={20} className={cn(!isCustomTheme && "text-white")} />
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
+                                    <p className="text-lg font-black">¥{formatCurrency(budget)}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">剩余额度</p>
+                                  <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : (isCustomTheme ? "accent-text" : "text-indigo-500"))}>
+                                    ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="w-full h-4 bg-gray-100/50 rounded-full overflow-hidden mb-6 p-1">
                                 <motion.div
                                   initial={{ width: 0 }}
-                                  animate={{ width: `${clamp(c.pct, 0, 100)}%` }}
-                                  transition={{ duration: 0.9, ease: "easeOut", delay: 0.06 + idx * 0.04 }}
-                                  className="h-full"
-                                  style={{ backgroundColor: c.color }}
-                                />
+                                  animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
+                                  transition={{ duration: 1.5, ease: "easeOut" }}
+                                  className={cn(
+                                    "h-full rounded-full transition-all relative overflow-hidden",
+                                    stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : (isCustomTheme ? "accent-bg" : "bg-gradient-to-r from-indigo-500 to-purple-400")
+                                  )}
+                                >
+                                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                </motion.div>
                               </div>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                      <div className={cn("mt-4 text-[10px] font-bold", mutedText)}>点击分类：自动联动筛选 + 切换到本月</div>
-                    </motion.div>
-                  </div>
-                </motion.div>
 
-                {/* Summary Card */}
-                <motion.div
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", damping: 20, stiffness: 200 }}
-                  className={cn(
-                    "p-10 rounded-[4rem] shadow-2xl relative overflow-hidden group border border-white/20",
-                    theme.primary,
-                    !isCustomTheme && "text-white"
+                              <div className="flex justify-between items-center px-1">
+                                <div className="flex items-center space-x-2">
+                                  <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
+                                    已用 {stats.budgetUsage.toFixed(1)}%
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-1.5 text-gray-500">
+                                  <Calculator size={14} />
+                                  <span className="text-[10px] font-black uppercase tracking-tight">日均可用: ¥{stats.dailyBudget.toFixed(0)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      </Reorder.Item>
+                    ))}
+                  </Reorder.Group>
+                </div>
+
+                <AnimatePresence>
+                  {isWidgetCenterOpen && (
+                    <div className="fixed inset-0 z-[160] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-md" onClick={() => setIsWidgetCenterOpen(false)}>
+                      <motion.div
+                        initial={{ y: "100%", opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: "100%", opacity: 0 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 240 }}
+                        onClick={(e) => e.stopPropagation()}
+                        className={cn(
+                          "w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl border",
+                          isDarkUI ? "bg-slate-900/95 border-slate-700 text-white" : "bg-white/95 border-gray-100 text-gray-900"
+                        )}
+                      >
+                        <div className="flex items-center justify-between mb-6">
+                          <div>
+                            <h3 className="text-lg font-black">组件库</h3>
+                            <p className={cn("text-[10px] font-bold mt-1", mutedText)}>勾选显示 / 关闭隐藏，顺序在首页编辑模式拖拽调整</p>
+                          </div>
+                          <button onClick={() => setIsWidgetCenterOpen(false)} className={cn("p-2 rounded-full", isDarkUI ? "bg-slate-800" : "bg-gray-100")}>
+                            <X size={18} />
+                          </button>
+                        </div>
+
+                        <div className="space-y-3">
+                          {DEFAULT_HOME_WIDGET_CONFIG.order.map((id) => {
+                            const on = homeWidgetConfig.enabled[id];
+                            return (
+                              <button
+                                key={id}
+                                type="button"
+                                onClick={() => setHomeWidgetEnabled(id, !on)}
+                                className={cn(
+                                  "w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-[0.99]",
+                                  isDarkUI ? "bg-slate-800/60 border-slate-700 hover:bg-slate-800/75" : "bg-white/70 border-gray-100 hover:bg-white"
+                                )}
+                              >
+                                <div>
+                                  <div className="text-sm font-black">{HOME_WIDGET_META[id].title}</div>
+                                  <div className={cn("text-[10px] font-bold mt-1", mutedText)}>{HOME_WIDGET_META[id].desc}</div>
+                                </div>
+                                <div className={cn(
+                                  "w-12 h-7 rounded-full relative transition-colors",
+                                  on ? theme.primary : (isDarkUI ? "bg-slate-700" : "bg-gray-200")
+                                )}>
+                                  <motion.div
+                                    layout
+                                    className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm"
+                                    style={{ left: on ? 26 : 4 }}
+                                    transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                                  />
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-6 flex items-center justify-between">
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>
+                            已启用 {DEFAULT_HOME_WIDGET_CONFIG.order.filter(id => homeWidgetConfig.enabled[id]).length} / {DEFAULT_HOME_WIDGET_CONFIG.order.length}
+                          </div>
+                          <motion.button
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => setIsWidgetCenterOpen(false)}
+                            className={cn("px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest", theme.primary, !isCustomTheme && "text-white")}
+                          >
+                            完成
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    </div>
                   )}
-                >
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
-                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
-
-                  <div className="flex justify-between items-start mb-12 relative z-10">
-                    <div>
-                      <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('total_assets')}</p>
-                      <p className="text-5xl font-black tracking-tighter drop-shadow-lg">¥{formatCurrency(totalAssets)}</p>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                      <span>{i18n.language}</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-10 relative z-10">
-                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
-                          <TrendingDown size={12} className="text-red-200" />
-                        </div>
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('expense')}</span>
-                      </div>
-                      <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
-                    </div>
-                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
-                          <TrendingUp size={12} className="text-green-200" />
-                        </div>
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('income')}</span>
-                      </div>
-                      <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
-                    </div>
-                  </div>
-                </motion.div>
-
-                {/* Budget Progress Card */}
-                <motion.div
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.1, type: "spring" }}
-                  className={cn(
-                    "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
-                    isDarkMode ? "bg-slate-800/40 border-slate-700/50" : "bg-white/40 border-white/50",
-                    isCustomTheme && "accent-glow-soft"
-                  )}
-                >
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center space-x-3">
-                      <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                        <PieIcon size={20} className={cn(!isCustomTheme && "text-white")} />
-                      </div>
-                      <div>
-                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
-                        <p className="text-lg font-black">¥{formatCurrency(budget)}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">剩余额度</p>
-                      <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : (isCustomTheme ? "accent-text" : "text-indigo-500"))}>
-                        ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="w-full h-4 bg-gray-100/50 rounded-full overflow-hidden mb-6 p-1">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
-                      transition={{ duration: 1.5, ease: "easeOut" }}
-                      className={cn(
-                        "h-full rounded-full transition-all relative overflow-hidden",
-                        stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : (isCustomTheme ? "accent-bg" : "bg-gradient-to-r from-indigo-500 to-purple-400")
-                      )}
-                    >
-                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                    </motion.div>
-                  </div>
-
-                  <div className="flex justify-between items-center px-1">
-                    <div className="flex items-center space-x-2">
-                      <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
-                        已用 {stats.budgetUsage.toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-1.5 text-gray-500">
-                      <Calculator size={14} />
-                      <span className="text-[10px] font-black uppercase tracking-tight">日均可用: ¥{stats.dailyBudget.toFixed(0)}</span>
-                    </div>
-                  </div>
-                </motion.div>
+                </AnimatePresence>
 
                 {/* Transactions List */}
                 {stats.filtered.length === 0 ? (
