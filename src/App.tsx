@@ -79,7 +79,7 @@ import {
   PolarGrid,
   PolarAngleAxis,
 } from 'recharts';
-import { motion, AnimatePresence, Reorder, useMotionValue, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useMotionValue, useScroll, useTransform, useSpring } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { useTranslation } from 'react-i18next';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
@@ -1409,12 +1409,36 @@ export default function App() {
   });
   const [vaultCoins, setVaultCoins] = useState<Array<{ id: string; seed: number }>>([]);
   const [vaultGlowTick, setVaultGlowTick] = useState(0);
+  const [vaultRipples, setVaultRipples] = useState<Array<{ id: string; seed: number }>>([]);
+  const [vaultPopCoin, setVaultPopCoin] = useState<{ id: string; seed: number } | null>(null);
   const pendingVaultDropsRef = useRef(0);
   const prevTotalAssetsRef = useRef<number>(totalAssets);
+  const vaultTiltX = useMotionValue(0);
+  const vaultTiltY = useMotionValue(0);
+  const vaultTiltXSmooth = useSpring(vaultTiltX, { mass: 1, damping: 18, stiffness: 120 });
+  const vaultTiltYSmooth = useSpring(vaultTiltY, { mass: 1, damping: 18, stiffness: 120 });
+  const [hasVaultTiltPermission, setHasVaultTiltPermission] = useState(false);
+  const vaultReflectionX = useTransform(vaultTiltXSmooth, [-1, 1], ['-30%', '30%']);
+  const vaultReflectionY = useTransform(vaultTiltYSmooth, [-1, 1], ['-14%', '14%']);
+  const vaultPileX = useTransform(vaultTiltXSmooth, [-1, 1], [-6, 6]);
+  const vaultPileY = useTransform(vaultTiltYSmooth, [-1, 1], [4, -4]);
 
   const vaultFillPct = useMemo(() => {
     const cap = Math.max(1000, vaultCap);
     return clamp(totalAssets / cap, 0, 1);
+  }, [totalAssets, vaultCap]);
+
+  const getNextVaultMilestone = (amount: number) => {
+    const step = amount >= 100000 ? 100000 : 10000;
+    const ceil = Math.ceil(Math.max(0, amount) / step) * step;
+    return ceil === amount ? ceil + step : ceil;
+  };
+
+  const vaultMilestone = useMemo(() => {
+    const next = getNextVaultMilestone(totalAssets);
+    const remaining = Math.max(0, next - totalAssets);
+    const pct = clamp(next / Math.max(1000, vaultCap), 0, 1);
+    return { next, remaining, pct };
   }, [totalAssets, vaultCap]);
 
   const queueVaultCoins = (count: number) => {
@@ -1433,7 +1457,8 @@ export default function App() {
     prevTotalAssetsRef.current = totalAssets;
     if (totalAssets <= prev) return;
 
-    const nextCap = Math.max(vaultCap, totalAssets, 10000);
+    const nextMilestone = getNextVaultMilestone(totalAssets);
+    const nextCap = Math.max(vaultCap, totalAssets, nextMilestone, 10000);
     if (nextCap !== vaultCap) {
       setVaultCap(nextCap);
       localStorage.setItem('vault_cap_v1', String(nextCap));
@@ -1454,6 +1479,51 @@ export default function App() {
     pendingVaultDropsRef.current = 0;
     queueVaultCoins(pending);
   }, [activeTab]);
+
+  const requestVaultTiltPermission = async () => {
+    if (hasVaultTiltPermission) return true;
+    const req = (DeviceOrientationEvent as any)?.requestPermission;
+    if (typeof req !== 'function') {
+      setHasVaultTiltPermission(true);
+      return true;
+    }
+    try {
+      const result = await req();
+      const ok = result === 'granted';
+      setHasVaultTiltPermission(ok);
+      return ok;
+    } catch {
+      setHasVaultTiltPermission(false);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'vault') return;
+    const handler = (e: DeviceOrientationEvent) => {
+      if (typeof e.gamma !== 'number' || typeof e.beta !== 'number') return;
+      const nx = clamp(e.gamma / 30, -1, 1);
+      const ny = clamp((e.beta - 20) / 40, -1, 1);
+      vaultTiltX.set(nx);
+      vaultTiltY.set(ny);
+    };
+    window.addEventListener('deviceorientation', handler, { passive: true });
+    return () => window.removeEventListener('deviceorientation', handler as any);
+  }, [activeTab, vaultTiltX, vaultTiltY]);
+
+  const triggerVaultRipple = () => {
+    const id = crypto.randomUUID();
+    const seed = Math.random();
+    setVaultRipples(prev => [...prev, { id, seed }].slice(-3));
+    window.setTimeout(() => setVaultRipples(prev => prev.filter(r => r.id !== id)), 900);
+  };
+
+  const triggerVaultPopCoin = () => {
+    const id = crypto.randomUUID();
+    const seed = Math.random();
+    setVaultPopCoin({ id, seed });
+    window.setTimeout(() => setVaultPopCoin(cur => (cur?.id === id ? null : cur)), 900);
+  };
 
   const assetDashboard = useMemo(() => {
     const now = new Date();
@@ -1506,6 +1576,21 @@ export default function App() {
       investment,
     };
   }, [transactions, accounts, totalAssets, t, i18n.language]);
+
+  const vaultTrendPath = useMemo(() => {
+    const series = assetDashboard.netWorthSeries;
+    if (!series.length) return '';
+    const values = series.map(s => s.value);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = Math.max(1, max - min);
+    const last = Math.max(1, series.length - 1);
+    return series.map((p, idx) => {
+      const x = (idx / last) * 100;
+      const y = 100 - ((p.value - min) / range) * 100;
+      return `${idx === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`;
+    }).join(' ');
+  }, [assetDashboard.netWorthSeries]);
 
   const moduleQuery = searchQuery.trim().toLowerCase();
   const matchesModuleQuery = (t: Transaction) => {
@@ -1927,6 +2012,7 @@ export default function App() {
       let raf = 0;
       let last = performance.now();
       let settledFrames = 0;
+      let lastHapticAt = 0;
 
       const tick = (now: number) => {
         const dt = Math.min(0.028, Math.max(0.008, (now - last) / 1000));
@@ -1941,9 +2027,21 @@ export default function App() {
 
         if (posY >= groundY) {
           posY = groundY;
+          const impactSpeed = Math.abs(velY);
           velY = -velY * bounce;
           velX *= friction;
           scale.set(1.02);
+          if (now - lastHapticAt > 120) {
+            lastHapticAt = now;
+            const impact = clamp(impactSpeed / 1400, 0, 1);
+            const base = impact > 0.65 ? 22 : impact > 0.35 ? 14 : 8;
+            const jitter = Math.random() < 0.4 ? 0 : 4;
+            try {
+              if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+                navigator.vibrate(base + jitter);
+              }
+            } catch { }
+          }
         } else {
           scale.set(1);
         }
@@ -3362,11 +3460,8 @@ export default function App() {
 
                     <div className="relative mt-[clamp(1rem,3vw,1.5rem)] flex flex-col gap-[clamp(0.75rem,2vw,1rem)] sm:flex-row sm:items-end sm:justify-between">
                       <div className="min-w-0">
-                        <div className="font-black tracking-tight text-[clamp(1.75rem,5vw,2.25rem)] break-words">¥{formatCurrency(totalAssets)}</div>
+                        <div className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[clamp(1.75rem,5vw,2.25rem)] break-words">¥{formatCurrency(totalAssets)}</div>
                         <div className={cn("mt-[clamp(0.25rem,1vw,0.5rem)] text-[0.625rem] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</div>
-                      </div>
-                      <div className={cn("px-[clamp(0.75rem,2vw,1rem)] py-[clamp(0.4rem,1.2vw,0.5rem)] rounded-2xl border text-[0.625rem] font-black uppercase tracking-widest shrink-0", "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]")}>
-                        {t('black_gold')}
                       </div>
                     </div>
 
@@ -3386,6 +3481,8 @@ export default function App() {
 
                       {(() => {
                         const pilePct = clamp(10 + vaultFillPct * 72, 10, 84);
+                        const milestonePct = clamp(10 + vaultMilestone.pct * 72, 10, 84);
+                        const milestoneBottom = `calc(10% + ${milestonePct}%)`;
                         return (
                           <motion.div
                             initial={{ y: "-100%", opacity: 0, rotate: -3, scale: 0.98 }}
@@ -3394,6 +3491,24 @@ export default function App() {
                             className="relative w-[clamp(12rem,62vw,16rem)] aspect-square max-w-full will-change-transform"
                             style={{ transform: "translate3d(0,0,0)" }}
                           >
+                            {vaultTrendPath && (
+                              <svg
+                                aria-hidden
+                                className="absolute inset-0 opacity-[0.12] pointer-events-none"
+                                viewBox="0 0 100 100"
+                                preserveAspectRatio="none"
+                              >
+                                <defs>
+                                  <linearGradient id="vaultTrendGold" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stopColor="#D4AF37" stopOpacity="0" />
+                                    <stop offset="35%" stopColor="#D4AF37" stopOpacity="0.45" />
+                                    <stop offset="70%" stopColor="#F6E6B0" stopOpacity="0.35" />
+                                    <stop offset="100%" stopColor="#D4AF37" stopOpacity="0" />
+                                  </linearGradient>
+                                </defs>
+                                <path d={vaultTrendPath} fill="none" stroke="url(#vaultTrendGold)" strokeWidth="1.4" vectorEffect="non-scaling-stroke" />
+                              </svg>
+                            )}
                             <motion.div
                               key={vaultGlowTick}
                               initial={{ opacity: 0 }}
@@ -3414,18 +3529,36 @@ export default function App() {
                               ref={vaultJarRef}
                               className="absolute inset-0 rounded-[3.2rem] bg-gradient-to-br from-[#D4AF37]/55 via-[#D4AF37]/12 to-white/5 p-[0.08rem]"
                               style={{ transform: "translate3d(0,0,0)", perspective: "900px" }}
+                              onClick={async () => {
+                                await requestVaultTiltPermission();
+                                triggerVaultRipple();
+                                triggerVaultPopCoin();
+                              }}
+                              onMouseMove={(e) => {
+                                const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+                                const cx = rect.left + rect.width / 2;
+                                const cy = rect.top + rect.height / 2;
+                                const nx = clamp((e.clientX - cx) / (rect.width / 2), -1, 1);
+                                const ny = clamp((e.clientY - cy) / (rect.height / 2), -1, 1);
+                                vaultTiltX.set(nx);
+                                vaultTiltY.set(ny);
+                              }}
+                              onMouseLeave={() => {
+                                vaultTiltX.set(0);
+                                vaultTiltY.set(0);
+                              }}
                             >
                               <div className="relative w-full h-full rounded-[3.15rem] overflow-hidden border border-white/10 bg-black/40 backdrop-blur-3xl">
                                 <motion.div
                                   aria-hidden
-                                  className="absolute inset-0 opacity-65"
+                                  className="absolute inset-0 opacity-55"
                                   style={{
+                                    x: vaultReflectionX,
+                                    y: vaultReflectionY,
                                     backgroundImage:
-                                      "linear-gradient(120deg, transparent 0%, rgba(212,175,55,0.18) 18%, rgba(255,255,255,0.14) 26%, transparent 40%)",
-                                    transform: "translateX(-40%)",
+                                      "linear-gradient(120deg, transparent 0%, rgba(212,175,55,0.20) 16%, rgba(255,255,255,0.16) 26%, transparent 40%)",
+                                    translateZ: 0,
                                   }}
-                                  animate={{ transform: ["translateX(-40%)", "translateX(40%)"] }}
-                                  transition={{ duration: 2.4, ease: "linear", repeat: Infinity }}
                                 />
 
                                 <div className="absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/35 pointer-events-none" />
@@ -3435,12 +3568,23 @@ export default function App() {
                                   <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/10 via-transparent to-black/35" />
                                 </div>
 
+                                <div className="absolute left-[8%] right-[8%] pointer-events-none" style={{ bottom: milestoneBottom }}>
+                                  <div className="relative">
+                                    <div className="w-full border-t border-dashed border-white/35 opacity-70" />
+                                    <div className="absolute right-0 -top-[clamp(1.35rem,3.5vw,1.75rem)] px-3 py-1 rounded-full bg-black/35 border border-white/10 backdrop-blur-xl text-[0.55rem] font-black text-[#D4AF37]">
+                                      {t('vault_milestone_remaining', { amount: formatCurrency(vaultMilestone.remaining) })}
+                                    </div>
+                                  </div>
+                                </div>
+
                                 <motion.div
                                   className="absolute left-[8%] right-[8%] bottom-[10%] rounded-[2.6rem] overflow-hidden"
                                   initial={{ height: "10%" }}
                                   animate={{ height: `${pilePct}%` }}
                                   transition={{ type: "spring", stiffness: 220, damping: 26 }}
                                   style={{
+                                    x: vaultPileX,
+                                    y: vaultPileY,
                                     backgroundImage:
                                       "radial-gradient(circle at 24% 30%, rgba(255,255,255,0.20), transparent 42%), radial-gradient(circle at 64% 38%, rgba(255,255,255,0.12), transparent 46%), radial-gradient(circle at 42% 68%, rgba(255,255,255,0.10), transparent 50%), linear-gradient(180deg, rgba(212,175,55,0.85) 0%, rgba(212,175,55,0.55) 55%, rgba(0,0,0,0.15) 100%)",
                                     transform: "translate3d(0,0,0)",
@@ -3457,6 +3601,55 @@ export default function App() {
                                     }}
                                   />
                                 </motion.div>
+
+                                <AnimatePresence>
+                                  {vaultRipples.map(r => (
+                                    <motion.div
+                                      key={r.id}
+                                      className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#D4AF37]/50"
+                                      initial={{ opacity: 0.35, scale: 0.15 }}
+                                      animate={{ opacity: 0, scale: 1.15 }}
+                                      exit={{ opacity: 0 }}
+                                      transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+                                      style={{ width: "78%", height: "78%", translateZ: 0 }}
+                                    />
+                                  ))}
+                                </AnimatePresence>
+
+                                <AnimatePresence>
+                                  {vaultPopCoin && (
+                                    <motion.div
+                                      key={vaultPopCoin.id}
+                                      className="absolute left-1/2 bottom-[18%] pointer-events-none"
+                                      initial={{ opacity: 0, scale: 0.7, y: 18, x: (vaultPopCoin.seed - 0.5) * 70 }}
+                                      animate={{ opacity: 1, scale: 1, y: -28, rotate: (vaultPopCoin.seed - 0.5) * 40 }}
+                                      exit={{ opacity: 0, scale: 0.7, y: -44 }}
+                                      transition={{ type: "spring", mass: 1, damping: 16, stiffness: 140 }}
+                                      style={{ translateZ: 0 }}
+                                    >
+                                      <div className="w-[clamp(2.25rem,10vw,3rem)] aspect-square rounded-full relative">
+                                        <div
+                                          className="absolute inset-0 rounded-full"
+                                          style={{
+                                            backgroundImage:
+                                              "radial-gradient(circle at 30% 28%, rgba(255,255,255,0.65), rgba(255,255,255,0.10) 22%, rgba(212,175,55,0.98) 48%, rgba(212,175,55,0.70) 72%, rgba(0,0,0,0.25) 100%)",
+                                            boxShadow: "0 18px 38px rgba(0,0,0,0.45), 0 0 34px rgba(212,175,55,0.30)",
+                                          }}
+                                        />
+                                        <motion.div
+                                          className="absolute inset-0 rounded-full"
+                                          animate={{ opacity: [0.35, 0.7, 0.35] }}
+                                          transition={{ duration: 0.55, repeat: Infinity, ease: "easeInOut" }}
+                                          style={{
+                                            backgroundImage:
+                                              "radial-gradient(circle at 40% 40%, rgba(255,255,255,0.22), transparent 60%), radial-gradient(circle at 70% 30%, rgba(255,255,255,0.18), transparent 55%)",
+                                            mixBlendMode: "screen",
+                                          }}
+                                        />
+                                      </div>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
                               </div>
                             </div>
                           </motion.div>
