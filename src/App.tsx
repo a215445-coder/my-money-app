@@ -29,7 +29,6 @@ import {
   Languages,
   Share2,
   Star,
-  Palette,
   Sparkles,
   Moon,
   LogOut,
@@ -61,7 +60,7 @@ import {
   isSameDay,
   subMonths
 } from 'date-fns';
-import { zhCN } from 'date-fns/locale';
+import { enUS, zhCN } from 'date-fns/locale';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import {
@@ -91,12 +90,12 @@ function cn(...inputs: ClassValue[]) {
 }
 
 type OnboardingSlide = {
-  title: string;
-  description: string;
+  titleKey: string;
+  descriptionKey: string;
   Icon: React.ElementType;
   bg: string;
   accent: string;
-  cta?: string;
+  ctaKey?: string;
 };
 
 const ONBOARDING_BG_STOPS: string[] = ['#DCEBFF', '#F6F0E6', '#141821', '#0B2A1A', '#FFFFFF'];
@@ -104,40 +103,40 @@ const ONBOARDING_BG_LUMINANCE_STOPS: number[] = [0.9, 0.88, 0.12, 0.14, 1];
 
 const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
-    title: '理财实验室',
-    description: '您的私人财务分析师，洞察每笔开支。',
+    titleKey: 'onboarding.slides.lab.title',
+    descriptionKey: 'onboarding.slides.lab.desc',
     Icon: LineIcon,
     bg: 'bg-gradient-to-br from-indigo-950 via-slate-950 to-slate-950',
     accent: 'from-indigo-400 to-purple-400',
   },
   {
-    title: '极速记账',
-    description: '单手操作，丝滑弹出，随时随地记录生活。',
+    titleKey: 'onboarding.slides.fast.title',
+    descriptionKey: 'onboarding.slides.fast.desc',
     Icon: ZapIcon,
     bg: 'bg-gradient-to-br from-fuchsia-950 via-slate-950 to-slate-950',
     accent: 'from-pink-400 to-fuchsia-400',
   },
   {
-    title: '5:3:2 黄金比例',
-    description: '科学的 5:3:2 分配，让每一分钱都有归宿。',
+    titleKey: 'onboarding.slides.rule.title',
+    descriptionKey: 'onboarding.slides.rule.desc',
     Icon: Calculator,
     bg: 'bg-gradient-to-br from-emerald-950 via-slate-950 to-slate-950',
     accent: 'from-emerald-400 to-cyan-400',
   },
   {
-    title: '智慧洞察',
-    description: '精简总结关键支出，用更聪明的方式省钱。',
+    titleKey: 'onboarding.slides.insight.title',
+    descriptionKey: 'onboarding.slides.insight.desc',
     Icon: Cloud,
     bg: 'bg-gradient-to-br from-sky-950 via-slate-950 to-slate-950',
     accent: 'from-sky-400 to-indigo-400',
   },
   {
-    title: '开启财务自由',
-    description: '细腻毛玻璃之上，开启你的专业理财旅程。',
+    titleKey: 'onboarding.slides.start.title',
+    descriptionKey: 'onboarding.slides.start.desc',
     Icon: User,
     bg: 'bg-gradient-to-br from-amber-950 via-slate-950 to-slate-950',
     accent: 'from-amber-400 to-orange-400',
-    cta: '进入登录',
+    ctaKey: 'onboarding.slides.start.cta',
   },
 ];
 
@@ -154,6 +153,7 @@ function OnboardingSlideCard({
   contentColor: any;
   mutedColor: any;
 }) {
+  const { t } = useTranslation();
   const slide = ONBOARDING_SLIDES[slideIndex];
   const slideProgress = useTransform(globalProgress, (v: number) => v - slideIndex);
   const bgParallaxX = useTransform(slideProgress, [-1, 0, 1], [12, 0, -12]);
@@ -250,7 +250,7 @@ function OnboardingSlideCard({
                           <div>
                             <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>RECORD</div>
                             <div className="text-lg font-black mt-1">¥ 50.00</div>
-                            <div className="text-[10px] font-bold mt-1" style={{ color: mutedColor }}>餐饮 · 肯德基</div>
+                            <div className="text-[10px] font-bold mt-1" style={{ color: mutedColor }}>{t('onboarding.mock.category_line')}</div>
                           </div>
                           <motion.div
                             animate={{ boxShadow: ["0 0 0 rgba(255,255,255,0.0)", "0 0 26px rgba(255,255,255,0.26)", "0 0 0 rgba(255,255,255,0.0)"] }}
@@ -289,7 +289,7 @@ function OnboardingSlideCard({
                                 b.tone
                               )}
                             >
-                              <span className="text-xs font-black">模块 {i + 1}</span>
+                              <span className="text-xs font-black">{t('onboarding.module', { n: i + 1 })}</span>
                               <span className="text-sm font-black">{b.label}</span>
                             </motion.div>
                           ))}
@@ -317,8 +317,8 @@ function OnboardingSlideCard({
                       <div className="flex items-start justify-between">
                         <div>
                           <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>TIP</div>
-                          <div className="text-lg font-black leading-snug mt-2">本周餐饮支出偏高</div>
-                          <div className="mt-2 text-[10px] font-bold" style={{ color: mutedColor }}>试试把 2 次外卖替换成自制简餐</div>
+                          <div className="text-lg font-black leading-snug mt-2">{t('onboarding.mock.insight_title')}</div>
+                          <div className="mt-2 text-[10px] font-bold" style={{ color: mutedColor }}>{t('onboarding.mock.insight_desc')}</div>
                         </div>
                         <div className={cn("w-12 h-12 rounded-[1.4rem] flex items-center justify-center bg-gradient-to-br border border-white/15", slide.accent)}>
                           <Smile size={22} className="text-black/80" />
@@ -335,14 +335,14 @@ function OnboardingSlideCard({
                     <div className="w-full max-w-sm rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
                       <div className="grid grid-cols-2 gap-3">
                         <button className="py-4 rounded-2xl bg-white text-black font-black text-xs shadow-lg active:scale-95 transition-all">
-                          手机号登录
+                          {t('login.phone_login')}
                         </button>
                         <button className="py-4 rounded-2xl bg-white/10 border border-white/10 font-black text-xs active:scale-95 transition-all">
-                          微信登录
+                          {t('login.wechat_login')}
                         </button>
                       </div>
                       <button className="mt-3 w-full py-4 rounded-2xl bg-white/10 border border-white/10 font-black text-xs active:scale-95 transition-all">
-                        Google 登录
+                        {t('login.google_login')}
                       </button>
                     </div>
                   </motion.div>
@@ -358,10 +358,10 @@ function OnboardingSlideCard({
           </motion.div>
 
           <motion.div variants={titleVariants} className="mt-10 relative">
-            <h1 className="text-4xl font-black tracking-tight leading-[1.05]">{slide.title}</h1>
+            <h1 className="text-4xl font-black tracking-tight leading-[1.05]">{t(slide.titleKey)}</h1>
           </motion.div>
           <motion.p variants={descVariants} className="mt-4 text-base font-bold leading-relaxed" style={{ color: mutedColor }}>
-            {slide.description}
+            {t(slide.descriptionKey)}
           </motion.p>
         </div>
       </motion.div>
@@ -370,6 +370,7 @@ function OnboardingSlideCard({
 }
 
 function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
+  const { t } = useTranslation();
   const total = ONBOARDING_SLIDES.length;
   const scrollerRef = React.useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
@@ -421,7 +422,7 @@ function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
         <div className="absolute top-0 left-0 right-0 px-8 pt-[calc(1.25rem+env(safe-area-inset-top))]">
           <div className="flex items-center justify-between">
             <motion.div className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: mutedColor }}>
-              PRO ONBOARDING
+              {t('onboarding.badge')}
             </motion.div>
             <div className="flex items-center space-x-2">
               {ONBOARDING_SLIDES.map((_, i) => (
@@ -467,7 +468,7 @@ function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
               )}
               style={{ color: contentColor }}
             >
-              上一步
+              {t('onboarding.prev')}
             </motion.button>
 
             {index < total - 1 ? (
@@ -477,7 +478,7 @@ function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
                 className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
                 style={{ backgroundColor: contentColor, color: contentInverseColor }}
               >
-                继续
+                {t('onboarding.next')}
               </motion.button>
             ) : (
               <motion.button
@@ -486,13 +487,13 @@ function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
                 className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
                 style={{ backgroundColor: contentColor, color: contentInverseColor }}
               >
-                进入登录
+                {t('onboarding.slides.start.cta')}
               </motion.button>
             )}
           </div>
 
           <motion.div className="mt-4 text-center text-[10px] font-bold" style={{ color: mutedColor }}>
-            左右滑动切换 · 流光溢彩插值过渡
+            {t('onboarding.swipe_hint')}
           </motion.div>
         </div>
       </div>
@@ -501,6 +502,7 @@ function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
 }
 
 function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
+  const { t } = useTranslation();
   const [phone, setPhone] = useState('');
   return (
     <div className="fixed inset-0 z-[300] overflow-hidden text-white bg-gradient-to-br from-slate-950 via-slate-950 to-indigo-950">
@@ -509,8 +511,8 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
       <div className="absolute inset-0 p-8 flex flex-col">
         <div className="flex-1 flex items-center justify-center">
           <div className="w-full max-w-md">
-            <h1 className="text-4xl font-black tracking-tight">欢迎回来</h1>
-            <p className="mt-3 text-white/60 text-sm font-bold">登录后即可同步多设备数据与 Pro 报表能力。</p>
+            <h1 className="text-4xl font-black tracking-tight">{t('login.title')}</h1>
+            <p className="mt-3 text-white/60 text-sm font-bold">{t('login.subtitle')}</p>
 
             <div className="mt-10 rounded-[3rem] p-8 border border-white/15 bg-white/8 backdrop-blur-3xl shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
               <div className="space-y-4">
@@ -518,7 +520,7 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
                   <input
                     type="tel"
                     inputMode="tel"
-                    placeholder="手机号"
+                    placeholder={t('login.phone_placeholder')}
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     className="w-full px-5 py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-bold placeholder:text-white/30 focus:outline-none focus:ring-4 ring-white/10"
@@ -529,7 +531,7 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
                   onClick={onAuthed}
                   className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm shadow-lg active:scale-95 transition-all"
                 >
-                  手机号登录
+                  {t('login.phone_login')}
                 </button>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -537,20 +539,20 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
                     onClick={onAuthed}
                     className="py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-black text-xs active:scale-95 transition-all"
                   >
-                    微信登录
+                    {t('login.wechat_login')}
                   </button>
                   <button
                     onClick={onAuthed}
                     className="py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-black text-xs active:scale-95 transition-all"
                   >
-                    Google 登录
+                    {t('login.google_login')}
                   </button>
                 </div>
               </div>
             </div>
 
             <div className="mt-6 text-center text-[10px] font-bold text-white/40">
-              继续即代表你同意隐私政策与用户协议
+              {t('login.continue_legal')}
             </div>
           </div>
         </div>
@@ -561,86 +563,30 @@ function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
 }
 
 const CURRENCIES: Currency[] = [
-  { code: 'CNY', name: '人民币', flag: '🇨🇳', symbol: '¥' },
-  { code: 'USD', name: '美元', flag: '🇺🇸', symbol: '$' },
-  { code: 'EUR', name: '欧元', flag: '🇪🇺', symbol: '€' },
-  { code: 'JPY', name: '日元', flag: '🇯🇵', symbol: '¥' },
-  { code: 'KRW', name: '韩元', flag: '🇰🇷', symbol: '₩' },
-  { code: 'THB', name: '泰铢', flag: '🇹🇭', symbol: '฿' },
-  { code: 'HKD', name: '港币', flag: '🇭🇰', symbol: '$' },
+  { code: 'CNY', name: 'CNY', flag: '🇨🇳', symbol: '¥' },
+  { code: 'USD', name: 'USD', flag: '🇺🇸', symbol: '$' },
+  { code: 'EUR', name: 'EUR', flag: '🇪🇺', symbol: '€' },
+  { code: 'JPY', name: 'JPY', flag: '🇯🇵', symbol: '¥' },
+  { code: 'KRW', name: 'KRW', flag: '🇰🇷', symbol: '₩' },
+  { code: 'THB', name: 'THB', flag: '🇹🇭', symbol: '฿' },
+  { code: 'HKD', name: 'HKD', flag: '🇭🇰', symbol: '$' },
 ];
 
-const THEMES = {
-  black: { primary: 'bg-black', text: 'text-black', border: 'border-black', shadow: 'shadow-black/20', ring: 'ring-black' },
-  custom: { primary: 'accent-bg accent-on', text: 'accent-text', border: 'accent-border', shadow: 'accent-glow-soft', ring: 'accent-ring' },
-  blackGold: {
-    primary: 'lux-gold',
-    text: 'text-[#D4AF37]',
-    border: 'border-[#D4AF37]',
-    shadow: 'shadow-[#D4AF37]/20',
-    ring: 'ring-[#D4AF37]',
-    appBg: 'bg-[#1A1A1A]',
-    appText: 'text-[#F5F5F5]',
-    surface: 'lux-carbon',
-    surfaceSoft: 'lux-carbon-soft',
-    surfaceBorder: 'border-[#2A2A2A]',
-    mutedText: 'text-[#F5F5F5]/60',
-  },
-  whiteMinimal: {
-    primary: 'bg-[#C9CDD3]',
-    text: 'text-[#111827]',
-    border: 'border-[#111827]',
-    shadow: 'shadow-black/10',
-    ring: 'ring-[#111827]',
-    appBg: 'bg-[#FAFAFB]',
-    appText: 'text-[#111827]',
-    surface: 'bg-[#F3F4F6]',
-    surfaceSoft: 'bg-[#F3F4F6]/70',
-    surfaceBorder: 'border-[#E5E7EB]',
-    mutedText: 'text-[#111827]/55',
-  },
-  gray: { primary: 'bg-slate-600', text: 'text-slate-600', border: 'border-slate-600', shadow: 'shadow-slate-600/20', ring: 'ring-slate-600' },
-  mint: { primary: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500', shadow: 'shadow-emerald-500/20', ring: 'ring-emerald-500' },
-  sakura: { primary: 'bg-pink-400', text: 'text-pink-400', border: 'border-pink-400', shadow: 'shadow-pink-400/20', ring: 'ring-pink-400' },
-};
+const BLACK_GOLD_THEME = {
+  primary: 'lux-gold',
+  text: 'text-[#D4AF37]',
+  border: 'border-[#D4AF37]',
+  shadow: 'shadow-[#D4AF37]/20',
+  ring: 'ring-[#D4AF37]',
+  appBg: 'bg-[#1A1A1A]',
+  appText: 'text-[#F5F5F5]',
+  surface: 'lux-carbon',
+  surfaceSoft: 'lux-carbon-soft',
+  surfaceBorder: 'border-[#2A2A2A]',
+  mutedText: 'text-[#F5F5F5]/60',
+} as const;
 
-type ThemeKey = keyof typeof THEMES;
-
-const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
-
-const hexToRgb = (hex: string) => {
-  const normalized = hex.replace('#', '').trim();
-  if (normalized.length !== 6) return { r: 99, g: 102, b: 241 };
-  const r = parseInt(normalized.slice(0, 2), 16);
-  const g = parseInt(normalized.slice(2, 4), 16);
-  const b = parseInt(normalized.slice(4, 6), 16);
-  return { r, g, b };
-};
-
-const rgbToHex = (r: number, g: number, b: number) => {
-  const to = (n: number) => n.toString(16).padStart(2, '0');
-  return `#${to(clamp(Math.round(r), 0, 255))}${to(clamp(Math.round(g), 0, 255))}${to(clamp(Math.round(b), 0, 255))}`;
-};
-
-const mix = (a: { r: number; g: number; b: number }, b: { r: number; g: number; b: number }, t: number) => {
-  const tt = clamp01(t);
-  return {
-    r: a.r + (b.r - a.r) * tt,
-    g: a.g + (b.g - a.g) * tt,
-    b: a.b + (b.b - a.b) * tt,
-  };
-};
-
-const relLuminance = (rgb: { r: number; g: number; b: number }) => {
-  const srgb = [rgb.r, rgb.g, rgb.b].map(v => v / 255).map(v => (v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)));
-  return 0.2126 * srgb[0] + 0.7152 * srgb[1] + 0.0722 * srgb[2];
-};
-
-const bestTextOn = (hex: string) => {
-  const lum = relLuminance(hexToRgb(hex));
-  return lum < 0.5 ? '#F5F5F5' : '#111827';
-};
 
 const CATEGORIES: { label: Category; icon: string; color: string; hex: string }[] = [
   { label: '餐饮', icon: '🍔', color: 'bg-orange-100', hex: '#f97316' },
@@ -667,13 +613,13 @@ type HomeWidgetConfig = { order: HomeWidgetId[]; enabled: Record<HomeWidgetId, b
 
 const HOME_WIDGETS_STORAGE_KEY = 'home_widgets_v1';
 
-const HOME_WIDGET_META: Record<HomeWidgetId, { title: string; desc: string }> = {
-  todayBoard: { title: '今日看板', desc: '今日支出 / 本月剩余预算 / 今日记账笔数' },
-  weekTrend: { title: '消费足迹', desc: '最近 7 天开支波动迷你趋势' },
-  topCategories: { title: '快捷分类汇总', desc: '本月 Top3 分类占比，点击筛选' },
-  miniCalendar: { title: '日历微缩图', desc: '当前月概览，点选快速跳转' },
-  summary: { title: '资产总览', desc: '收入/支出/总资产摘要卡片' },
-  budgetProgress: { title: '预算进度条', desc: '本月预算使用进度与日均可用' },
+const HOME_WIDGET_META: Record<HomeWidgetId, { titleKey: string; descKey: string }> = {
+  todayBoard: { titleKey: 'home_widgets.today_board', descKey: 'home_widget_meta.today_board_desc' },
+  weekTrend: { titleKey: 'home_widgets.week_trend', descKey: 'home_widget_meta.week_trend_desc' },
+  topCategories: { titleKey: 'home_widgets.top_categories', descKey: 'home_widget_meta.top_categories_desc' },
+  miniCalendar: { titleKey: 'home_widgets.mini_calendar', descKey: 'home_widget_meta.mini_calendar_desc' },
+  summary: { titleKey: 'home_widget_meta.summary_title', descKey: 'home_widget_meta.summary_desc' },
+  budgetProgress: { titleKey: 'home_widget_meta.budget_progress_title', descKey: 'home_widget_meta.budget_progress_desc' },
 };
 
 const DEFAULT_HOME_WIDGET_CONFIG: HomeWidgetConfig = {
@@ -799,7 +745,7 @@ export default function App() {
   const [localUserName] = useState(() => {
     const existing = localStorage.getItem('local_user_name');
     if (existing) return existing;
-    const next = '理财达人';
+    const next = t('user_title');
     localStorage.setItem('local_user_name', next);
     return next;
   });
@@ -837,26 +783,15 @@ export default function App() {
 
   // --- Discovery State ---
   const [monthlySalary, setSalary] = useState<number>(10000);
-  const WEALTH_TIPS = useMemo(() => [
-    "区分‘想要’和‘需要’，是理财的第一步。",
-    "记账是为了更好的花钱，而不是限制你的生活。",
-    "先付给自己：每月发工资先存下一部分，剩下的才是能花的。",
-    "复利是世界第八大奇迹，越早理财越好。",
-    "不要为打翻的牛奶哭泣，也不要为昨天的超支后悔。",
-    "你的钱包决定你的生活质量，你的记账习惯决定你的钱包厚度。",
-    "理财不在于钱多钱少，而在于习惯的养成。",
-    "每一分存下的钱，都是通往自由的基石。",
-    "记得给未来的自己留一份礼物。",
-    "理性消费，快乐记账。😊"
-  ], []);
+  const wealthTips = useMemo(() => (t('wealth_tips', { returnObjects: true }) as string[]), [t, i18n.language]);
 
-  const [wealthTip, setWealthTip] = useState(WEALTH_TIPS[0]);
+  const [wealthTip, setWealthTip] = useState(() => wealthTips[0] || '');
 
   useEffect(() => {
     if (activeTab === 'discovery') {
-      setWealthTip(WEALTH_TIPS[Math.floor(Math.random() * WEALTH_TIPS.length)]);
+      setWealthTip(wealthTips[Math.floor(Math.random() * wealthTips.length)] || '');
     }
-  }, [activeTab, WEALTH_TIPS]);
+  }, [activeTab, wealthTips]);
 
   useEffect(() => {
     if (activeTab === 'list') setIsHomeEditMode(false);
@@ -900,7 +835,7 @@ export default function App() {
     }
   }, [activeTab]);
 
-  const wealthMarquee = useMemo(() => WEALTH_TIPS.join('  ·  '), [WEALTH_TIPS]);
+  const wealthMarquee = useMemo(() => wealthTips.join('  ·  '), [wealthTips]);
 
   // --- Settings & i18n ---
   const isDarkMode = true;
@@ -912,47 +847,16 @@ export default function App() {
   const [pin] = useState(() => localStorage.getItem('privacy_pin') || '');
   const [isLockEnabled] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
   const [inputPin, setInputPin] = useState('');
-  const themeKey: ThemeKey = 'blackGold';
-  const theme = THEMES[themeKey];
+  const theme = BLACK_GOLD_THEME;
   const isBlackGold = true;
-  const isMinimalWhite = false;
-  const isCustomTheme = false;
   const isDarkUI = true;
   const accentHex = '#D4AF37';
 
-  const derivedTheme = useMemo(() => {
-    const base = hexToRgb(accentHex);
-    const bgMix = mix(base, { r: 255, g: 255, b: 255 }, 0.2);
-    const bg20 = rgbToHex(bgMix.r, bgMix.g, bgMix.b);
-    const shadow30 = mix(base, { r: 0, g: 0, b: 0 }, 0.3);
-    const shadowRgba = `rgba(${Math.round(shadow30.r)}, ${Math.round(shadow30.g)}, ${Math.round(shadow30.b)}, 0.35)`;
-    const text = bestTextOn(accentHex);
-    return { accent: accentHex, accentBg: bg20, accentText: text, accentShadow: shadowRgba };
-  }, [accentHex]);
-
-  const mutedText = isBlackGold
-    ? ((theme as any).mutedText || "text-[#F5F5F5]/60")
-    : isMinimalWhite
-      ? ((theme as any).mutedText || "text-[#111827]/55")
-      : (isDarkMode ? "text-white/50" : "text-gray-400");
-
-  const chipNeutral = isBlackGold
-    ? "bg-white/10 text-white/70"
-    : isMinimalWhite
-      ? "bg-black/5 text-gray-700"
-      : (isDarkMode ? "bg-slate-700 text-white/70" : "bg-gray-100 text-gray-400");
-
+  const mutedText = theme.mutedText;
+  const chipNeutral = "bg-white/10 text-white/70";
   const surfaceCard = (...extra: ClassValue[]) => cn(
     "border",
-    isBlackGold
-      ? cn((theme as any).surfaceSoft || 'lux-carbon-soft', (theme as any).surfaceBorder || 'border-[#2A2A2A]', (theme as any).appText || 'text-[#F5F5F5]')
-      : isMinimalWhite
-        ? cn((theme as any).surface || 'bg-[#F3F4F6]', (theme as any).surfaceBorder || 'border-[#E5E7EB]', (theme as any).appText || 'text-[#111827]')
-        : isCustomTheme
-          ? cn(isDarkMode ? "bg-slate-800/80 border-slate-700 text-white" : "bg-white/70 border-white/60 text-gray-900", "backdrop-blur-2xl", "accent-glow-soft")
-          : isDarkMode
-            ? "bg-slate-800 border-slate-700 text-white"
-            : "bg-white border-gray-50 text-gray-900",
+    cn(theme.surfaceSoft, theme.surfaceBorder, theme.appText, 'lux-gold-glow-soft lux-gold-glow-breathe'),
     ...extra
   );
 
@@ -1023,7 +927,7 @@ export default function App() {
       .replace(/块|元|钱|花了|支出|收入|买了|去吃/g, '')
       .trim();
 
-    return { amount, category, note: note || '语音记账' };
+    return { amount, category, note: note || t('voice.default_note') };
   };
 
   const exportAsImage = async () => {
@@ -1051,7 +955,7 @@ export default function App() {
       const image = canvas.toDataURL("image/png");
       const link = document.createElement('a');
       link.href = image;
-      link.download = `我的账单总结_${format(currentDate, 'yyyy-MM')}.png`;
+      link.download = t('export_files.image', { month: format(currentDate, 'yyyy-MM') });
       link.click();
     } catch (err) {
       console.error('Export failed', err);
@@ -1087,7 +991,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `账单明细_${format(currentDate, 'yyyy-MM')}.csv`;
+    link.download = t('export_files.csv', { month: format(currentDate, 'yyyy-MM') });
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -1109,7 +1013,7 @@ export default function App() {
       const image = canvas.toDataURL("image/png");
       const win = window.open('', '_blank');
       if (!win) return;
-      win.document.write(`<html><head><title>账单月报</title></head><body style="margin:0;background:#fff"><img src="${image}" style="width:100%;height:auto" /></body></html>`);
+      win.document.write(`<html><head><title>${t('export_files.report_title')}</title></head><body style="margin:0;background:#fff"><img src="${image}" style="width:100%;height:auto" /></body></html>`);
       win.document.close();
       win.focus();
       setTimeout(() => win.print(), 300);
@@ -1342,13 +1246,13 @@ export default function App() {
     return {
       netWorthSeries,
       liabilityPie: [
-        { name: '净资产', value: netAssets, color: '#22c55e' },
-        { name: '负债', value: liabilities, color: '#ef4444' },
+        { name: t('assets_dashboard.net_assets'), value: netAssets, color: '#22c55e' },
+        { name: t('assets_dashboard.liabilities'), value: liabilities, color: '#ef4444' },
       ],
       distributionPie: [
-        { name: '现金', value: cash, color: '#3b82f6' },
-        { name: '储蓄', value: savings, color: '#a855f7' },
-        { name: '投资', value: investment, color: '#f59e0b' },
+        { name: t('assets_dashboard.cash'), value: cash, color: '#3b82f6' },
+        { name: t('assets_dashboard.savings'), value: savings, color: '#a855f7' },
+        { name: t('assets_dashboard.investment'), value: investment, color: '#f59e0b' },
       ],
       liabilities,
       netAssets,
@@ -1356,7 +1260,7 @@ export default function App() {
       savings,
       investment,
     };
-  }, [transactions, accounts, totalAssets]);
+  }, [transactions, accounts, totalAssets, t, i18n.language]);
 
   const moduleQuery = searchQuery.trim().toLowerCase();
   const matchesModuleQuery = (t: Transaction) => {
@@ -1501,11 +1405,11 @@ export default function App() {
     const palette = ['#60a5fa', '#f472b6', '#34d399', '#fbbf24', '#a78bfa', '#fb7185'];
     const emojis = ['🍀', '🧋', '🏡', '✨', '🧸', '🌿'];
     const memberMe: GroupSavingMember = { id: localUserId, name: localUserName, color: palette[0], emoji: '🧑' };
-    const memberA: GroupSavingMember = { id: crypto.randomUUID(), name: '小李', color: palette[1], emoji: emojis[1] };
-    const memberB: GroupSavingMember = { id: crypto.randomUUID(), name: '小陈', color: palette[2], emoji: emojis[0] };
+    const memberA: GroupSavingMember = { id: crypto.randomUUID(), name: t('group.demo_member_a'), color: palette[1], emoji: emojis[1] };
+    const memberB: GroupSavingMember = { id: crypto.randomUUID(), name: t('group.demo_member_b'), color: palette[2], emoji: emojis[0] };
     const group: GroupSavingGroup = {
       id,
-      name: name.trim() || '一起省钱小组',
+      name: name.trim() || t('group.default_name'),
       code,
       members: [memberMe, memberA, memberB],
       publicBudget: 3000,
@@ -1525,7 +1429,7 @@ export default function App() {
     const pool = loadGroupPool();
     const found = pool[code];
     if (!found) {
-      alert('未找到该小组邀请码（仅本设备演示版）。可先创建一个小组再加入。');
+      alert(t('group_not_found'));
       return;
     }
     const already = found.members.some(m => m.id === localUserId);
@@ -1548,7 +1452,7 @@ export default function App() {
   };
 
   const leaveGroupSaving = () => {
-    if (!confirm('确定要退出小组吗？（本地数据仍会保留在组件库中）')) return;
+    if (!confirm(t('leave_group_confirm'))) return;
     setGroupSaving(null);
     setGroupActivities([]);
   };
@@ -1665,7 +1569,7 @@ export default function App() {
 
   const deleteTransaction = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm('确定要删除这笔账单吗？')) {
+    if (confirm(t('confirm_delete'))) {
       const toDelete = transactions.find(t => t.id === id);
       if (toDelete) {
         if (toDelete.visibility === 'group' && toDelete.groupId === groupSaving?.id) appendGroupActivity('delete', toDelete);
@@ -1683,24 +1587,61 @@ export default function App() {
   };
 
   const handleReset = () => {
-    if (confirm('确定要删除所有记账数据吗？此操作不可撤销')) {
+    if (confirm(t('confirm_reset'))) {
       localStorage.clear();
       window.location.reload();
     }
   };
 
-  const formatCurrency = (v: number) => v.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
+  const formatCurrency = (v: number) => v.toLocaleString(i18n.language === 'en-US' ? 'en-US' : 'zh-CN', { minimumFractionDigits: 2 });
+  const dateLocale = i18n.language === 'zh-CN' ? zhCN : enUS;
+
+  const RollingNumber = ({ value }: { value: number }) => {
+    const prevRef = useRef(value);
+    const direction = value >= prevRef.current ? 1 : -1;
+    useEffect(() => {
+      prevRef.current = value;
+    }, [value]);
+
+    const str = formatCurrency(value);
+    return (
+      <span className="inline-flex items-end tabular-nums">
+        {str.split('').map((ch, idx) => {
+          const isDigit = ch >= '0' && ch <= '9';
+          if (!isDigit) {
+            return <span key={`s-${idx}`} className="inline-block">{ch}</span>;
+          }
+          return (
+            <span key={`d-${idx}`} className="relative inline-block w-[0.62em] h-[1.05em] overflow-hidden">
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={`${idx}-${ch}`}
+                  initial={{ y: 14 * direction, opacity: 0, filter: 'blur(4px)' }}
+                  animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+                  exit={{ y: -14 * direction, opacity: 0, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.38, ease: [0.23, 1, 0.32, 1] }}
+                  className="absolute inset-0 flex items-end justify-center"
+                >
+                  {ch}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+          );
+        })}
+      </span>
+    );
+  };
 
   const getFilterLabel = () => {
     switch (filterType) {
-      case 'today': return format(currentDate, 'MM月dd日');
+      case 'today': return format(currentDate, i18n.language === 'zh-CN' ? 'MM月dd日' : 'MMM dd', { locale: dateLocale });
       case 'week': {
         const start = startOfWeek(currentDate, { weekStartsOn: 1 });
         const end = endOfWeek(currentDate, { weekStartsOn: 1 });
-        return `${format(start, 'MM.dd')} - ${format(end, 'MM.dd')}`;
+        return `${format(start, i18n.language === 'zh-CN' ? 'MM.dd' : 'MMM dd', { locale: dateLocale })} - ${format(end, i18n.language === 'zh-CN' ? 'MM.dd' : 'MMM dd', { locale: dateLocale })}`;
       }
-      case 'year': return format(currentDate, 'yyyy年');
-      case 'month': default: return format(currentDate, 'yyyy年MM月');
+      case 'year': return format(currentDate, i18n.language === 'zh-CN' ? 'yyyy年' : 'yyyy', { locale: dateLocale });
+      case 'month': default: return format(currentDate, i18n.language === 'zh-CN' ? 'yyyy年MM月' : 'MMM yyyy', { locale: dateLocale });
     }
   };
 
@@ -1738,53 +1679,22 @@ export default function App() {
     <motion.div
       className={cn(
         "min-h-screen transition-all duration-1000 pb-32 font-sans relative overflow-hidden",
-        isBlackGold && cn((theme as any).appBg || "bg-[#1A1A1A]", (theme as any).appText || "text-[#F5F5F5]"),
-        isMinimalWhite && cn((theme as any).appBg || "bg-[#FAFAFB]", (theme as any).appText || "text-[#111827]"),
-        !isBlackGold && !isMinimalWhite && (isDarkMode ? "bg-slate-900 text-white" : "bg-gray-50 text-gray-900"),
-        !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'morning' && "bg-gradient-to-br from-orange-50 via-white to-blue-50",
-        !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'afternoon' && "bg-gradient-to-br from-blue-50 via-white to-emerald-50",
-        !isBlackGold && !isMinimalWhite && !isDarkMode && timeContext === 'evening' && "bg-gradient-to-br from-indigo-50 via-slate-100 to-purple-50",
-        !isBlackGold && !isMinimalWhite && isDarkMode && "bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950"
+        cn(theme.appBg, theme.appText)
       )}
-      style={{
-        ['--accent' as any]: derivedTheme.accent,
-        ['--accentBg' as any]: derivedTheme.accentBg,
-        ['--accentText' as any]: derivedTheme.accentText,
-        ['--accentShadow' as any]: derivedTheme.accentShadow,
-      }}
-      animate={{
-        ['--accent' as any]: derivedTheme.accent,
-        ['--accentBg' as any]: derivedTheme.accentBg,
-        ['--accentText' as any]: derivedTheme.accentText,
-        ['--accentShadow' as any]: derivedTheme.accentShadow,
-      }}
-      transition={{ duration: 0.5, ease: 'linear' }}
     >
       {/* Decorative background blobs */}
-      {isBlackGold ? (
-        <>
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-[#D4AF37]/8 rounded-full blur-[160px] pointer-events-none" />
-        </>
-      ) : isMinimalWhite ? (
-        <>
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-black/5 rounded-full blur-[140px] pointer-events-none" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-black/5 rounded-full blur-[160px] pointer-events-none" />
-        </>
-      ) : (
-        <>
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[120px] pointer-events-none" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-400/10 rounded-full blur-[120px] pointer-events-none" />
-        </>
-      )}
+      <>
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[45%] h-[45%] bg-[#D4AF37]/8 rounded-full blur-[160px] pointer-events-none" />
+      </>
 
       {/* Privacy Lock Screen */}
       {isLocked && (
-        <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", isDarkMode ? "bg-slate-900" : "bg-white")}>
+        <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", "lux-carbon text-[#F5F5F5]")}>
           <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-8 shadow-2xl animate-bounce", theme.primary)}>
-            <Lock className={cn(!isCustomTheme && "text-white")} size={32} />
+            <Lock className="text-white" size={32} />
           </div>
-          <h2 className="text-2xl font-black mb-2">安全验证</h2>
+          <h2 className="text-2xl font-black mb-2">{t('security_verification')}</h2>
           <div className="flex space-x-4 mb-12">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className={cn("w-4 h-4 rounded-full border-2", inputPin.length >= i ? theme.primary : (isDarkMode ? "border-slate-700" : "border-gray-200"))} />
@@ -1799,7 +1709,7 @@ export default function App() {
                   if (next.length <= 4) setInputPin(next);
                   if (next.length === 4) {
                     if (next === pin) setIsLocked(false);
-                    else { alert('密码错误'); setInputPin(''); }
+                    else { alert(t('password_incorrect')); setInputPin(''); }
                   }
                 }
               }} className={cn("w-16 h-16 rounded-full flex items-center justify-center text-xl font-black active:scale-90", isDarkMode ? "bg-slate-800" : "bg-gray-50", n === '' && "invisible")}>
@@ -1814,13 +1724,7 @@ export default function App() {
       <div className={cn("fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity", isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none")} onClick={() => setIsMenuOpen(false)} />
       <aside className={cn(
         "fixed top-0 left-0 h-full w-[280px] z-[70] shadow-2xl transition-transform duration-500 rounded-r-[2.5rem] p-8",
-        isBlackGold
-          ? cn((theme as any).surface || 'lux-carbon', (theme as any).surfaceBorder || 'border-[#2A2A2A]', (theme as any).appText || 'text-[#F5F5F5]', "border-r")
-          : isMinimalWhite
-            ? cn("bg-white", (theme as any).appText || "text-[#111827]")
-            : isDarkMode
-              ? "bg-slate-800 text-white"
-              : "bg-white text-gray-900",
+        cn(theme.surface, theme.surfaceBorder, theme.appText, "border-r"),
         isMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex justify-between items-center mb-12">
@@ -1828,7 +1732,7 @@ export default function App() {
             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-lg", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>
               <Wallet size={20} />
             </div>
-            <span className="font-black text-xl tracking-tighter">我的账本</span>
+            <span className="font-black text-xl tracking-tighter">{t('app_name')}</span>
           </div>
           <button onClick={() => setIsMenuOpen(false)} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-50")}><X size={20} /></button>
         </div>
@@ -1837,7 +1741,7 @@ export default function App() {
             { id: 'list', label: t('bill_detail'), icon: <History size={20} /> },
             { id: 'chart', label: t('stats'), icon: <PieIcon size={20} /> },
             { id: 'calendar', label: t('calendar'), icon: <CalendarIcon size={20} /> },
-            { id: 'discovery', label: '发现', icon: <Compass size={20} /> },
+            { id: 'discovery', label: t('discovery'), icon: <Compass size={20} /> },
             { id: 'settings', label: t('settings'), icon: <Settings size={20} /> },
           ].map((item) => (
             <button key={item.id} onClick={() => {
@@ -1846,7 +1750,7 @@ export default function App() {
               setIsMenuOpen(false);
             }} className={cn(
               "w-full flex items-center space-x-4 p-4 rounded-2xl font-bold transition-all",
-              activeTab === item.id ? cn(theme.primary, !isCustomTheme && "text-white", "shadow-lg") : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50")
+              activeTab === item.id ? cn(theme.primary, "text-white", "shadow-lg") : "hover:bg-white/5"
             )}>
               {item.icon}
               <span>{item.label}</span>
@@ -1905,9 +1809,9 @@ export default function App() {
                 <div className="relative z-[90] space-y-4">
                   <div className="flex items-center justify-between px-1">
                     <div>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>首页组件</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.section_title')}</div>
                       <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
-                        {isHomeEditMode ? '拖拽排序 / 点红色减号移除 / 完成后自动保存' : '长按任意板块进入编辑模式'}
+                        {isHomeEditMode ? t('home_widgets.hint_edit') : t('home_widgets.hint_view')}
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -1920,7 +1824,7 @@ export default function App() {
                         )}
                       >
                         <PlusCircle size={14} />
-                        <span>添加组件</span>
+                        <span>{t('home_widgets.add')}</span>
                       </motion.button>
                       <motion.button
                         whileTap={{ scale: 0.96 }}
@@ -1930,7 +1834,7 @@ export default function App() {
                           isHomeEditMode ? "bg-rose-500 border-rose-500 text-white" : (isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700")
                         )}
                       >
-                        {isHomeEditMode ? '完成' : '编辑'}
+                        {isHomeEditMode ? t('home_widgets.done') : t('home_widgets.edit')}
                       </motion.button>
                     </div>
                   </div>
@@ -1979,9 +1883,9 @@ export default function App() {
                             <div className="space-y-4">
                               <div className="flex items-center justify-between px-1">
                                 <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日看板</div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_board')}</div>
                                   <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
-                                    {moduleQuery ? `已筛选：${searchQuery}` : '横滑查看关键指标'}
+                                    {moduleQuery ? t('home_widgets.filtered', { query: searchQuery }) : t('home_widgets.swipe_hint')}
                                   </div>
                                 </div>
                                 {moduleQuery && (
@@ -1993,7 +1897,7 @@ export default function App() {
                                       isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
                                     )}
                                   >
-                                    清除筛选
+                                    {t('home_widgets.clear_filter')}
                                   </motion.button>
                                 )}
                               </div>
@@ -2004,11 +1908,11 @@ export default function App() {
                                   className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
                                 >
                                   <div className="flex items-center justify-between">
-                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日支出</div>
-                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd')}</div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_expense')}</div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd', { locale: dateLocale })}</div>
                                   </div>
                                   <div className="mt-3 text-2xl font-black tracking-tight">¥{formatCurrency(homeToday.expense)}</div>
-                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>打开搜索会同步影响此处统计</div>
+                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.search_link_hint')}</div>
                                 </motion.div>
 
                                 <motion.div
@@ -2016,12 +1920,12 @@ export default function App() {
                                   className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
                                 >
                                   <div className="flex items-center justify-between">
-                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>本月剩余预算</div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.month_remaining_budget')}</div>
                                     <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{Math.max(0, 100 - homeMonth.usedPct).toFixed(0)}%</div>
                                   </div>
                                   <div className="mt-3 flex items-end justify-between">
                                     <div className="text-lg font-black">¥{formatCurrency(homeMonth.remaining)}</div>
-                                    <div className={cn("text-[10px] font-bold", mutedText)}>已用 ¥{formatCurrency(homeMonth.expense)}</div>
+                                    <div className={cn("text-[10px] font-bold", mutedText)}>{t('home_widgets.used_prefix')} ¥{formatCurrency(homeMonth.expense)}</div>
                                   </div>
                                   <div className={cn("mt-4 h-3 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
                                     <motion.div
@@ -2031,16 +1935,16 @@ export default function App() {
                                       className={cn("h-full", homeMonth.usedPct > 90 ? "bg-rose-500" : theme.primary)}
                                     />
                                   </div>
-                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>进度条从 0 渐进生长</div>
+                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.progress_hint')}</div>
                                 </motion.div>
 
                                 <motion.div
                                   layout
                                   className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
                                 >
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>今日已记账</div>
-                                  <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} 笔</div>
-                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>点击分类热区可快速筛选账单</div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_count')}</div>
+                                  <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} {t('home_widgets.count_unit')}</div>
+                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.category_hot_hint')}</div>
                                 </motion.div>
                               </div>
                             </div>
@@ -2050,8 +1954,8 @@ export default function App() {
                             <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                               <div className="flex items-center justify-between mb-4">
                                 <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>消费足迹</div>
-                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>最近 7 天开支波动</div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_trend')}</div>
+                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{t('home_widgets.week_trend_desc')}</div>
                                 </div>
                                 <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>7D</div>
                               </div>
@@ -2095,7 +1999,7 @@ export default function App() {
                                       />
                                     </svg>
                                     <div className="mt-3 flex items-center justify-between">
-                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>最近 7 天合计</div>
+                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_total')}</div>
                                       <div className="text-sm font-black">¥{formatCurrency(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
                                     </div>
                                   </div>
@@ -2108,15 +2012,15 @@ export default function App() {
                             <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                               <div className="flex items-center justify-between mb-4">
                                 <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>快捷分类汇总</div>
-                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>本月支出最多的 3 个分类</div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.top_categories')}</div>
+                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{t('home_widgets.top_categories_desc')}</div>
                                 </div>
                                 <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>TOP3</div>
                               </div>
 
                               {homeMonth.topCategories.length === 0 ? (
                                 <div className={cn("p-6 rounded-2xl border-2 border-dashed text-center", isDarkUI ? "border-slate-700 text-white/50" : "border-gray-100 text-gray-400")}>
-                                  <div className="text-xs font-bold">本月暂无支出数据</div>
+                                  <div className="text-xs font-bold">{t('home_widgets.month_no_expense')}</div>
                                 </div>
                               ) : (
                                 <div className="space-y-3">
@@ -2153,7 +2057,7 @@ export default function App() {
                                   ))}
                                 </div>
                               )}
-                              <div className={cn("mt-4 text-[10px] font-bold", mutedText)}>点击分类：自动联动筛选 + 切换到本月</div>
+                              <div className={cn("mt-4 text-[10px] font-bold", mutedText)}>{t('home_widgets.top_categories_click_hint')}</div>
                             </div>
                           )}
 
@@ -2161,8 +2065,8 @@ export default function App() {
                             <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                               <div className="flex items-center justify-between mb-4">
                                 <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>日历微缩图</div>
-                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{format(new Date(), 'yyyy年MM月')}</div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.mini_calendar')}</div>
+                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{format(new Date(), i18n.language === 'zh-CN' ? 'yyyy年MM月' : 'MMM yyyy', { locale: dateLocale })}</div>
                                 </div>
                                 <motion.button
                                   whileTap={{ scale: 0.96 }}
@@ -2172,7 +2076,7 @@ export default function App() {
                                     isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
                                   )}
                                 >
-                                  打开
+                                  {t('open')}
                                 </motion.button>
                               </div>
 
@@ -2186,7 +2090,7 @@ export default function App() {
                                 const hasTx = (d: Date) => transactions.some(t => isSameDay(parseISO(t.date), d) && matchesModuleQuery(t));
                                 return (
                                   <div className="grid grid-cols-7 gap-1">
-                                    {['一', '二', '三', '四', '五', '六', '日'].map(x => (
+                                    {(t('home_widgets.weekdays_short', { returnObjects: true }) as string[]).map(x => (
                                       <div key={x} className={cn("text-center text-[8px] font-black pb-1", mutedText)}>{x}</div>
                                     ))}
                                     {blanks.map((_, i) => <div key={`b-${i}`} />)}
@@ -2199,12 +2103,12 @@ export default function App() {
                                           onClick={(e) => { e.stopPropagation(); setSelectedCalendarDate(d); setCurrentDate(d); setActiveTab('calendar'); }}
                                           className={cn(
                                             "aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all",
-                                            active ? cn(theme.primary, !isCustomTheme && "text-white") : (isDarkUI ? "bg-white/5 hover:bg-white/10" : "bg-black/5 hover:bg-black/10")
+                                            active ? cn(theme.primary, "text-white") : "bg-white/5 hover:bg-white/10"
                                           )}
                                         >
                                           <span className="text-[10px] font-black">{format(d, 'd')}</span>
                                           {hasTx(d) && (
-                                            <span className={cn("absolute bottom-1 w-1.5 h-1.5 rounded-full", active ? (isCustomTheme ? "accent-on" : "bg-white") : "bg-emerald-400")} />
+                                            <span className={cn("absolute bottom-1 w-1.5 h-1.5 rounded-full", active ? "bg-white" : "bg-emerald-400")} />
                                           )}
                                         </button>
                                       );
@@ -2220,7 +2124,7 @@ export default function App() {
                               className={cn(
                                 "p-10 rounded-[4rem] shadow-2xl relative overflow-hidden group border border-white/20",
                                 theme.primary,
-                                !isCustomTheme && "text-white"
+                                "text-white"
                               )}
                             >
                               <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
@@ -2238,19 +2142,11 @@ export default function App() {
 
                               <div className="flex justify-between items-start mb-12 relative z-10">
                                 <div>
-                                  <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('total_assets')}</p>
-                                  <AnimatePresence mode="popLayout" initial={false}>
-                                    <motion.p
-                                      key={Math.round(totalAssets)}
-                                      initial={{ opacity: 0, y: 10, filter: 'blur(6px)' }}
-                                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                                      exit={{ opacity: 0, y: -10, filter: 'blur(6px)' }}
-                                      transition={{ duration: 0.45, ease: [0.23, 1, 0.32, 1] }}
-                                      className="text-5xl font-black tracking-tighter drop-shadow-lg"
-                                    >
-                                      ¥{formatCurrency(totalAssets)}
-                                    </motion.p>
-                                  </AnimatePresence>
+                                  <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", "text-white/60")}>{t('total_assets')}</p>
+                                  <div className="text-5xl font-black tracking-tighter drop-shadow-lg flex items-end">
+                                    <span className="mr-1">¥</span>
+                                    <RollingNumber value={totalAssets} />
+                                  </div>
                                 </div>
                                 <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
                                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
@@ -2264,7 +2160,7 @@ export default function App() {
                                     <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
                                       <TrendingDown size={12} className="text-red-200" />
                                     </div>
-                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('expense')}</span>
+                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", "text-white/60")}>{t('expense')}</span>
                                   </div>
                                   <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
                                 </div>
@@ -2273,7 +2169,7 @@ export default function App() {
                                     <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
                                       <TrendingUp size={12} className="text-green-200" />
                                     </div>
-                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>{t('income')}</span>
+                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", "text-white/60")}>{t('income')}</span>
                                   </div>
                                   <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
                                 </div>
@@ -2285,14 +2181,13 @@ export default function App() {
                             <div
                               className={cn(
                                 "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
-                                isDarkMode ? "bg-slate-800/40 border-slate-700/50" : "bg-white/40 border-white/50",
-                                isCustomTheme && "accent-glow-soft"
+                                surfaceCard("rounded-[3rem]")
                               )}
                             >
                               <div className="flex justify-between items-center mb-6">
                                 <div className="flex items-center space-x-3">
                                   <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                                    <PieIcon size={20} className={cn(!isCustomTheme && "text-white")} />
+                                    <PieIcon size={20} className="text-white" />
                                   </div>
                                   <div>
                                     <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
@@ -2300,8 +2195,8 @@ export default function App() {
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">剩余额度</p>
-                                  <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : (isCustomTheme ? "accent-text" : "text-indigo-500"))}>
+                                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">{t('budget_remaining')}</p>
+                                  <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : "text-[#D4AF37]")}>
                                     ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
                                   </p>
                                 </div>
@@ -2314,7 +2209,7 @@ export default function App() {
                                   transition={{ duration: 1.5, ease: "easeOut" }}
                                   className={cn(
                                     "h-full rounded-full transition-all relative overflow-hidden",
-                                    stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : (isCustomTheme ? "accent-bg" : "bg-gradient-to-r from-indigo-500 to-purple-400")
+                                    stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : "lux-gold"
                                   )}
                                 >
                                   <div className="absolute inset-0 bg-white/20 animate-pulse" />
@@ -2324,12 +2219,12 @@ export default function App() {
                               <div className="flex justify-between items-center px-1">
                                 <div className="flex items-center space-x-2">
                                   <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
-                                    已用 {stats.budgetUsage.toFixed(1)}%
+                                    {t('home_widgets.used_prefix')} {stats.budgetUsage.toFixed(1)}%
                                   </div>
                                 </div>
                                 <div className="flex items-center space-x-1.5 text-gray-500">
                                   <Calculator size={14} />
-                                  <span className="text-[10px] font-black uppercase tracking-tight">日均可用: ¥{stats.dailyBudget.toFixed(0)}</span>
+                                  <span className="text-[10px] font-black uppercase tracking-tight">{t('daily_available', { amount: stats.dailyBudget.toFixed(0) })}</span>
                                 </div>
                               </div>
                             </div>
@@ -2356,8 +2251,8 @@ export default function App() {
                       >
                         <div className="flex items-center justify-between mb-6">
                           <div>
-                            <h3 className="text-lg font-black">组件库</h3>
-                            <p className={cn("text-[10px] font-bold mt-1", mutedText)}>勾选显示 / 关闭隐藏，顺序在首页编辑模式拖拽调整</p>
+                            <h3 className="text-lg font-black">{t('widget_center')}</h3>
+                            <p className={cn("text-[10px] font-bold mt-1", mutedText)}>{t('widget_center_desc')}</p>
                           </div>
                           <button onClick={() => setIsWidgetCenterOpen(false)} className={cn("p-2 rounded-full", isDarkUI ? "bg-slate-800" : "bg-gray-100")}>
                             <X size={18} />
@@ -2378,8 +2273,8 @@ export default function App() {
                                 )}
                               >
                                 <div>
-                                  <div className="text-sm font-black">{HOME_WIDGET_META[id].title}</div>
-                                  <div className={cn("text-[10px] font-bold mt-1", mutedText)}>{HOME_WIDGET_META[id].desc}</div>
+                                  <div className="text-sm font-black">{t(HOME_WIDGET_META[id].titleKey)}</div>
+                                  <div className={cn("text-[10px] font-bold mt-1", mutedText)}>{t(HOME_WIDGET_META[id].descKey)}</div>
                                 </div>
                                 <div className={cn(
                                   "w-12 h-7 rounded-full relative transition-colors",
@@ -2399,14 +2294,17 @@ export default function App() {
 
                         <div className="mt-6 flex items-center justify-between">
                           <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>
-                            已启用 {DEFAULT_HOME_WIDGET_CONFIG.order.filter(id => homeWidgetConfig.enabled[id]).length} / {DEFAULT_HOME_WIDGET_CONFIG.order.length}
+                            {t('enabled_count', {
+                              enabled: DEFAULT_HOME_WIDGET_CONFIG.order.filter(id => homeWidgetConfig.enabled[id]).length,
+                              total: DEFAULT_HOME_WIDGET_CONFIG.order.length
+                            })}
                           </div>
                           <motion.button
                             whileTap={{ scale: 0.96 }}
                             onClick={() => setIsWidgetCenterOpen(false)}
-                            className={cn("px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest", theme.primary, !isCustomTheme && "text-white")}
+                            className={cn("px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest", theme.primary, "text-white")}
                           >
-                            完成
+                            {t('home_widgets.done')}
                           </motion.button>
                         </div>
                       </motion.div>
@@ -2431,7 +2329,7 @@ export default function App() {
                       return acc;
                     }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
                       <div key={date}>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), 'MM月dd日 EEEE', { locale: i18n.language === 'zh-CN' ? zhCN : undefined })}</p>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), i18n.language === 'zh-CN' ? 'MM月dd日 EEEE' : 'MMM dd EEEE', { locale: dateLocale })}</p>
                         <div className={cn("rounded-[2.5rem] shadow-sm overflow-hidden", surfaceCard())}>
                           {items.map((item, idx) => (
                             <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center transition-colors group", idx !== items.length - 1 && "border-b", isBlackGold ? "border-[#2A2A2A]" : isDarkMode ? "border-slate-700" : "border-gray-50")}>
@@ -2501,8 +2399,8 @@ export default function App() {
                     <ChevronLeft size={18} className={cn(isDarkUI ? "text-white" : "text-gray-900")} />
                   </button>
                   <div className="text-center">
-                    <p className={cn("text-sm font-black", isDarkUI ? "text-white" : "text-gray-900")}>资产大盘</p>
-                    <p className={cn("text-[10px] font-bold", mutedText)}>总览 · 近 30 天</p>
+                    <p className={cn("text-sm font-black", isDarkUI ? "text-white" : "text-gray-900")}>{t('assets_dashboard.title')}</p>
+                    <p className={cn("text-[10px] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</p>
                   </div>
                   <div className="w-10" />
                 </div>
@@ -2510,11 +2408,11 @@ export default function App() {
                 <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-end justify-between mb-6">
                     <div>
-                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>当前总资产</p>
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.current_total_assets')}</p>
                       <p className="text-3xl font-black">¥{formatCurrency(totalAssets)}</p>
                     </div>
                     <div className="text-right">
-                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>净资产</p>
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
                       <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
                     </div>
                   </div>
@@ -2539,7 +2437,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                    <h3 className="font-black text-lg mb-4 flex items-center"><PieIcon size={20} className="mr-2 text-emerald-500" />负债 / 净资产</h3>
+                    <h3 className="font-black text-lg mb-4 flex items-center"><PieIcon size={20} className="mr-2 text-emerald-500" />{t('assets_dashboard.liability_vs_net')}</h3>
                     <div className="h-52 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -2554,18 +2452,18 @@ export default function App() {
                     </div>
                     <div className="mt-4 grid grid-cols-2 gap-3">
                       <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>负债</p>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.liabilities')}</p>
                         <p className="text-lg font-black text-rose-500">¥{formatCurrency(assetDashboard.liabilities)}</p>
                       </div>
                       <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>净资产</p>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
                         <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                    <h3 className="font-black text-lg mb-4 flex items-center"><Wallet size={20} className="mr-2 text-indigo-500" />资产分布比例</h3>
+                    <h3 className="font-black text-lg mb-4 flex items-center"><Wallet size={20} className="mr-2 text-indigo-500" />{t('assets_dashboard.distribution')}</h3>
                     <div className="h-52 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
@@ -2605,15 +2503,15 @@ export default function App() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                        <Wallet size={24} className={cn(!isCustomTheme && "text-white")} />
+                        <Wallet size={24} className="text-white" />
                       </div>
                       <div>
-                        <h1 className="text-2xl font-black tracking-tighter">我的账本 · 专业版</h1>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{getFilterLabel()} 消费月报</p>
+                        <h1 className="text-2xl font-black tracking-tighter">{t('app_name_pro')}</h1>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('pro.monthly_report', { filter: getFilterLabel() })}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-[10px] font-black text-gray-400 uppercase">Pro 会员专享</p>
+                      <p className="text-[10px] font-black text-gray-400 uppercase">{t('pro.only')}</p>
                       <div className="flex items-center justify-end space-x-1 text-amber-500">
                         <Star size={10} fill="currentColor" />
                         <Star size={10} fill="currentColor" />
@@ -2630,17 +2528,17 @@ export default function App() {
                     className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
                   >
                     <div className="absolute top-0 right-0 p-4">
-                      <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Pro Analysis</div>
+                      <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">{t('pro.analysis_badge')}</div>
                     </div>
                     <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
                     <div className="flex items-end justify-between mb-4">
                       <div>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>预计本月总支出</p>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>{t('pro.forecast_estimated_month_total')}</p>
                         <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
                       </div>
                       <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
-                        <p className="text-[10px] font-black uppercase tracking-widest mb-1">超支风险</p>
-                        <p className="text-lg font-black">{stats.isOverBudgetRisk ? '极高 ⚠️' : '极低 ✅'}</p>
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-1">{t('pro.over_budget_risk')}</p>
+                        <p className="text-lg font-black">{stats.isOverBudgetRisk ? t('pro.risk_high') : t('pro.risk_low')}</p>
                       </div>
                     </div>
                     <div className={cn("w-full h-2 rounded-full overflow-hidden", isBlackGold ? "bg-white/10" : "bg-gray-100")}>
@@ -2651,8 +2549,11 @@ export default function App() {
                       />
                     </div>
                     <p className={cn("mt-4 text-[10px] font-bold leading-relaxed", mutedText)}>
-                      基于您本月前 {differenceInDays(new Date(), startOfMonth(currentDate)) + 1} 天的消费频率，预测月底总额将达到 ¥{formatCurrency(stats.predictedTotal)}。
-                      {stats.isOverBudgetRisk ? "建议削减非必要开支。" : "目前预算控制良好，请继续保持。"}
+                      {t('pro.forecast_desc', {
+                        days: differenceInDays(new Date(), startOfMonth(currentDate)) + 1,
+                        amount: formatCurrency(stats.predictedTotal),
+                      })}{' '}
+                      {stats.isOverBudgetRisk ? t('pro.forecast_advice_over') : t('pro.forecast_advice_ok')}
                     </p>
                   </motion.div>
                 ) : (
@@ -2663,11 +2564,11 @@ export default function App() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
                     <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>永久会员解锁：消费预测、超支风险与更深度的财富趋势洞察。</p>
+                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_forecast')}</p>
                     <div className="mt-5 flex items-center justify-between">
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>高级理财实验室</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.lab')}</div>
                       <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                        ￥60 永久解锁
+                        {t('pro.unlock_price')}
                       </motion.button>
                     </div>
                   </motion.div>
@@ -2686,16 +2587,16 @@ export default function App() {
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
                           <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
-                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} tickFormatter={(v) => t(`categories.${v}`)} />
                           <Radar
-                            name="本月"
+                            name={t('month')}
                             dataKey="A"
                             stroke={accentHex}
                             fill={accentHex}
                             fillOpacity={0.6}
                           />
                           <Radar
-                            name="上月"
+                            name={t('last_month')}
                             dataKey="B"
                             stroke="#94a3b8"
                             fill="#94a3b8"
@@ -2708,11 +2609,11 @@ export default function App() {
                     <div className="flex justify-center space-x-6 mt-4">
                       <div className="flex items-center space-x-2">
                         <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
-                        <span className={cn("text-[10px] font-black", mutedText)}>本月</span>
+                        <span className={cn("text-[10px] font-black", mutedText)}>{t('month')}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 rounded-full bg-gray-300" />
-                        <span className={cn("text-[10px] font-black", mutedText)}>上月</span>
+                        <span className={cn("text-[10px] font-black", mutedText)}>{t('last_month')}</span>
                       </div>
                     </div>
                   </motion.div>
@@ -2724,11 +2625,11 @@ export default function App() {
                     className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
                   >
                     <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>永久会员解锁：本月 vs 上月消费构成雷达图，对比习惯变化。</p>
+                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_radar')}</p>
                     <div className="mt-5 flex items-center justify-between">
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>Pro 可视化</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
                       <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                        ￥60 永久解锁
+                        {t('pro.unlock_price')}
                       </motion.button>
                     </div>
                   </motion.div>
@@ -2765,10 +2666,10 @@ export default function App() {
                 <div className="flex justify-center pt-4">
                   <button
                     onClick={() => requestExport('image')}
-                    className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all font-black", theme.primary, !isCustomTheme && "text-white")}
+                    className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all font-black", theme.primary, "text-white")}
                   >
                     <Share2 size={20} />
-                    <span>生成精美账单长图</span>
+                    <span>{t('export_long_image')}</span>
                   </button>
                 </div>
               </div>
@@ -2777,20 +2678,17 @@ export default function App() {
             {activeTab === 'discovery' && (
               <div className="space-y-6">
                 {/* User Header */}
-                <div className={cn(
-                  "rounded-[2.5rem] p-6 border shadow-xl overflow-hidden relative",
-                  isDarkMode ? "bg-slate-800/50 border-slate-700/50" : "bg-white/50 border-white/60"
-                )}>
+                <div className={cn("rounded-[2.5rem] p-6 shadow-xl overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="absolute inset-0 backdrop-blur-2xl" />
                   <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full blur-[90px] opacity-40 bg-gradient-to-br from-indigo-500 to-fuchsia-500" />
                   <div className="relative flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className="w-14 h-14 rounded-[1.5rem] bg-white/30 border border-white/30 backdrop-blur-xl flex items-center justify-center">
-                        <User size={24} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                      <div className={cn("w-14 h-14 rounded-[1.5rem] border backdrop-blur-xl flex items-center justify-center", isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : "bg-white/30 border-white/30")}>
+                        <User size={24} className={cn(isBlackGold ? "text-[#D4AF37]" : (isDarkMode ? "text-white" : "text-gray-800"))} />
                       </div>
                       <div>
                         <div className="flex items-center space-x-2">
-                          <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>理财达人</p>
+                          <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>{t('user_title')}</p>
                           {isProMember && (
                             <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200">
                               <Star size={10} fill="currentColor" />
@@ -2799,7 +2697,7 @@ export default function App() {
                           )}
                         </div>
                         <p className={cn("text-[10px] font-bold mt-1", mutedText)}>
-                          {timeContext === 'morning' ? '早安' : timeContext === 'afternoon' ? '午安' : '晚安'}，欢迎回来
+                          {t(`greeting.${timeContext}`)}{i18n.language === 'zh-CN' ? '，' : ', '}{t('greeting.welcome_back')}
                         </p>
                       </div>
                     </div>
@@ -2810,10 +2708,10 @@ export default function App() {
                           onClick={() => setIsProPaywallOpen(true)}
                           className={cn(
                             "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                            isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : isMinimalWhite ? "bg-black/5 border-black/10 text-gray-700" : (isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-white/50 border-white/60 text-gray-600")
+                            "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
                           )}
                         >
-                          升级 PRO
+                          {t('upgrade_pro')}
                         </motion.button>
                       )}
                     </div>
@@ -2837,9 +2735,9 @@ export default function App() {
                         <Users size={20} />
                       </div>
                       <div>
-                        <div className="text-sm font-black">一起省钱 · 小组账本</div>
+                        <div className="text-sm font-black">{t('group_card_title')}</div>
                         <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">
-                          {groupSaving ? `${groupSaving.name} · 邀请码 ${groupSaving.code}` : '创建/加入小组，共同预算 + 动态流 + 隐私保护'}
+                          {groupSaving ? t('group_card_joined', { name: groupSaving.name, code: groupSaving.code }) : t('group_saving_subtitle')}
                         </div>
                       </div>
                     </div>
@@ -2850,7 +2748,7 @@ export default function App() {
                         : "lux-gold border-[#D4AF37] text-black shadow-lg"
                     )}>
                       <Users size={14} />
-                      <span>{groupSaving ? '进入' : '立即开启'}</span>
+                      <span>{groupSaving ? t('enter') : t('start_now')}</span>
                     </div>
                   </div>
                 </motion.button>
@@ -2858,18 +2756,18 @@ export default function App() {
                 {/* Quick Tools Grid */}
                 <div className={cn("rounded-[2.5rem] p-6 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-sm font-black">常用功能</h3>
-                    <span className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>Toolkit</span>
+                    <h3 className="text-sm font-black">{t('common_tools')}</h3>
+                    <span className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('toolkit_tag')}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { key: 'assets', label: '资产分析', Icon: LineIcon, onClick: () => setActiveTab('assets') },
-                      { key: 'groupSaving', label: '一起省钱', Icon: Users, onClick: () => setDiscoveryTool('groupSaving') },
-                      { key: 'budget', label: '设置', Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
-                      { key: 'export', label: '账单导出', Icon: Share2, onClick: () => requestExport('image') },
-                      { key: 'categories', label: '分类管理', Icon: Hash, onClick: () => setDiscoveryTool('categories') },
-                      { key: 'fx', label: '汇率换算', Icon: ArrowRightLeft, onClick: () => setDiscoveryTool('exchange') },
-                      { key: 'calc', label: '理财计算器', Icon: Calculator, onClick: () => setDiscoveryTool('calculator') },
+                      { key: 'assets', label: t('assets'), Icon: LineIcon, onClick: () => setActiveTab('assets') },
+                      { key: 'groupSaving', label: t('group_saving_title'), Icon: Users, onClick: () => setDiscoveryTool('groupSaving') },
+                      { key: 'budget', label: t('settings'), Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
+                      { key: 'export', label: t('export'), Icon: Share2, onClick: () => requestExport('image') },
+                      { key: 'categories', label: t('categories_manage'), Icon: Hash, onClick: () => setDiscoveryTool('categories') },
+                      { key: 'fx', label: t('exchange'), Icon: ArrowRightLeft, onClick: () => setDiscoveryTool('exchange') },
+                      { key: 'calc', label: t('calculator'), Icon: Calculator, onClick: () => setDiscoveryTool('calculator') },
                     ].map(item => (
                       <motion.button
                         key={item.key}
@@ -2877,12 +2775,12 @@ export default function App() {
                         onClick={item.onClick}
                         className={cn(
                           "p-4 rounded-[1.75rem] border flex flex-col items-center justify-center space-y-2 transition-all",
-                          isBlackGold ? "lux-carbon border-[#2A2A2A]" : isMinimalWhite ? "bg-[#F3F4F6] border-[#E5E7EB] hover:bg-[#EDEEF1]" : (isDarkMode ? "bg-slate-700/60 border-slate-600 hover:bg-slate-700" : "bg-gray-50 border-gray-100 hover:bg-gray-100")
+                          "lux-carbon border-[#2A2A2A]"
                         )}
                       >
                         <div className={cn(
                           "w-10 h-10 rounded-2xl flex items-center justify-center border",
-                          isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : isMinimalWhite ? "bg-white border-white text-gray-800" : (isDarkMode ? "bg-slate-800/70 border-slate-600 text-white" : "bg-white border-white text-gray-800")
+                          "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
                         )}>
                           <item.Icon size={18} />
                         </div>
@@ -2895,7 +2793,7 @@ export default function App() {
                 {/* Pro Perks */}
                 <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-sm font-black">永久会员专属特权</h3>
+                    <h3 className="text-sm font-black">{t('pro.perks_title')}</h3>
                     <motion.button
                       whileTap={{ scale: 0.96 }}
                       onClick={() => setIsProPaywallOpen(true)}
@@ -2906,19 +2804,19 @@ export default function App() {
                           : "bg-amber-500 text-black border-amber-400 shadow-lg"
                       )}
                     >
-                      {isProMember ? '已解锁' : '￥60 永久'}
+                      {isProMember ? t('pro.unlocked') : t('pro.lifetime')}
                     </motion.button>
                   </div>
 
                   <div className={cn("space-y-3", !isProMember && "opacity-60")}>
                     <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
                       <div className="flex items-center space-x-3">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
-                          <Palette size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", "lux-carbon border-[#2A2A2A]")}>
+                          <Sparkles size={18} className="text-[#D4AF37]" />
                         </div>
                         <div>
-                          <p className="text-xs font-black">专属皮肤</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>黑金</p>
+                          <p className="text-xs font-black">{t('pro.perk_skin.label')}</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_skin.desc')}</p>
                         </div>
                       </div>
                       {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
@@ -2930,8 +2828,8 @@ export default function App() {
                           <Share2 size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
                         </div>
                         <div>
-                          <p className="text-xs font-black">导出无限制</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>Excel / PDF / 图片</p>
+                          <p className="text-xs font-black">{t('pro.perk_export.label')}</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_export.desc')}</p>
                         </div>
                       </div>
                       {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
@@ -2943,8 +2841,8 @@ export default function App() {
                           <Sparkles size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
                         </div>
                         <div>
-                          <p className="text-xs font-black">高级理财实验室</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>更深度趋势预测</p>
+                          <p className="text-xs font-black">{t('pro.perk_lab.label')}</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_lab.desc')}</p>
                         </div>
                       </div>
                       {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
@@ -2956,8 +2854,8 @@ export default function App() {
                           <Star size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
                         </div>
                         <div>
-                          <p className="text-xs font-black">会员专属标识</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>头像旁皇冠 PRO</p>
+                          <p className="text-xs font-black">{t('pro.perk_badge.label')}</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_badge.desc')}</p>
                         </div>
                       </div>
                       {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
@@ -2966,49 +2864,46 @@ export default function App() {
 
                   <div className="mt-5">
                     <div className="flex items-center justify-between mb-3">
-                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>主题</span>
-                      <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>已锁定</span>
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('theme')}</span>
+                      <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('locked')}</span>
                     </div>
-                    <div className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border text-center shadow-lg", THEMES.blackGold.primary)}>
-                      黑金
+                    <div className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border text-center shadow-lg", theme.primary)}>
+                      {t('black_gold')}
                     </div>
                   </div>
 
                   <div className="mt-5">
                     <div className="flex items-center justify-between mb-3">
-                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>导出</span>
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('export_section')}</span>
                       {!isProMember && (
-                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>剩余 {remainingFreeExports} 次</span>
+                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('remaining_times', { count: remainingFreeExports })}</span>
                       )}
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('image')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
-                        图片
+                        {t('export_image')}
                       </motion.button>
                       <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('csv')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
-                        Excel
+                        {t('export_excel')}
                       </motion.button>
                       <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('pdf')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
-                        PDF
+                        {t('export_pdf')}
                       </motion.button>
                     </div>
                   </div>
                 </div>
 
                 {/* Finance Management Card */}
-                <div className={cn(
-                  "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden relative",
-                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
-                )}>
+                <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
                   <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-black text-sm">理财管理</h3>
+                    <h3 className="font-black text-sm">{t('finance_management')}</h3>
                     <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>
-                      Health
+                      {t('finance_health')}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 items-center">
                     <div>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>财务健康度</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('finance_health')}</div>
                       <div className="flex items-end space-x-2">
                         <div className={cn("text-4xl font-black", stats.budgetUsage > 90 ? "text-rose-500" : theme.text)}>
                           {Math.max(0, Math.min(100, Math.round(100 - stats.budgetUsage)))}
@@ -3023,7 +2918,7 @@ export default function App() {
                       </div>
                     </div>
                     <div className={cn("rounded-[2rem] p-4 border", isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-3", isDarkMode ? "text-white/50" : "text-gray-400")}>近 7 天支出</div>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-3", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('last7_expense')}</div>
                       <div className="flex items-end justify-between h-14">
                         {stats.trendData.map((d, idx) => (
                           <div key={d.date + idx} className="flex-1 flex justify-center">
@@ -3046,7 +2941,7 @@ export default function App() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-2">
                       <Smile size={18} className={cn(isDarkMode ? "text-white/60" : "text-gray-700")} />
-                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>省钱小贴士</span>
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('saving_tips')}</span>
                     </div>
                     <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>“{wealthTip}”</span>
                   </div>
@@ -3070,17 +2965,17 @@ export default function App() {
                 <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-gray-50 text-gray-900")}>
                   <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />{t('calendar')}</h3>
                   <div className="grid grid-cols-7 gap-2">
-                    {['一', '二', '三', '四', '五', '六', '日'].map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 pb-4">{d}</div>)}
+                    {(t('home_widgets.weekdays_short', { returnObjects: true }) as string[]).map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 pb-4">{d}</div>)}
                     {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
                       const dayData = transactions.filter(t => isSameDay(parseISO(t.date), day));
                       const dayExpense = dayData.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
                       return (
-                        <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? cn(theme.primary, !isCustomTheme && "text-white") : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
+                        <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? cn(theme.primary, "text-white") : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
                           <span className="text-xs font-black">{format(day, 'd')}</span>
                           {dayExpense > 0 && (
                             <span className={cn(
                               "text-[6px] font-black absolute bottom-1",
-                              isSameDay(day, selectedCalendarDate) ? (isCustomTheme ? "accent-on opacity-80" : "text-white/80") : "text-red-400"
+                              isSameDay(day, selectedCalendarDate) ? "text-white/80" : "text-red-400"
                             )}>
                               -{Math.floor(dayExpense)}
                             </span>
@@ -3093,14 +2988,14 @@ export default function App() {
 
                 {/* Daily Summary Card */}
                 <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-                  <h3 className="font-black text-sm text-gray-400 mb-6 uppercase tracking-widest">{format(selectedCalendarDate, 'MM月dd日')} 结余</h3>
+                  <h3 className="font-black text-sm text-gray-400 mb-6 uppercase tracking-widest">{t('calendar_balance', { date: format(selectedCalendarDate, i18n.language === 'zh-CN' ? 'MM月dd日' : 'MMM dd', { locale: dateLocale }) })}</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 rounded-2xl bg-red-50/50 dark:bg-red-900/10 border border-red-100/50 dark:border-red-900/20">
-                      <p className="text-[10px] font-black text-red-400 uppercase mb-1">支出</p>
+                      <p className="text-[10px] font-black text-red-400 uppercase mb-1">{t('expense')}</p>
                       <p className="text-xl font-black text-red-500">¥{formatCurrency(transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate) && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0))}</p>
                     </div>
                     <div className="p-4 rounded-2xl bg-green-50/50 dark:bg-green-900/10 border border-green-100/50 dark:border-green-900/20">
-                      <p className="text-[10px] font-black text-green-400 uppercase mb-1">收入</p>
+                      <p className="text-[10px] font-black text-green-400 uppercase mb-1">{t('income')}</p>
                       <p className="text-xl font-black text-green-500">¥{formatCurrency(transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate) && t.type === 'income').reduce((sum, t) => sum + t.amount, 0))}</p>
                     </div>
                   </div>
@@ -3109,7 +3004,7 @@ export default function App() {
                 {/* Month Progress */}
                 <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
                   <div className="flex justify-between items-center mb-4">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">本月进度</span>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('month_progress')}</span>
                     <span className="text-[10px] font-black">{stats.budgetUsage.toFixed(1)}%</span>
                   </div>
                   <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
@@ -3162,15 +3057,15 @@ export default function App() {
                 </div>
               </div>
 
-              <h2 className="text-white text-2xl font-black mb-2 tracking-tight">AI 智能记账</h2>
-              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-10">Listening for intent...</p>
+              <h2 className="text-white text-2xl font-black mb-2 tracking-tight">{t('voice.title')}</h2>
+              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-10">{t('voice.listening')}</p>
 
               <div className="w-full space-y-6">
                 <div className="relative">
                   <input
                     autoFocus
                     type="text"
-                    placeholder="今天吃肯德基花了 50 块"
+                    placeholder={t('voice.placeholder')}
                     value={voiceText}
                     onChange={(e) => setVoiceText(e.target.value)}
                     onKeyDown={(e) => {
@@ -3199,7 +3094,7 @@ export default function App() {
                       animate={{ opacity: 1, y: 0 }}
                       className="mt-6 p-6 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md"
                     >
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">AI 解析结果</p>
+                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">{t('voice.parse_result')}</p>
                       <div className="flex justify-between items-center">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-xl">
@@ -3229,7 +3124,7 @@ export default function App() {
                         }}
                         className="w-full mt-6 py-4 bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
                       >
-                        确认入账
+                        {t('voice.confirm_post')}
                       </button>
                     </motion.div>
                   )}
@@ -3309,7 +3204,7 @@ export default function App() {
             >
               <div className="absolute inset-0 backdrop-blur-2xl -z-10" />
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-xl font-black">账单搜索</h2>
+                <h2 className="text-xl font-black">{t('search_title')}</h2>
                 <button onClick={() => { setIsSearchModalOpen(false); setSearchQuery(''); }} className={cn("p-2 rounded-full border", "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]")}>
                   <X size={20} />
                 </button>
@@ -3320,7 +3215,7 @@ export default function App() {
                 <input
                   autoFocus
                   type="text"
-                  placeholder="搜索备注、分类或标签..."
+                  placeholder={t('search_placeholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={cn(
@@ -3358,11 +3253,11 @@ export default function App() {
                 ) : (
                   <div className="py-10 text-center text-gray-400">
                     <Search size={32} className="mx-auto mb-2 opacity-20" />
-                    <p className="text-xs font-bold">输入关键词开始搜索</p>
+                    <p className="text-xs font-bold">{t('search.start_hint')}</p>
                   </div>
                 )}
                 {searchQuery && transactions.filter(t => t.note?.toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
-                  <p className="text-center py-10 text-gray-400 text-xs font-bold">未找到相关账单</p>
+                  <p className="text-center py-10 text-gray-400 text-xs font-bold">{t('search.no_result')}</p>
                 )}
               </div>
             </motion.div>
@@ -3407,25 +3302,25 @@ export default function App() {
                 />
                 <div className="flex items-center space-x-4 relative z-10">
                   <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center relative">
-                    <User className={cn(!isCustomTheme && "text-white")} size={28} />
+                    <User className="text-white" size={28} />
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center border-2 border-white">
                       <Star className="text-white" size={10} fill="currentColor" />
                     </div>
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <p className={cn("font-black", !isCustomTheme && "text-white")}>{t('user_nickname')}</p>
-                      <span className={cn("text-[8px] bg-white/20 px-1.5 py-0.5 rounded-full font-black", !isCustomTheme && "text-white")}>PRO</span>
+                      <p className="font-black text-white">{t('user_nickname')}</p>
+                      <span className="text-[8px] bg-white/20 px-1.5 py-0.5 rounded-full font-black text-white">PRO</span>
                     </div>
-                    <p className={cn("text-[10px] font-bold", isCustomTheme ? "accent-on opacity-70" : "text-white/60")}>已激活永久高级会员</p>
+                    <p className={cn("text-[10px] font-bold", "text-white/60")}>{t('settings_pro_active')}</p>
                   </div>
                 </div>
                 <div className="mt-4 flex space-x-2">
-                  <div className={cn("flex-1 py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", !isCustomTheme && "text-white")}>
-                    云端同步中...
+                  <div className={cn("flex-1 py-2 bg-white/10 rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", "text-white")}>
+                    {t('settings_syncing')}
                   </div>
-                  <div className={cn("flex-1 py-2 bg-white/20 rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", !isCustomTheme && "text-white")}>
-                    自动冷备份
+                  <div className={cn("flex-1 py-2 bg-white/20 rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", "text-white")}>
+                    {t('settings_backup')}
                   </div>
                 </div>
               </div>
@@ -3433,17 +3328,17 @@ export default function App() {
               {/* Settings List Groups */}
               <div className="space-y-6">
                 <section>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">账户与安全</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-3 px-2">{t('settings_account_security')}</label>
                   <div className={cn("rounded-[2rem] overflow-hidden", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
                     <div className="p-5 flex items-center justify-between border-b border-black/5">
                       <div className="flex items-center space-x-4">
                         <div className="w-8 h-8 bg-amber-100 text-amber-500 rounded-lg flex items-center justify-center">
                           <Cloud size={18} />
                         </div>
-                        <span className="text-sm font-bold">自动云端备份</span>
+                        <span className="text-sm font-bold">{t('settings_auto_cloud_backup')}</span>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <span className="text-[8px] font-black text-green-500">已开启</span>
+                        <span className="text-[8px] font-black text-green-500">{t('settings_enabled')}</span>
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                       </div>
                     </div>
@@ -3468,9 +3363,9 @@ export default function App() {
                         <div className="w-8 h-8 bg-amber-100 text-amber-500 rounded-lg flex items-center justify-center">
                           <Moon size={18} />
                         </div>
-                        <span className="text-sm font-bold">黑金模式</span>
+                        <span className="text-sm font-bold">{t('black_gold_mode')}</span>
                       </div>
-                      <span className="text-[10px] font-black opacity-40">已启用</span>
+                      <span className="text-[10px] font-black opacity-40">{t('settings_active')}</span>
                     </div>
                   </div>
                 </section>
@@ -3491,7 +3386,7 @@ export default function App() {
                     <div className="w-8 h-8 bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center">
                       <LogOut size={18} />
                     </div>
-                    <span className="text-sm font-black text-rose-500">退出登录</span>
+                    <span className="text-sm font-black text-rose-500">{t('logout')}</span>
                   </div>
                   <ChevronRight size={18} className="text-rose-400 opacity-70" />
                 </button>
@@ -3517,7 +3412,7 @@ export default function App() {
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-black">
-                  {discoveryTool === 'groupSaving' ? '一起省钱' : discoveryTool === 'categories' ? '分类管理' : discoveryTool === 'exchange' ? '汇率换算' : '理财计算器'}
+                  {discoveryTool === 'groupSaving' ? t('group_saving_title') : discoveryTool === 'categories' ? t('categories_manage') : discoveryTool === 'exchange' ? t('exchange') : t('calculator')}
                 </h3>
                 <button onClick={() => setDiscoveryTool(null)} className={cn("p-2 rounded-full border", "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]")}>
                   <X size={18} />
@@ -3529,15 +3424,15 @@ export default function App() {
                   {!groupSaving ? (
                     <>
                       <div className={cn("p-5 rounded-[2rem] border", "lux-carbon-soft border-[#2A2A2A]")}>
-                        <div className="text-sm font-black mb-2">创建小组</div>
+                        <div className="text-sm font-black mb-2">{t('group.create_title')}</div>
                         <div className="text-[10px] font-bold mb-4 text-[#F5F5F5]/60">
-                          适合情侣 / 合租室友 / 省钱搭子：共用预算 + 动态流 + 隐私开关
+                          {t('group.create_desc')}
                         </div>
                         <div className="flex space-x-2">
                           <input
                             value={groupDraftName}
                             onChange={(e) => setGroupDraftName(e.target.value)}
-                            placeholder="例如：甜蜜情侣 / 合租室友"
+                            placeholder={t('group.create_placeholder')}
                             className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold focus:outline-none border", "lux-carbon border-[#2A2A2A] text-[#F5F5F5] placeholder:text-[#F5F5F5]/35")}
                           />
                           <motion.button
@@ -3545,21 +3440,21 @@ export default function App() {
                             onClick={() => createGroupSaving(groupDraftName)}
                             className={cn("px-5 py-3 rounded-2xl text-xs font-black shadow-lg", "lux-gold border border-[#D4AF37] text-black")}
                           >
-                            创建
+                            {t('group.create')}
                           </motion.button>
                         </div>
                       </div>
 
                       <div className={cn("p-5 rounded-[2rem] border", "lux-carbon-soft border-[#2A2A2A]")}>
-                        <div className="text-sm font-black mb-2">加入小组</div>
+                        <div className="text-sm font-black mb-2">{t('group.join_title')}</div>
                         <div className="text-[10px] font-bold mb-4 text-[#F5F5F5]/60">
-                          输入邀请码加入（本地演示：仅能加入本设备创建过的小组）
+                          {t('group.join_desc')}
                         </div>
                         <div className="flex space-x-2">
                           <input
                             value={groupJoinCode}
                             onChange={(e) => setGroupJoinCode(e.target.value.toUpperCase())}
-                            placeholder="邀请码（6 位）"
+                            placeholder={t('group.join_placeholder')}
                             className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-bold focus:outline-none tracking-widest uppercase border", "lux-carbon border-[#2A2A2A] text-[#F5F5F5] placeholder:text-[#F5F5F5]/35")}
                           />
                           <motion.button
@@ -3567,7 +3462,7 @@ export default function App() {
                             onClick={() => joinGroupSaving(groupJoinCode)}
                             className={cn("px-5 py-3 rounded-2xl text-xs font-black shadow-lg", "lux-carbon-soft border border-[#2A2A2A] text-[#D4AF37]")}
                           >
-                            加入
+                            {t('group.join')}
                           </motion.button>
                         </div>
                       </div>
@@ -3589,7 +3484,7 @@ export default function App() {
                                 </span>
                               </div>
                               <div className="text-[10px] font-bold mt-2 text-[#F5F5F5]/60">
-                                记账时选择“加入小组 / 加入公账”即可同步到动态流与公共资金池
+                                {t('group.record_tip')}
                               </div>
                             </div>
                             <motion.button
@@ -3597,7 +3492,7 @@ export default function App() {
                               onClick={leaveGroupSaving}
                               className={cn("px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border", "lux-carbon border-[#2A2A2A] text-[#F5F5F5]/70")}
                             >
-                              退出
+                              {t('group.leave')}
                             </motion.button>
                           </div>
 
@@ -3614,7 +3509,7 @@ export default function App() {
                               ))}
                             </div>
                             <div className="text-[10px] font-black uppercase tracking-widest text-[#F5F5F5]/50">
-                              {groupSaving.members.length} 人
+                              {t('group.members', { count: groupSaving.members.length })}
                             </div>
                           </div>
                         </div>
@@ -3623,11 +3518,11 @@ export default function App() {
                       <div className={cn("p-6 rounded-[2.25rem] border", "lux-carbon-soft border-[#2A2A2A]")}>
                         <div className="flex items-center justify-between mb-4">
                           <div>
-                            <div className="text-sm font-black">公共资金池</div>
-                            <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">本月预算与进度（仅统计“加入公账”的支出）</div>
+                            <div className="text-sm font-black">{t('group.public_pool')}</div>
+                            <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">{t('group.pool_desc')}</div>
                           </div>
                           <div className="text-right">
-                            <div className="text-[10px] font-black uppercase tracking-widest opacity-70">已用</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest opacity-70">{t('group.used')}</div>
                             <div className="text-sm font-black">¥{formatCurrency(groupMonthPoolSpent)}</div>
                           </div>
                         </div>
@@ -3640,7 +3535,7 @@ export default function App() {
                             className={cn("flex-1 px-4 py-3 rounded-2xl text-xs font-black focus:outline-none border", "lux-carbon border-[#2A2A2A] text-[#F5F5F5]")}
                           />
                           <div className={cn("px-3 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", "lux-carbon-soft border-[#2A2A2A] text-[#F5F5F5]/60")}>
-                            月预算
+                            {t('group.month_budget')}
                           </div>
                         </div>
 
@@ -3653,7 +3548,7 @@ export default function App() {
                           />
                         </div>
                         <div className="mt-3 flex items-center justify-between">
-                          <div className="text-[10px] font-black uppercase tracking-widest text-[#F5F5F5]/50">进度</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-[#F5F5F5]/50">{t('group.progress')}</div>
                           <div className="text-[10px] font-black">{groupMonthProgressPct.toFixed(0)}%</div>
                         </div>
                       </div>
@@ -3661,26 +3556,26 @@ export default function App() {
                       <div className={cn("p-6 rounded-[2.25rem] border", "lux-carbon-soft border-[#2A2A2A]")}>
                         <div className="flex items-center justify-between">
                           <div>
-                            <div className="text-sm font-black">省钱进度墙</div>
-                            <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">本周已省下</div>
+                            <div className="text-sm font-black">{t('group.saving_wall')}</div>
+                            <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">{t('group.saved_this_week')}</div>
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-black text-[#D4AF37]">¥{formatCurrency(groupWeekSaved)}</div>
-                            <div className="text-[10px] font-bold text-[#F5F5F5]/45">本周公账支出 ¥{formatCurrency(groupWeekPoolSpent)}</div>
+                            <div className="text-[10px] font-bold text-[#F5F5F5]/45">{t('group.week_pool_spent', { amount: formatCurrency(groupWeekPoolSpent) })}</div>
                           </div>
                         </div>
                       </div>
 
                       <div className="space-y-3">
                         <div className="flex items-center justify-between px-1">
-                          <div className="text-sm font-black">消费动态流</div>
-                          <div className="text-[10px] font-black uppercase tracking-widest text-[#F5F5F5]/50">Live</div>
+                          <div className="text-sm font-black">{t('group.feed')}</div>
+                          <div className="text-[10px] font-black uppercase tracking-widest text-[#F5F5F5]/50">{t('live')}</div>
                         </div>
 
                         {groupActivities.length === 0 ? (
                           <div className={cn("p-6 rounded-[2rem] border text-center", "lux-carbon-soft border-[#2A2A2A] text-[#F5F5F5]/65")}>
-                            <div className="text-sm font-black mb-2">还没有动态</div>
-                            <div className="text-[10px] font-bold opacity-70">去记一笔，并选择“加入小组 / 加入公账”</div>
+                            <div className="text-sm font-black mb-2">{t('group.empty_title')}</div>
+                            <div className="text-[10px] font-bold opacity-70">{t('group.empty_desc')}</div>
                           </div>
                         ) : (
                           <div className="space-y-3 max-h-[42vh] overflow-y-auto no-scrollbar pr-1">
@@ -3689,14 +3584,14 @@ export default function App() {
                                 <div className="flex items-start justify-between">
                                   <div>
                                     <div className="text-xs font-black">
-                                      {a.actorName}
+                                      {a.actorId === localUserId ? t('user_title') : a.actorName}
                                       <span className="ml-2 text-[10px] font-black uppercase tracking-widest text-[#F5F5F5]/50">
-                                        {a.action === 'add' ? '记了一笔' : a.action === 'edit' ? '更新了一笔' : '删除了一笔'}
+                                        {t(`group.action.${a.action}`)}
                                       </span>
                                     </div>
                                     <div className="text-[10px] font-bold mt-2 text-[#F5F5F5]/75">
                                       {t(`categories.${a.category}`)} · {a.type === 'expense' ? '-' : '+'}¥{formatCurrency(a.amount)}
-                                      {a.toGroupPool && <span className="ml-2 text-[#D4AF37] font-black">· 公账</span>}
+                                      {a.toGroupPool && <span className="ml-2 text-[#D4AF37] font-black">{t('group.pool_tag')}</span>}
                                     </div>
                                     {a.note && (
                                       <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/45">
@@ -3705,7 +3600,7 @@ export default function App() {
                                     )}
                                   </div>
                                   <div className="text-[10px] font-bold text-[#F5F5F5]/45">
-                                    {format(new Date(a.ts), 'MM-dd HH:mm')}
+                                    {format(new Date(a.ts), i18n.language === 'zh-CN' ? 'MM-dd HH:mm' : 'MMM dd HH:mm', { locale: dateLocale })}
                                   </div>
                                 </div>
 
@@ -3720,7 +3615,7 @@ export default function App() {
                                         : "lux-carbon border-[#2A2A2A] text-[#F5F5F5]/70"
                                     )}
                                   >
-                                    点赞 {a.likes.length}
+                                    {t('group.like')} {a.likes.length}
                                   </motion.button>
                                   <motion.button
                                     whileTap={{ scale: 0.96 }}
@@ -3732,7 +3627,7 @@ export default function App() {
                                         : "lux-carbon border-[#2A2A2A] text-[#F5F5F5]/70"
                                     )}
                                   >
-                                    督促 {a.urges.length}
+                                    {t('group.urge')} {a.urges.length}
                                   </motion.button>
                                 </div>
                               </div>
@@ -3747,17 +3642,17 @@ export default function App() {
 
               {discoveryTool === 'categories' && (
                 <div className={cn("p-6 rounded-[2rem] border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-600")}>
-                  <p className="text-sm font-bold leading-relaxed">分类管理功能即将上线。当前版本可在记账时选择分类，并在统计页查看分类构成。</p>
+                  <p className="text-sm font-bold leading-relaxed">{t('categories_manage_placeholder')}</p>
                 </div>
               )}
 
               {discoveryTool === 'exchange' && (
                 <div className="space-y-3">
                   {[
-                    { code: 'USD', name: '美元' },
-                    { code: 'EUR', name: '欧元' },
-                    { code: 'JPY', name: '日元' },
-                    { code: 'HKD', name: '港币' },
+                    { code: 'USD' },
+                    { code: 'EUR' },
+                    { code: 'JPY' },
+                    { code: 'HKD' },
                   ].map(c => (
                     <div key={c.code} className={cn("p-4 rounded-2xl border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
                       <div className="flex items-center space-x-3">
@@ -3765,7 +3660,7 @@ export default function App() {
                           <Globe size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
                         </div>
                         <div>
-                          <p className="text-sm font-black">{c.name}</p>
+                          <p className="text-sm font-black">{t(`currencies.${c.code}`)}</p>
                           <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>1 {c.code} ≈</p>
                         </div>
                       </div>
@@ -3778,7 +3673,7 @@ export default function App() {
               {discoveryTool === 'calculator' && (
                 <div className="space-y-5">
                   <div>
-                    <label className={cn("text-[10px] font-black uppercase tracking-widest block mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>输入预计月薪</label>
+                    <label className={cn("text-[10px] font-black uppercase tracking-widest block mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('calculator_532.input_salary')}</label>
                     <input
                       type="number"
                       value={monthlySalary}
@@ -3788,9 +3683,9 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-1 gap-3">
                     {[
-                      { label: '生活开支 (50%)', amount: monthlySalary * 0.5, color: 'text-blue-500', bg: 'bg-blue-50' },
-                      { label: '理财储蓄 (30%)', amount: monthlySalary * 0.3, color: 'text-green-500', bg: 'bg-green-50' },
-                      { label: '娱乐享受 (20%)', amount: monthlySalary * 0.2, color: 'text-pink-500', bg: 'bg-pink-50' },
+                      { label: t('calculator_532.living'), amount: monthlySalary * 0.5, color: 'text-blue-500', bg: 'bg-blue-50' },
+                      { label: t('calculator_532.saving'), amount: monthlySalary * 0.3, color: 'text-green-500', bg: 'bg-green-50' },
+                      { label: t('calculator_532.fun'), amount: monthlySalary * 0.2, color: 'text-pink-500', bg: 'bg-pink-50' },
                     ].map(item => (
                       <div key={item.label} className={cn("p-4 rounded-2xl flex justify-between items-center", isDarkMode ? "bg-slate-700" : item.bg)}>
                         <span className={cn("text-xs font-bold", isDarkMode ? "text-white/60" : "opacity-60")}>{item.label}</span>
@@ -3828,8 +3723,8 @@ export default function App() {
                         <Star size={18} fill="currentColor" />
                       </div>
                       <div>
-                        <p className="text-lg font-black">￥60 永久会员</p>
-                        <p className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/60" : "text-gray-500")}>永久解锁所有特权</p>
+                        <p className="text-lg font-black">{t('pro.paywall_title')}</p>
+                        <p className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/60" : "text-gray-500")}>{t('pro.paywall_subtitle')}</p>
                       </div>
                     </div>
                   </div>
@@ -3841,10 +3736,10 @@ export default function App() {
                 <div className={cn("rounded-[2rem] p-5 border", isDarkMode ? "bg-slate-800/70 border-slate-700" : "bg-gray-50 border-gray-100")}>
                   <div className="grid grid-cols-2 gap-3">
                     {[
-                      { label: '专属皮肤', desc: '黑金' },
-                      { label: '导出无限制', desc: 'Excel / PDF / 图片' },
-                      { label: '高级实验室', desc: '更深度趋势预测' },
-                      { label: '会员皇冠', desc: '头像旁 PRO 标识' },
+                      { label: t('pro.perk_skin.label'), desc: t('pro.perk_skin.desc') },
+                      { label: t('pro.perk_export.label'), desc: t('pro.perk_export.desc') },
+                      { label: t('pro.perk_lab.label'), desc: t('pro.perk_lab.desc') },
+                      { label: t('pro.perk_badge.label'), desc: t('pro.perk_badge.desc') },
                     ].map(i => (
                       <div key={i.label} className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-900/60 border-slate-700" : "bg-white border-white")}>
                         <p className="text-xs font-black">{i.label}</p>
@@ -3857,7 +3752,7 @@ export default function App() {
                 <div className="mt-5">
                   {!isProMember && (
                     <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>
-                      普通用户免费导出仅限 10 次，当前已使用 {exportCount} 次，剩余 {remainingFreeExports} 次。
+                      {t('pro.free_export_limit', { used: exportCount, left: remainingFreeExports })}
                     </p>
                   )}
                 </div>
@@ -3868,7 +3763,7 @@ export default function App() {
                     onClick={purchasePro}
                     className="py-4 rounded-2xl font-black text-xs bg-amber-500 text-black shadow-lg transition-all"
                   >
-                    立即购买
+                    {t('pro.buy_now')}
                   </motion.button>
                 </div>
               </div>
@@ -3891,8 +3786,8 @@ export default function App() {
               )}
             >
               <div className="text-center">
-                <h3 className="text-lg font-black">确定要退出登录吗？</h3>
-                <p className={cn("mt-2 text-xs font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>退出后可随时重新登录。</p>
+                <h3 className="text-lg font-black">{t('logout_confirm_title')}</h3>
+                <p className={cn("mt-2 text-xs font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>{t('logout_confirm_body')}</p>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-8">
                 <button
@@ -3902,13 +3797,13 @@ export default function App() {
                     isDarkMode ? "bg-slate-700 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-600"
                   )}
                 >
-                  取消
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={handleLogout}
                   className="py-4 rounded-2xl font-black text-xs bg-rose-500 text-white shadow-lg active:scale-95 transition-all"
                 >
-                  退出登录
+                  {t('logout')}
                 </button>
               </div>
             </motion.div>
@@ -3935,19 +3830,15 @@ export default function App() {
               <h3 className="text-lg font-black mb-6">{t('select_lang')}</h3>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { id: 'zh-CN', label: '简体中文', flag: '🇨🇳' },
-                  { id: 'en-US', label: 'English', flag: '🇺🇸' },
-                  { id: 'ja-JP', label: '日本語', flag: '🇯🇵' },
-                  { id: 'ko-KR', label: '한국어', flag: '🇰🇷' },
-                  { id: 'es-ES', label: 'Español', flag: '🇪🇸' },
-                  { id: 'fr-FR', label: 'Français', flag: '🇫🇷' }
+                  { id: 'zh-CN', label: t('langs.zh-CN'), flag: '🇨🇳' },
+                  { id: 'en-US', label: t('langs.en-US'), flag: '🇺🇸' },
                 ].map(l => (
                   <button
                     key={l.id}
-                    onClick={() => { i18n.changeLanguage(l.id); setIsLangPickerOpen(false); }}
+                    onClick={() => { localStorage.setItem('app_lang', l.id); i18n.changeLanguage(l.id); setIsLangPickerOpen(false); }}
                     className={cn(
                       "w-full p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 transition-all border",
-                      i18n.language === l.id ? cn(theme.primary, !isCustomTheme && "text-white", "border-transparent") : (isDarkMode ? "bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600" : "bg-gray-50 border-gray-100 text-gray-600 hover:bg-gray-100")
+                      i18n.language === l.id ? cn(theme.primary, "text-white", "border-transparent") : "lux-carbon-soft border-[#2A2A2A] text-[#F5F5F5]/80 hover:bg-white/5"
                     )}
                   >
                     <span className="text-2xl">{l.flag}</span>
@@ -3972,7 +3863,7 @@ export default function App() {
               className={cn("w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl", isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900")}
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center mb-10"><h2 className="text-2xl font-black">筛选维度</h2><button onClick={() => setIsFilterModalOpen(false)} className="p-3 bg-gray-100 rounded-full"><X size={20} /></button></div>
+              <div className="flex justify-between items-center mb-10"><h2 className="text-2xl font-black">{t('filter_dimension')}</h2><button onClick={() => setIsFilterModalOpen(false)} className="p-3 bg-gray-100 rounded-full"><X size={20} /></button></div>
               <div className="grid grid-cols-2 gap-4">
                 {[{ id: 'today', label: t('today'), icon: '🕒' }, { id: 'week', label: t('week'), icon: '📅' }, { id: 'month', label: t('month'), icon: '📊' }, { id: 'year', label: t('year'), icon: '🗓️' }].map(dim => (
                   <button key={dim.id} onClick={() => { setFilterType(dim.id as any); setCurrentDate(new Date()); setIsFilterModalOpen(false); }} className={cn("flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 transition-all", filterType === dim.id ? "bg-black text-white border-black" : "bg-gray-50 text-gray-500 border-transparent")}>
@@ -3996,7 +3887,7 @@ export default function App() {
             { id: 'chart', icon: <PieIcon size={22} />, label: t('stats') },
             { id: 'plus', icon: null, label: '' }, // Placeholder for the big plus
             { id: 'calendar', icon: <CalendarIcon size={22} />, label: t('calendar') },
-            { id: 'discovery', icon: <Compass size={22} />, label: '发现' },
+            { id: 'discovery', icon: <Compass size={22} />, label: t('discovery') },
           ].map((tab) => {
             if (tab.id === 'plus') {
               return (
@@ -4008,12 +3899,12 @@ export default function App() {
                     className={cn(
                       "w-16 h-16 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-white dark:border-slate-900 transition-all pointer-events-auto",
                       theme.primary,
-                      !isCustomTheme && "text-white"
+                      "text-white"
                     )}
                   >
                     <Plus size={32} strokeWidth={3} />
                   </motion.button>
-                  <span className="absolute -bottom-6 text-[8px] font-black uppercase tracking-tighter text-gray-400">记一笔</span>
+                  <span className="absolute -bottom-6 text-[8px] font-black uppercase tracking-tighter text-gray-400">{t('add_bill')}</span>
                 </div>
               );
             }
@@ -4181,11 +4072,11 @@ function TransactionForm({
 
       <div className={cn("relative border-b-4 transition-colors pb-6", isDarkMode ? "border-slate-700 focus-within:border-white" : "border-gray-50 focus-within:border-black")}>
         <div className="flex justify-between items-center mb-4">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">输入金额</label>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block">{t('amount_label')}</label>
           {currencyCode !== 'CNY' && (
             <div className="flex items-center space-x-2 bg-blue-50/50 px-2 py-1 rounded-lg">
               <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
-              <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter">实时汇率同步中</span>
+              <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter">{t('rate_syncing')}</span>
             </div>
           )}
         </div>
@@ -4232,7 +4123,7 @@ function TransactionForm({
               <div className="bg-blue-500 p-1 rounded-lg">
                 <ArrowRightLeft size={10} className="text-white" />
               </div>
-              <span className="text-xs">约合 ￥{convertedCNY.toLocaleString('zh-CN', { minimumFractionDigits: 2 })} CNY</span>
+              <span className="text-xs">{t('approx_cny')} ¥{convertedCNY.toLocaleString(i18n.language === 'en-US' ? 'en-US' : 'zh-CN', { minimumFractionDigits: 2 })} CNY</span>
               <div className="w-[1px] h-3 bg-blue-200 mx-1" />
               <span className="text-[8px] opacity-60">1 {currencyCode} = {rates[currencyCode]?.toFixed(4)}</span>
             </motion.div>
@@ -4264,7 +4155,7 @@ function TransactionForm({
                       <span className="text-2xl">{c.flag}</span>
                       <div className="text-left">
                         <p className="text-sm font-black">{c.code}</p>
-                        <p className="text-[10px] opacity-60 font-bold">{c.name}</p>
+                        <p className="text-[10px] opacity-60 font-bold">{t(`currencies.${c.code}`)}</p>
                       </div>
                     </div>
                     {currencyCode === c.code ? (
@@ -4282,21 +4173,21 @@ function TransactionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">日期</label>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.date')}</label>
           <input type="date" value={date} onChange={e => setDate(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} required />
         </div>
         <div>
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">支付账户</label>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.account')}</label>
           <select value={accountId} onChange={e => setAccountId(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon} {t(`accounts.${acc.name}`)}</option>)}</select>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">所属分类</label>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('category_label')}</label>
           <select value={category} onChange={e => setCategory(e.target.value as Category)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{CATEGORIES.map(c => <option key={c.label} value={c.label}>{c.icon} {t(`categories.${c.label}`)}</option>)}</select>
         </div>
         <div className="flex flex-col">
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">{i18n.language === 'zh-CN' ? '心情' : 'MOOD'}</label>
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('mood')}</label>
           <div className={cn("flex p-1.5 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-50")}>
             {(['happy', 'neutral', 'sad'] as const).map(m => (
               <button key={m} type="button" onClick={() => setMood(m)} className={cn(
@@ -4310,22 +4201,22 @@ function TransactionForm({
         </div>
       </div>
       <div>
-        <label className="text-[10px] font-black text-gray-400 mb-2 block">备注与标签</label>
-        <textarea placeholder="输入账单详情（支持长文本）..." value={note} onChange={e => setNote(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none mb-2 min-h-[80px] resize-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
+        <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.notes_tags')}</label>
+        <textarea placeholder={t('note_placeholder')} value={note} onChange={e => setNote(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none mb-2 min-h-[80px] resize-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
         {suggestions.length > 0 && <div className="flex flex-wrap gap-2 mb-3">{suggestions.map((s, i) => <button key={i} type="button" onClick={() => setNote(s)} className={cn("px-3 py-1 rounded-full text-[8px] font-bold", isDarkMode ? "bg-slate-700 text-slate-400" : "bg-gray-100 text-gray-500")}>{s}</button>)}</div>}
         <div className="relative">
           <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300" size={14} />
-          <input type="text" placeholder="添加标签..." value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && tagInput) { e.preventDefault(); setTags([...tags, tagInput]); setTagInput(''); } }} className={cn("w-full pl-9 pr-4 py-3 rounded-xl text-[10px] font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
+          <input type="text" placeholder={t('tag_placeholder')} value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && tagInput) { e.preventDefault(); setTags([...tags, tagInput]); setTagInput(''); } }} className={cn("w-full pl-9 pr-4 py-3 rounded-xl text-[10px] font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} />
         </div>
         <div className="flex flex-wrap gap-2 mt-3">{tags.map((tag, i) => <span key={i} className="px-2 py-1 bg-indigo-50 text-indigo-500 rounded-lg text-[10px] font-black flex items-center">#{tag} <X size={10} className="ml-1 cursor-pointer" onClick={() => setTags(tags.filter((_, idx) => idx !== i))} /></span>)}</div>
       </div>
 
       <div>
-        <label className="text-[10px] font-black text-gray-400 mb-2 block">隐私与小组</label>
+        <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.privacy_group')}</label>
         <div className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
           {!groupSaving ? (
             <div className={cn("text-[10px] font-bold", isDarkMode ? "text-white/60" : "text-gray-500")}>
-              尚未加入“一起省钱”小组：本笔账单默认仅自己可见。
+              {t('form.not_joined_group')}
             </div>
           ) : (
             <div className="space-y-4">
@@ -4340,7 +4231,7 @@ function TransactionForm({
                       : (isDarkMode ? "text-white/50" : "text-gray-400")
                   )}
                 >
-                  仅自己可见
+                  {t('form.private_only')}
                 </button>
                 <button
                   type="button"
@@ -4352,15 +4243,15 @@ function TransactionForm({
                       : (isDarkMode ? "text-white/50" : "text-gray-400")
                   )}
                 >
-                  加入小组
+                  {t('form.join_group')}
                 </button>
               </div>
 
               {visibility === 'group' && (
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/60" : "text-gray-600")}>加入公账</div>
-                    <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/40" : "text-gray-400")}>计入公共资金池进度（适合房租水电等）</div>
+                    <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/60" : "text-gray-600")}>{t('form.join_pool')}</div>
+                    <div className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('form.join_pool_desc')}</div>
                   </div>
                   <button
                     type="button"
@@ -4385,7 +4276,7 @@ function TransactionForm({
       </div>
 
       <div>
-        <label className="text-[10px] font-black text-gray-400 mb-2 block">附件凭证</label>
+        <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('attachment_label')}</label>
         <div className="relative group">
           {previewUrl ? (
             <div className="relative w-full aspect-video rounded-2xl overflow-hidden border shadow-sm group">
@@ -4407,8 +4298,8 @@ function TransactionForm({
                 <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center mb-3 transition-all group-hover:scale-110", isDarkMode ? "bg-slate-600" : "bg-white shadow-sm")}>
                   <Camera size={24} className="text-gray-400" />
                 </div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">点击拍照或选择凭证</p>
-                <p className="text-[8px] text-gray-300 mt-1">支持图片格式 (JPG, PNG)</p>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('form.attachment_hint')}</p>
+                <p className="text-[8px] text-gray-300 mt-1">{t('form.attachment_formats')}</p>
               </div>
               <input
                 type="file"
