@@ -1413,6 +1413,8 @@ export default function App() {
   const [vaultGlowTick, setVaultGlowTick] = useState(0);
   const [vaultRipples, setVaultRipples] = useState<Array<{ id: string; seed: number }>>([]);
   const [vaultPopCoin, setVaultPopCoin] = useState<{ id: string; seed: number } | null>(null);
+  const [vaultMilestoneRipples, setVaultMilestoneRipples] = useState<Array<{ id: string; amount: number }>>([]);
+  const vaultMilestoneRippledRef = useRef<Set<number>>(new Set());
   const [isVaultMuted, setIsVaultMuted] = useState(() => localStorage.getItem('vault_muted_v1') === 'true');
   const isVaultMutedRef = useRef(isVaultMuted);
   const pendingVaultDropsRef = useRef(0);
@@ -1441,18 +1443,45 @@ export default function App() {
     return clamp(totalAssets / cap, 0, 1);
   }, [totalAssets, vaultCap]);
 
-  const getNextVaultMilestone = (amount: number) => {
-    const step = amount >= 100000 ? 100000 : 10000;
-    const ceil = Math.ceil(Math.max(0, amount) / step) * step;
-    return ceil === amount ? ceil + step : ceil;
+  const computeVaultMilestones = (amount: number) => {
+    const a = Math.max(0, amount);
+    const minMajor = 10000;
+    const pow = Math.pow(10, Math.floor(Math.log10(Math.max(1, a))));
+    const multipliers = [1, 2, 5, 10];
+    const majorFound = multipliers.map(m => m * pow).find(v => v > a) ?? 10 * pow;
+    const major = Math.max(minMajor, majorFound);
+    const minor = major / 5;
+
+    const prevMinor = Math.floor(a / minor) * minor;
+    let nextMinor = Math.ceil(a / minor) * minor;
+    if (nextMinor <= a) nextMinor += minor;
+
+    const out: number[] = [];
+    if (prevMinor > 0 && prevMinor < a) out.push(prevMinor);
+    out.push(nextMinor);
+    if (major !== nextMinor) out.push(major);
+    while (out.length < 3) out.push(out[out.length - 1] + major / 2);
+    return Array.from(new Set(out.map(v => Math.round(v)))).sort((x, y) => x - y).slice(0, 3);
   };
 
-  const vaultMilestone = useMemo(() => {
-    const next = getNextVaultMilestone(totalAssets);
-    const remaining = Math.max(0, next - totalAssets);
-    const pct = clamp(next / Math.max(1000, vaultCap), 0, 1);
-    return { next, remaining, pct };
-  }, [totalAssets, vaultCap]);
+  const vaultMilestones = useMemo(() => computeVaultMilestones(totalAssets), [totalAssets]);
+  const vaultNextTarget = useMemo(() => {
+    return vaultMilestones.find(v => v > totalAssets) ?? (vaultMilestones[vaultMilestones.length - 1] || 10000);
+  }, [vaultMilestones, totalAssets]);
+
+  useEffect(() => {
+    if (activeTab !== 'vault') return;
+    const pilePct = clamp(10 + vaultFillPct * 72, 10, 84);
+    for (const m of vaultMilestones) {
+      const linePct = clamp(10 + clamp(m / Math.max(1000, vaultCap), 0, 1) * 72, 10, 84);
+      if (pilePct < linePct) continue;
+      if (vaultMilestoneRippledRef.current.has(m)) continue;
+      vaultMilestoneRippledRef.current.add(m);
+      const id = crypto.randomUUID();
+      setVaultMilestoneRipples(prev => [...prev, { id, amount: m }].slice(-8));
+      window.setTimeout(() => setVaultMilestoneRipples(prev => prev.filter(r => r.id !== id)), 950);
+    }
+  }, [activeTab, vaultFillPct, vaultMilestones, vaultCap]);
 
   const queueVaultCoins = (count: number) => {
     const next = Math.max(0, Math.min(30, count));
@@ -1470,8 +1499,7 @@ export default function App() {
     prevTotalAssetsRef.current = totalAssets;
     if (totalAssets <= prev) return;
 
-    const nextMilestone = getNextVaultMilestone(totalAssets);
-    const nextCap = Math.max(vaultCap, totalAssets, nextMilestone, 10000);
+    const nextCap = Math.max(vaultCap, totalAssets, ...computeVaultMilestones(totalAssets), 10000);
     if (nextCap !== vaultCap) {
       setVaultCap(nextCap);
       localStorage.setItem('vault_cap_v1', String(nextCap));
@@ -2135,6 +2163,7 @@ export default function App() {
   };
 
   const formatCurrency = (v: number) => v.toLocaleString(i18n.language === 'en-US' ? 'en-US' : 'zh-CN', { minimumFractionDigits: 2 });
+  const formatMilestoneCurrency = (v: number) => Math.round(v).toLocaleString(i18n.language === 'en-US' ? 'en-US' : 'zh-CN', { maximumFractionDigits: 0 });
   const dateLocale = i18n.language === 'zh-CN' ? zhCN : enUS;
 
   const RollingNumber = ({ value }: { value: number }) => {
@@ -3668,8 +3697,7 @@ export default function App() {
 
                       {(() => {
                         const pilePct = clamp(10 + vaultFillPct * 72, 10, 84);
-                        const milestonePct = clamp(10 + vaultMilestone.pct * 72, 10, 84);
-                        const milestoneBottom = `calc(10% + ${milestonePct}%)`;
+                        const milestonePct = (amount: number) => clamp(10 + clamp(amount / Math.max(1000, vaultCap), 0, 1) * 72, 10, 84);
                         return (
                           <motion.div
                             initial={{ y: "-100%", opacity: 0, rotate: -3, scale: 0.98 }}
@@ -3756,13 +3784,49 @@ export default function App() {
                                   <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/10 via-transparent to-black/35" />
                                 </div>
 
-                                <div className="absolute left-[8%] right-[8%] pointer-events-none" style={{ bottom: milestoneBottom }}>
-                                  <div className="relative">
-                                    <div className="w-full border-t border-dashed border-white/35 opacity-70" />
-                                    <div className="absolute right-0 -top-[clamp(1.35rem,3.5vw,1.75rem)] px-3 py-1 rounded-full bg-black/35 border border-white/10 backdrop-blur-xl text-[0.55rem] font-black text-[#D4AF37]">
-                                      {t('vault_milestone_remaining', { amount: formatCurrency(vaultMilestone.remaining) })}
-                                    </div>
-                                  </div>
+                                <div className="absolute inset-0 pointer-events-none z-[20]">
+                                  <AnimatePresence>
+                                    {vaultMilestoneRipples.map(r => {
+                                      const bottom = `calc(10% + ${milestonePct(r.amount)}%)`;
+                                      return (
+                                        <motion.div
+                                          key={r.id}
+                                          className="absolute left-1/2 -translate-x-1/2 rounded-full border border-[#D4AF37]/35"
+                                          initial={{ opacity: 0.35, scale: 0.2 }}
+                                          animate={{ opacity: 0, scale: 1.15 }}
+                                          exit={{ opacity: 0 }}
+                                          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+                                          style={{ bottom, width: "84%", height: "84%", translateZ: 0 }}
+                                        />
+                                      );
+                                    })}
+                                  </AnimatePresence>
+                                  {vaultMilestones.map((m) => {
+                                    const reached = pilePct >= milestonePct(m);
+                                    const target = vaultNextTarget === m;
+                                    const bottom = `calc(10% + ${milestonePct(m)}%)`;
+                                    return (
+                                      <div key={m} className="absolute left-[8%] right-[8%]" style={{ bottom }}>
+                                        <div className="relative">
+                                          <div
+                                            className={cn(
+                                              "w-full border-t",
+                                              reached ? "border-[#D4AF37]/45" : "border-[#D4AF37]/20",
+                                              reached ? "" : "border-dashed"
+                                            )}
+                                          />
+                                          <div className="absolute right-0 -top-[0.85rem] px-2 py-0.5 rounded-full bg-black/25 border border-white/10 backdrop-blur-xl text-[0.55rem] font-black text-[#D4AF37]/80">
+                                            ¥{formatMilestoneCurrency(m)}
+                                          </div>
+                                          {target && (
+                                            <div className="absolute right-0 -top-[clamp(2.05rem,5vw,2.55rem)] px-3 py-1 rounded-full bg-black/35 border border-white/10 backdrop-blur-xl text-[0.55rem] font-black text-[#D4AF37]">
+                                              {t('vault_milestone_remaining', { amount: formatMilestoneCurrency(Math.max(0, m - totalAssets)) })}
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
                                 </div>
 
                                 <motion.div
