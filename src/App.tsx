@@ -622,7 +622,7 @@ const HOME_WIDGET_META: Record<HomeWidgetId, { titleKey: string; descKey: string
 };
 
 const DEFAULT_HOME_WIDGET_CONFIG: HomeWidgetConfig = {
-  order: ['todayBoard', 'weekTrend', 'topCategories', 'summary', 'budgetProgress'],
+  order: ['summary', 'todayBoard', 'weekTrend', 'topCategories', 'budgetProgress'],
   enabled: {
     todayBoard: true,
     weekTrend: true,
@@ -653,10 +653,14 @@ const normalizeHomeWidgetConfig = (raw: any): HomeWidgetConfig => {
     if (typeof rawEnabled[id] === 'boolean') enabled[id] = rawEnabled[id];
   });
 
+  enabled.summary = true;
+  const withoutSummary = order.filter(id => id !== 'summary');
+  const prioritizedOrder: HomeWidgetId[] = ['summary', ...withoutSummary];
+
   const anyEnabled = order.some(id => enabled[id]);
   if (!anyEnabled) enabled.todayBoard = true;
 
-  return { order, enabled };
+  return { order: prioritizedOrder, enabled };
 };
 
 type GroupSavingMember = { id: string; name: string; color: string; emoji: string };
