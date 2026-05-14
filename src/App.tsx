@@ -1797,7 +1797,7 @@ export default function App() {
   return (
     <motion.div
       className={cn(
-        "min-h-screen transition-all duration-1000 pb-32 font-sans relative overflow-hidden",
+        "min-h-screen transition-all duration-1000 pb-[calc(clamp(6rem,12vw,8rem)+env(safe-area-inset-bottom))] font-sans relative overflow-hidden",
         cn(theme.appBg, theme.appText)
       )}
     >
@@ -1886,7 +1886,7 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="max-w-lg mx-auto p-6 pt-12 space-y-8 relative z-10">
+      <main className="max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pt-[calc(clamp(1.75rem,4vw,3rem)+env(safe-area-inset-top))] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10">
         <header className="flex justify-between items-center mb-12">
           <div className="flex items-center space-x-2">
             <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
@@ -3030,43 +3030,43 @@ export default function App() {
               )}
 
               {activeTab === 'vault' && (
-                <div className="space-y-6 pb-10">
-                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                <div className="space-y-[clamp(1rem,2.5vw,1.5rem)] pb-[clamp(2.5rem,6vw,3.25rem)]">
+                  <div className={cn("rounded-[2.5rem] p-[clamp(1.25rem,3vw,2rem)] shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
                     <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-[120px] opacity-35 bg-[#D4AF37]/25" />
                     <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full blur-[140px] opacity-20 bg-white/10" />
 
-                    <div className="relative flex items-center justify-between">
-                      <h3 className="font-black text-lg flex items-center">
+                    <div className="relative flex flex-col gap-[clamp(0.5rem,1.5vw,0.75rem)] sm:flex-row sm:items-center sm:justify-between">
+                      <h3 className="font-black text-[clamp(1.125rem,2.8vw,1.25rem)] flex items-center">
                         <Vault size={20} className={cn("mr-2", isDarkMode ? "text-[#D4AF37]" : "text-amber-500")} />
                         {t('vault')}
                       </h3>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('total_assets')}</div>
+                      <div className={cn("text-[0.625rem] font-black uppercase tracking-widest", mutedText)}>{t('total_assets')}</div>
                     </div>
 
-                    <div className="relative mt-8 flex items-center justify-between">
-                      <div>
-                        <div className="text-3xl font-black tracking-tight">¥{formatCurrency(totalAssets)}</div>
-                        <div className={cn("mt-2 text-[10px] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</div>
+                    <div className="relative mt-[clamp(1rem,3vw,1.5rem)] flex flex-col gap-[clamp(0.75rem,2vw,1rem)] sm:flex-row sm:items-end sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="font-black tracking-tight text-[clamp(1.75rem,5vw,2.25rem)] break-words">¥{formatCurrency(totalAssets)}</div>
+                        <div className={cn("mt-[clamp(0.25rem,1vw,0.5rem)] text-[0.625rem] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</div>
                       </div>
-                      <div className={cn("px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest", "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]")}>
+                      <div className={cn("px-[clamp(0.75rem,2vw,1rem)] py-[clamp(0.4rem,1.2vw,0.5rem)] rounded-2xl border text-[0.625rem] font-black uppercase tracking-widest shrink-0", "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]")}>
                         {t('black_gold')}
                       </div>
                     </div>
 
-                    <div className="relative mt-10 flex justify-center">
+                    <div className="relative mt-[clamp(1.25rem,4vw,2rem)] flex justify-center">
                       <motion.div
                         initial={{ y: "-100%", opacity: 0, rotate: -6, scale: 0.98 }}
                         animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
                         transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                        className="relative w-56 h-56"
+                        className="relative w-[clamp(10rem,55vw,14rem)] aspect-square max-w-full"
                       >
                         <div className="absolute inset-0 rounded-[3.2rem] bg-white/5 border border-white/10 backdrop-blur-2xl shadow-[0_26px_90px_rgba(0,0,0,0.35)]" />
-                        <div className="absolute left-1/2 -translate-x-1/2 top-6 w-40 h-12 rounded-[2rem] bg-white/5 border border-[#D4AF37]/25" />
-                        <div className="absolute left-1/2 -translate-x-1/2 top-16 w-44 h-32 rounded-[2.8rem] bg-black/25 border border-white/10 overflow-hidden">
+                        <div className="absolute left-1/2 -translate-x-1/2 top-[10%] w-[72%] h-[22%] rounded-[2rem] bg-white/5 border border-[#D4AF37]/25" />
+                        <div className="absolute left-1/2 -translate-x-1/2 top-[28%] w-[78%] h-[56%] rounded-[2.8rem] bg-black/25 border border-white/10 overflow-hidden">
                           <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/18 via-transparent to-transparent" />
-                          <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full blur-[70px] bg-[#D4AF37]/30" />
+                          <div className="absolute -top-[18%] -right-[18%] w-[78%] aspect-square rounded-full blur-[70px] bg-[#D4AF37]/30" />
                         </div>
-                        <div className="absolute left-1/2 -translate-x-1/2 bottom-8 w-48 h-16 rounded-[2.8rem] bg-white/5 border border-white/10" />
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[12%] w-[86%] h-[28%] rounded-[2.8rem] bg-white/5 border border-white/10" />
                         <motion.div
                           animate={{ opacity: [0.25, 0.55, 0.25], x: [-8, 8, -8] }}
                           transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
@@ -3963,7 +3963,7 @@ export default function App() {
 
       {/* Navigation */}
       <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-[100] px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl border-t border-white/5 shadow-2xl transition-all duration-500",
+        "fixed bottom-0 left-0 right-0 z-[100] px-[clamp(1rem,3vw,1.5rem)] pb-[calc(clamp(1rem,2.5vw,1.5rem)+env(safe-area-inset-bottom))] pt-[clamp(0.75rem,2vw,1rem)] backdrop-blur-xl border-t border-white/5 shadow-2xl transition-all duration-500",
         isDarkMode ? "bg-slate-900/80" : "bg-white/80"
       )}>
         <div className="flex justify-between items-center max-w-lg mx-auto relative">
@@ -3989,7 +3989,7 @@ export default function App() {
                   >
                     <Plus size={32} strokeWidth={3} />
                   </motion.button>
-                  <span className="absolute -bottom-6 text-[8px] font-black uppercase tracking-tighter text-gray-400">{t('add_bill')}</span>
+                  <span className="absolute -bottom-6 text-[0.5rem] font-black uppercase tracking-tighter text-gray-400">{t('add_bill')}</span>
                 </div>
               );
             }
@@ -4008,7 +4008,7 @@ export default function App() {
                 )}>
                   {tab.icon}
                 </div>
-                <span className="text-[8px] font-black uppercase tracking-tighter">{tab.label}</span>
+                <span className="text-[0.5rem] font-black uppercase tracking-tighter">{tab.label}</span>
                 {activeTab === tab.id && <motion.div layoutId="nav-dot" className={cn("absolute -top-1 w-1 h-1 rounded-full", theme.primary)} />}
               </button>
             );
