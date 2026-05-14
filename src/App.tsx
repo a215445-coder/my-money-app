@@ -166,16 +166,26 @@ export default function App() {
 
   // --- Discovery State ---
   const [monthlySalary, setSalary] = useState<number>(10000);
-  const [wealthTip] = useState(() => {
-    const tips = [
-      "记住：不要为打翻的牛奶哭泣，也不要为昨天的超支后悔。",
-      "先付给自己：每月发工资先存下一部分，剩下的才是能花的。",
-      "区分‘想要’和‘需要’，是理财的第一步。",
-      "复利是世界第八大奇迹，越早理财越好。",
-      "你的钱包决定你的生活质量，你的记账习惯决定你的钱包厚度。"
-    ];
-    return tips[Math.floor(Math.random() * tips.length)];
-  });
+  const WEALTH_TIPS = useMemo(() => [
+    "区分‘想要’和‘需要’，是理财的第一步。",
+    "记账是为了更好的花钱，而不是限制你的生活。",
+    "先付给自己：每月发工资先存下一部分，剩下的才是能花的。",
+    "复利是世界第八大奇迹，越早理财越好。",
+    "不要为打翻的牛奶哭泣，也不要为昨天的超支后悔。",
+    "你的钱包决定你的生活质量，你的记账习惯决定你的钱包厚度。",
+    "理财不在于钱多钱少，而在于习惯的养成。",
+    "每一分存下的钱，都是通往自由的基石。",
+    "记得给未来的自己留一份礼物。",
+    "理性消费，快乐记账。😊"
+  ], []);
+
+  const [wealthTip, setWealthTip] = useState(WEALTH_TIPS[0]);
+
+  useEffect(() => {
+    if (activeTab === 'discovery') {
+      setWealthTip(WEALTH_TIPS[Math.floor(Math.random() * WEALTH_TIPS.length)]);
+    }
+  }, [activeTab, WEALTH_TIPS]);
 
   // --- Privacy & Theme ---
   const [isLocked, setIsLocked] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
@@ -340,6 +350,8 @@ export default function App() {
     const income = filtered.filter(t => t.type === 'income').reduce((sum, t) => sum + t.amount, 0);
     const expense = filtered.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
 
+    const today = new Date();
+
     // MoM comparison
     const lastMonthStart = startOfMonth(subMonths(currentDate, 1));
     const lastMonthEnd = endOfMonth(subMonths(currentDate, 1));
@@ -351,7 +363,7 @@ export default function App() {
     const momChange = lastMonthExpense === 0 ? 0 : (momDiff / lastMonthExpense) * 100;
 
     // Daily budget
-    const daysInMonthCount = differenceInDays(endOfMonth(currentDate), new Date()) + 1;
+    const daysInMonthCount = differenceInDays(endOfMonth(currentDate), today) + 1;
     const remainingBudget = Math.max(budget - expense, 0);
     const dailyBudget = daysInMonthCount > 0 ? remainingBudget / daysInMonthCount : 0;
 
@@ -388,7 +400,6 @@ export default function App() {
     const weekChange = lastWeekExpense === 0 ? 0 : (weekDiff / lastWeekExpense) * 100;
 
     // Forecast logic
-    const today = new Date();
     const daysPassed = differenceInDays(today, startOfMonth(currentDate)) + 1;
     const totalDaysInMonth = differenceInDays(endOfMonth(currentDate), startOfMonth(currentDate)) + 1;
     const predictedTotal = (expense / Math.max(daysPassed, 1)) * totalDaysInMonth;
@@ -629,416 +640,458 @@ export default function App() {
           </button>
         </header>
 
-        {activeTab === 'list' && (
-          <div className="space-y-8 animate-in fade-in duration-500">
-            {/* Summary Card */}
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", damping: 20, stiffness: 200 }}
-              className={cn(
-                "p-10 rounded-[4rem] shadow-2xl text-white relative overflow-hidden group border border-white/20",
-                theme.primary
-              )}
-            >
-              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
-
-              <div className="flex justify-between items-start mb-12 relative z-10">
-                <div>
-                  <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-3">{t('total_assets')}</p>
-                  <p className="text-5xl font-black tracking-tighter drop-shadow-lg">¥{formatCurrency(totalAssets)}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  <span>{i18n.language}</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-10 relative z-10">
-                <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
-                      <TrendingDown size={12} className="text-red-200" />
-                    </div>
-                    <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('expense')}</span>
-                  </div>
-                  <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
-                </div>
-                <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
-                      <TrendingUp size={12} className="text-green-200" />
-                    </div>
-                    <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('income')}</span>
-                  </div>
-                  <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Budget Progress Card */}
-            <motion.div
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.1, type: "spring" }}
-              className={cn(
-                "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
-                isDarkMode ? "bg-slate-800/40 border-slate-700/50" : "bg-white/40 border-white/50"
-              )}
-            >
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center space-x-3">
-                  <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                    <PieIcon size={20} className="text-white" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
-                    <p className="text-lg font-black">¥{formatCurrency(budget)}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">剩余额度</p>
-                  <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : "text-indigo-500")}>
-                    ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
-                  </p>
-                </div>
-              </div>
-
-              <div className="w-full h-4 bg-gray-100/50 rounded-full overflow-hidden mb-6 p-1">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, scale: 0.98, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98, y: -10 }}
+            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+          >
+            {activeTab === 'list' && (
+              <div className="space-y-8">
+                {/* Summary Card */}
                 <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
-                  transition={{ duration: 1.5, ease: "easeOut" }}
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 200 }}
                   className={cn(
-                    "h-full rounded-full transition-all relative overflow-hidden",
-                    stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : "bg-gradient-to-r from-indigo-500 to-purple-400"
+                    "p-10 rounded-[4rem] shadow-2xl text-white relative overflow-hidden group border border-white/20",
+                    theme.primary
                   )}
                 >
-                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                </motion.div>
-              </div>
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
+                  <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
 
-              <div className="flex justify-between items-center px-1">
-                <div className="flex items-center space-x-2">
-                  <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
-                    已用 {stats.budgetUsage.toFixed(1)}%
+                  <div className="flex justify-between items-start mb-12 relative z-10">
+                    <div>
+                      <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.2em] mb-3">{t('total_assets')}</p>
+                      <p className="text-5xl font-black tracking-tighter drop-shadow-lg">¥{formatCurrency(totalAssets)}</p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                      <span>{i18n.language}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-10 relative z-10">
+                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
+                          <TrendingDown size={12} className="text-red-200" />
+                        </div>
+                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('expense')}</span>
+                      </div>
+                      <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
+                    </div>
+                    <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
+                          <TrendingUp size={12} className="text-green-200" />
+                        </div>
+                        <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">{t('income')}</span>
+                      </div>
+                      <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Budget Progress Card */}
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.1, type: "spring" }}
+                  className={cn(
+                    "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
+                    isDarkMode ? "bg-slate-800/40 border-slate-700/50" : "bg-white/40 border-white/50"
+                  )}
+                >
+                  <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
+                        <PieIcon size={20} className="text-white" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
+                        <p className="text-lg font-black">¥{formatCurrency(budget)}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-gray-400 uppercase mb-1">剩余额度</p>
+                      <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : "text-indigo-500")}>
+                        ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full h-4 bg-gray-100/50 rounded-full overflow-hidden mb-6 p-1">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
+                      transition={{ duration: 1.5, ease: "easeOut" }}
+                      className={cn(
+                        "h-full rounded-full transition-all relative overflow-hidden",
+                        stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : "bg-gradient-to-r from-indigo-500 to-purple-400"
+                      )}
+                    >
+                      <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                    </motion.div>
+                  </div>
+
+                  <div className="flex justify-between items-center px-1">
+                    <div className="flex items-center space-x-2">
+                      <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
+                        已用 {stats.budgetUsage.toFixed(1)}%
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-1.5 text-gray-500">
+                      <Calculator size={14} />
+                      <span className="text-[10px] font-black uppercase tracking-tight">日均可用: ¥{stats.dailyBudget.toFixed(0)}</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Transactions List */}
+                {stats.filtered.length === 0 ? (
+                  <div className="py-20 text-center space-y-4">
+                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <History className="text-gray-300" size={32} />
+                    </div>
+                    <p className="text-gray-400 font-bold italic">{t('no_bills')}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {Object.entries(stats.filtered.reduce((acc, t) => {
+                      const date = t.date.split('T')[0];
+                      if (!acc[date]) acc[date] = [];
+                      acc[date].push(t);
+                      return acc;
+                    }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
+                      <div key={date}>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">{format(parseISO(date), 'MM月dd日 EEEE', { locale: i18n.language === 'zh-CN' ? zhCN : undefined })}</p>
+                        <div className={cn("rounded-[2.5rem] shadow-sm border overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                          {items.map((item, idx) => (
+                            <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center active:bg-gray-50 transition-colors group", idx !== items.length - 1 && "border-b", isDarkMode ? "border-slate-700" : "border-gray-50")}>
+                              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm mr-4", CATEGORIES.find(c => c.label === item.category)?.color)}>
+                                {CATEGORIES.find(c => c.label === item.category)?.icon}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2">
+                                  <span className="font-bold text-sm">{t(`categories.${item.category}`)}</span>
+                                  <span className="text-[8px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-bold uppercase">{t(`accounts.${accounts.find(a => a.id === item.accountId)?.name}`)}</span>
+                                  {item.mood && (
+                                    <span className="text-[10px] ml-1 opacity-80">
+                                      {item.mood === 'happy' ? '😊' : item.mood === 'neutral' ? '😐' : '😭'}
+                                    </span>
+                                  )}
+                                </div>
+                                {item.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{item.note}</p>}
+                                <div className="flex flex-wrap gap-1 mt-1 items-center">
+                                  {item.tags?.map(tag => <span key={tag} className="text-[8px] text-indigo-400 font-bold">#{tag}</span>)}
+                                  {item.hasImage && <Camera size={10} className="text-gray-300 ml-1" />}
+                                  {item.currency && item.currency !== 'CNY' && (
+                                    <div className="flex items-center space-x-1 ml-1 bg-blue-50 px-1.5 py-0.5 rounded-md">
+                                      <Globe size={8} className="text-blue-400" />
+                                      <span className="text-[8px] text-blue-400 font-black">{CURRENCIES.find(c => c.code === item.currency)?.flag} {item.originalAmount?.toFixed(2)}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-3">
+                                <motion.div
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => toggleCurrency(item.id, e)}
+                                  className="text-right cursor-pointer"
+                                >
+                                  <div className={cn("font-black text-sm", item.type === 'expense' ? "text-red-500" : "text-green-500")}>
+                                    {item.type === 'expense' ? '-' : '+'}
+                                    {showOriginalCurrency[item.id] && item.currency && item.currency !== 'CNY'
+                                      ? `${CURRENCIES.find(c => c.code === item.currency)?.symbol}${item.originalAmount?.toFixed(2)}`
+                                      : `¥${formatCurrency(item.amount)}`
+                                    }
+                                  </div>
+                                  {item.currency && item.currency !== 'CNY' && (
+                                    <p className="text-[8px] text-gray-400 font-bold mt-0.5">
+                                      {showOriginalCurrency[item.id] ? `≈ ¥${formatCurrency(item.amount)}` : `${CURRENCIES.find(c => c.code === item.currency)?.flag} ${item.originalAmount?.toFixed(2)}`}
+                                    </p>
+                                  )}
+                                </motion.div>
+                                <button onClick={(e) => deleteTransaction(item.id, e)} className="p-2 text-gray-200 hover:text-red-400 transition-opacity opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'chart' && (
+              <div id="stats-content" className="space-y-6 pb-10 p-4">
+                {/* Branding for Export */}
+                <div className="hidden show-on-export mb-8">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
+                        <Wallet size={24} className="text-white" />
+                      </div>
+                      <div>
+                        <h1 className="text-2xl font-black tracking-tighter">我的账本 · 专业版</h1>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{getFilterLabel()} 消费月报</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-black text-gray-400 uppercase">Pro 会员专享</p>
+                      <div className="flex items-center justify-end space-x-1 text-amber-500">
+                        <Star size={10} fill="currentColor" />
+                        <Star size={10} fill="currentColor" />
+                        <Star size={10} fill="currentColor" />
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center space-x-1.5 text-gray-500">
-                  <Calculator size={14} />
-                  <span className="text-[10px] font-black uppercase tracking-tight">日均可用: ¥{stats.dailyBudget.toFixed(0)}</span>
-                </div>
-              </div>
-            </motion.div>
+                {/* Pro Forecast Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                >
+                  <div className="absolute top-0 right-0 p-4">
+                    <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Pro Analysis</div>
+                  </div>
+                  <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
+                  <div className="flex items-end justify-between mb-4">
+                    <div>
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">预计本月总支出</p>
+                      <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
+                    </div>
+                    <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
+                      <p className="text-[10px] font-black uppercase tracking-widest mb-1">超支风险</p>
+                      <p className="text-lg font-black">{stats.isOverBudgetRisk ? '极高 ⚠️' : '极低 ✅'}</p>
+                    </div>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
+                      className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
+                    />
+                  </div>
+                  <p className="mt-4 text-[10px] text-gray-400 font-bold leading-relaxed">
+                    基于您本月前 {differenceInDays(new Date(), startOfMonth(currentDate)) + 1} 天的消费频率，预测月底总额将达到 ¥{formatCurrency(stats.predictedTotal)}。
+                    {stats.isOverBudgetRisk ? "建议削减非必要开支。" : "目前预算控制良好，请继续保持。"}
+                  </p>
+                </motion.div>
 
-            {/* Transactions List */}
-            {stats.filtered.length === 0 ? (
-              <div className="py-20 text-center space-y-4">
-                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <History className="text-gray-300" size={32} />
+                {/* Radar Comparison Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                >
+                  <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
+                  <div className="h-64 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
+                        <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} />
+                        <Radar
+                          name="本月"
+                          dataKey="A"
+                          stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
+                          fill={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
+                          fillOpacity={0.6}
+                        />
+                        <Radar
+                          name="上月"
+                          dataKey="B"
+                          stroke="#94a3b8"
+                          fill="#94a3b8"
+                          fillOpacity={0.3}
+                        />
+                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
+                      </RadarChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex justify-center space-x-6 mt-4">
+                    <div className="flex items-center space-x-2">
+                      <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
+                      <span className="text-[10px] font-black text-gray-400">本月</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded-full bg-gray-300" />
+                      <span className="text-[10px] font-black text-gray-400">上月</span>
+                    </div>
+                  </div>
+                </motion.div>
+
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
+                  {stats.trendData.some(d => d.amount > 0) ? (
+                    <div className="h-48 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={stats.trendData}>
+                          <defs>
+                            <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0.3} />
+                              <stop offset="95%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                          <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
+                          <YAxis hide />
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                          <Area type="monotone" dataKey="amount" stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
+                      <Smile size={32} className="mb-2 opacity-20" />
+                      <p className="text-xs font-bold">{t('no_bills')}</p>
+                    </div>
+                  )}
                 </div>
-                <p className="text-gray-400 font-bold italic">{t('no_bills')}</p>
+
+                <div className="flex justify-center pt-4">
+                  <button
+                    onClick={exportAsImage}
+                    className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all", theme.primary, "text-white font-black")}
+                  >
+                    <Share2 size={20} />
+                    <span>生成精美账单长图</span>
+                  </button>
+                </div>
               </div>
-            ) : (
+            )}
+
+            {activeTab === 'discovery' && (
               <div className="space-y-6">
-                {Object.entries(stats.filtered.reduce((acc, t) => {
-                  const date = t.date.split('T')[0];
-                  if (!acc[date]) acc[date] = [];
-                  acc[date].push(t);
-                  return acc;
-                }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
-                  <div key={date}>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 ml-1">{format(parseISO(date), 'MM月dd日 EEEE', { locale: i18n.language === 'zh-CN' ? zhCN : undefined })}</p>
-                    <div className={cn("rounded-[2.5rem] shadow-sm border overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-                      {items.map((item, idx) => (
-                        <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center active:bg-gray-50 transition-colors group", idx !== items.length - 1 && "border-b", isDarkMode ? "border-slate-700" : "border-gray-50")}>
-                          <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm mr-4", CATEGORIES.find(c => c.label === item.category)?.color)}>
-                            {CATEGORIES.find(c => c.label === item.category)?.icon}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <span className="font-bold text-sm">{t(`categories.${item.category}`)}</span>
-                              <span className="text-[8px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded-md font-bold uppercase">{t(`accounts.${accounts.find(a => a.id === item.accountId)?.name}`)}</span>
-                              {item.mood && (
-                                <span className="text-[10px] ml-1 opacity-80">
-                                  {item.mood === 'happy' ? '😊' : item.mood === 'neutral' ? '😐' : '😭'}
-                                </span>
-                              )}
-                            </div>
-                            {item.note && <p className="text-[10px] text-gray-400 mt-1 line-clamp-1">{item.note}</p>}
-                            <div className="flex flex-wrap gap-1 mt-1 items-center">
-                              {item.tags?.map(tag => <span key={tag} className="text-[8px] text-indigo-400 font-bold">#{tag}</span>)}
-                              {item.hasImage && <Camera size={10} className="text-gray-300 ml-1" />}
-                              {item.currency && item.currency !== 'CNY' && (
-                                <div className="flex items-center space-x-1 ml-1 bg-blue-50 px-1.5 py-0.5 rounded-md">
-                                  <Globe size={8} className="text-blue-400" />
-                                  <span className="text-[8px] text-blue-400 font-black">{CURRENCIES.find(c => c.code === item.currency)?.flag} {item.originalAmount?.toFixed(2)}</span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <motion.div
-                              whileTap={{ scale: 0.9 }}
-                              onClick={(e) => toggleCurrency(item.id, e)}
-                              className="text-right cursor-pointer"
-                            >
-                              <div className={cn("font-black text-sm", item.type === 'expense' ? "text-red-500" : "text-green-500")}>
-                                {item.type === 'expense' ? '-' : '+'}
-                                {showOriginalCurrency[item.id] && item.currency && item.currency !== 'CNY'
-                                  ? `${CURRENCIES.find(c => c.code === item.currency)?.symbol}${item.originalAmount?.toFixed(2)}`
-                                  : `¥${formatCurrency(item.amount)}`
-                                }
-                              </div>
-                              {item.currency && item.currency !== 'CNY' && (
-                                <p className="text-[8px] text-gray-400 font-bold mt-0.5">
-                                  {showOriginalCurrency[item.id] ? `≈ ¥${formatCurrency(item.amount)}` : `${CURRENCIES.find(c => c.code === item.currency)?.flag} ${item.originalAmount?.toFixed(2)}`}
-                                </p>
-                              )}
-                            </motion.div>
-                            <button onClick={(e) => deleteTransaction(item.id, e)} className="p-2 text-gray-200 hover:text-red-400 transition-opacity opacity-0 group-hover:opacity-100"><Trash2 size={14} /></button>
-                          </div>
+                {/* Wealth Tip Card */}
+                <div className={cn("p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden", theme.primary)}>
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12" />
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Smile className="text-white" size={24} />
+                    <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">理财实验室 · 省钱小贴士</span>
+                  </div>
+                  <p className="text-white text-lg font-black leading-relaxed italic">“{wealthTip}”</p>
+                </div>
+
+                {/* Wealth Calculator Card */}
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <h3 className="font-black text-lg mb-6 flex items-center"><Calculator size={20} className="mr-2 text-indigo-500" />财富自测 (5:3:2)</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">输入预计月薪</label>
+                      <input
+                        type="number"
+                        value={monthlySalary}
+                        onChange={e => setSalary(Number(e.target.value))}
+                        className={cn("w-full bg-transparent text-3xl font-black focus:outline-none border-b-2 transition-colors pb-2", isDarkMode ? "border-slate-700 focus:border-white" : "border-gray-100 focus:border-black")}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3">
+                      {[
+                        { label: '生活开支 (50%)', amount: monthlySalary * 0.5, color: 'text-blue-500', bg: 'bg-blue-50' },
+                        { label: '理财储蓄 (30%)', amount: monthlySalary * 0.3, color: 'text-green-500', bg: 'bg-green-50' },
+                        { label: '娱乐享受 (20%)', amount: monthlySalary * 0.2, color: 'text-pink-500', bg: 'bg-pink-50' },
+                      ].map(item => (
+                        <div key={item.label} className={cn("p-4 rounded-2xl flex justify-between items-center", isDarkMode ? "bg-slate-700" : item.bg)}>
+                          <span className="text-xs font-bold opacity-60">{item.label}</span>
+                          <span className={cn("text-lg font-black", isDarkMode ? "text-white" : item.color)}>¥{formatCurrency(item.amount)}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                </div>
 
-        {activeTab === 'chart' && (
-          <div id="stats-content" className="space-y-6 animate-in fade-in duration-500 pb-10 p-4">
-            {/* Branding for Export */}
-            <div className="hidden show-on-export mb-8">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                    <Wallet size={24} className="text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-black tracking-tighter">我的账本 · 专业版</h1>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{getFilterLabel()} 消费月报</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-gray-400 uppercase">Pro 会员专享</p>
-                  <div className="flex items-center justify-end space-x-1 text-amber-500">
-                    <Star size={10} fill="currentColor" />
-                    <Star size={10} fill="currentColor" />
-                    <Star size={10} fill="currentColor" />
-                  </div>
-                </div>
-              </div>
-            </div>
-            {/* Pro Forecast Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
-            >
-              <div className="absolute top-0 right-0 p-4">
-                <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Pro Analysis</div>
-              </div>
-              <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-              <div className="flex items-end justify-between mb-4">
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">预计本月总支出</p>
-                  <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
-                </div>
-                <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
-                  <p className="text-[10px] font-black uppercase tracking-widest mb-1">超支风险</p>
-                  <p className="text-lg font-black">{stats.isOverBudgetRisk ? '极高 ⚠️' : '极低 ✅'}</p>
-                </div>
-              </div>
-              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
-                  className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
-                />
-              </div>
-              <p className="mt-4 text-[10px] text-gray-400 font-bold leading-relaxed">
-                基于您本月前 {differenceInDays(new Date(), startOfMonth(currentDate)) + 1} 天的消费频率，预测月底总额将达到 ¥{formatCurrency(stats.predictedTotal)}。
-                {stats.isOverBudgetRisk ? "建议削减非必要开支。" : "目前预算控制良好，请继续保持。"}
-              </p>
-            </motion.div>
-
-            {/* Radar Comparison Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
-            >
-              <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
-                    <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} />
-                    <Radar
-                      name="本月"
-                      dataKey="A"
-                      stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
-                      fill={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
-                      fillOpacity={0.6}
-                    />
-                    <Radar
-                      name="上月"
-                      dataKey="B"
-                      stroke="#94a3b8"
-                      fill="#94a3b8"
-                      fillOpacity={0.3}
-                    />
-                    <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
-                  </RadarChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex justify-center space-x-6 mt-4">
-                <div className="flex items-center space-x-2">
-                  <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
-                  <span className="text-[10px] font-black text-gray-400">本月</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 rounded-full bg-gray-300" />
-                  <span className="text-[10px] font-black text-gray-400">上月</span>
-                </div>
-              </div>
-            </motion.div>
-
-            <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-              <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
-              {stats.trendData.some(d => d.amount > 0) ? (
-                <div className="h-48 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={stats.trendData}>
-                      <defs>
-                        <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0.3} />
-                          <stop offset="95%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
-                      <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
-                      <YAxis hide />
-                      <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                      <Area type="monotone" dataKey="amount" stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
-                  <Smile size={32} className="mb-2 opacity-20" />
-                  <p className="text-xs font-bold">{t('no_bills')}</p>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-center pt-4">
-              <button
-                onClick={exportAsImage}
-                className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all", theme.primary, "text-white font-black")}
-              >
-                <Share2 size={20} />
-                <span>生成精美账单长图</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'discovery' && (
-          <div className="space-y-6 animate-in fade-in duration-500">
-            {/* Wealth Tip Card */}
-            <div className={cn("p-8 rounded-[2.5rem] shadow-xl relative overflow-hidden", theme.primary)}>
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-12 -mt-12" />
-              <div className="flex items-center space-x-3 mb-4">
-                <Smile className="text-white" size={24} />
-                <span className="text-[10px] font-black text-white/60 uppercase tracking-widest">理财实验室 · 省钱小贴士</span>
-              </div>
-              <p className="text-white text-lg font-black leading-relaxed italic">“{wealthTip}”</p>
-            </div>
-
-            {/* Wealth Calculator Card */}
-            <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-              <h3 className="font-black text-lg mb-6 flex items-center"><Calculator size={20} className="mr-2 text-indigo-500" />财富自测 (5:3:2)</h3>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-2">输入预计月薪</label>
-                  <input
-                    type="number"
-                    value={monthlySalary}
-                    onChange={e => setSalary(Number(e.target.value))}
-                    className={cn("w-full bg-transparent text-3xl font-black focus:outline-none border-b-2 transition-colors pb-2", isDarkMode ? "border-slate-700 focus:border-white" : "border-gray-100 focus:border-black")}
-                  />
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {[
-                    { label: '生活开支 (50%)', amount: monthlySalary * 0.5, color: 'text-blue-500', bg: 'bg-blue-50' },
-                    { label: '理财储蓄 (30%)', amount: monthlySalary * 0.3, color: 'text-green-500', bg: 'bg-green-50' },
-                    { label: '娱乐享受 (20%)', amount: monthlySalary * 0.2, color: 'text-pink-500', bg: 'bg-pink-50' },
-                  ].map(item => (
-                    <div key={item.label} className={cn("p-4 rounded-2xl flex justify-between items-center", isDarkMode ? "bg-slate-700" : item.bg)}>
-                      <span className="text-xs font-bold opacity-60">{item.label}</span>
-                      <span className={cn("text-lg font-black", isDarkMode ? "text-white" : item.color)}>¥{formatCurrency(item.amount)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Spending Warning Card */}
-            <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-              <h3 className="font-black text-lg mb-6 flex items-center"><AlertTriangle size={20} className="mr-2 text-orange-500" />消费预警</h3>
-              <div className="flex flex-col items-center py-6">
-                <div className={cn(
-                  "w-32 h-32 rounded-full border-[10px] flex flex-col items-center justify-center transition-all",
-                  stats.weekChange > 20 ? "border-red-500 bg-red-50" : "border-green-500 bg-green-50"
-                )}>
-                  <span className={cn("text-2xl font-black", stats.weekChange > 20 ? "text-red-500" : "text-green-500")}>
-                    {stats.weekChange > 0 ? '+' : ''}{stats.weekChange.toFixed(0)}%
-                  </span>
-                </div>
-                <p className="mt-6 text-sm font-bold text-gray-400">
-                  较上周同期 {stats.weekChange > 0 ? '多花' : '少花'} ¥{formatCurrency(Math.abs(stats.weekChange * 100))}
-                </p>
-                {stats.weekChange > 20 && (
-                  <div className="mt-4 px-4 py-2 bg-red-100 text-red-500 rounded-full text-[10px] font-black uppercase flex items-center">
-                    <ZapIcon size={12} className="mr-1" /> 剁手警报：最近花钱有点猛！
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'calendar' && (
-          <div className={cn("rounded-[2.5rem] p-8 shadow-sm border animate-in fade-in duration-500", isDarkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-gray-50 text-gray-900")}>
-            <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />{t('calendar')}</h3>
-            <div className="grid grid-cols-7 gap-2">
-              {['一', '二', '三', '四', '五', '六', '日'].map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 pb-4">{d}</div>)}
-              {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
-                const dayData = transactions.filter(t => isSameDay(parseISO(t.date), day));
-                const dayExpense = dayData.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-                return (
-                  <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? theme.primary + " text-white" : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
-                    <span className="text-xs font-black">{format(day, 'd')}</span>
-                    {dayExpense > 0 && (
-                      <span className={cn(
-                        "text-[6px] font-black absolute bottom-1",
-                        isSameDay(day, selectedCalendarDate) ? "text-white/80" : "text-red-400"
-                      )}>
-                        -{Math.floor(dayExpense)}
+                {/* Spending Warning Card */}
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <h3 className="font-black text-lg mb-6 flex items-center"><AlertTriangle size={20} className="mr-2 text-orange-500" />消费预警</h3>
+                  <div className="flex flex-col items-center py-6">
+                    <div className={cn(
+                      "w-32 h-32 rounded-full border-[10px] flex flex-col items-center justify-center transition-all",
+                      stats.weekChange > 20 ? "border-red-500 bg-red-50" : "border-green-500 bg-green-50"
+                    )}>
+                      <span className={cn("text-2xl font-black", stats.weekChange > 20 ? "text-red-500" : "text-green-500")}>
+                        {stats.weekChange > 0 ? '+' : ''}{stats.weekChange.toFixed(0)}%
                       </span>
+                    </div>
+                    <p className="mt-6 text-sm font-bold text-gray-400">
+                      较上周同期 {stats.weekChange > 0 ? '多花' : '少花'} ¥{formatCurrency(Math.abs(stats.weekChange * 100))}
+                    </p>
+                    {stats.weekChange > 20 && (
+                      <div className="mt-4 px-4 py-2 bg-red-100 text-red-500 rounded-full text-[10px] font-black uppercase flex items-center">
+                        <ZapIcon size={12} className="mr-1" /> 剁手警报：最近花钱有点猛！
+                      </div>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'calendar' && (
+              <div className="space-y-6">
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-gray-50 text-gray-900")}>
+                  <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />{t('calendar')}</h3>
+                  <div className="grid grid-cols-7 gap-2">
+                    {['一', '二', '三', '四', '五', '六', '日'].map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 pb-4">{d}</div>)}
+                    {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
+                      const dayData = transactions.filter(t => isSameDay(parseISO(t.date), day));
+                      const dayExpense = dayData.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+                      return (
+                        <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? theme.primary + " text-white" : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
+                          <span className="text-xs font-black">{format(day, 'd')}</span>
+                          {dayExpense > 0 && (
+                            <span className={cn(
+                              "text-[6px] font-black absolute bottom-1",
+                              isSameDay(day, selectedCalendarDate) ? "text-white/80" : "text-red-400"
+                            )}>
+                              -{Math.floor(dayExpense)}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Daily Summary Card */}
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <h3 className="font-black text-sm text-gray-400 mb-6 uppercase tracking-widest">{format(selectedCalendarDate, 'MM月dd日')} 结余</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 rounded-2xl bg-red-50/50 dark:bg-red-900/10 border border-red-100/50 dark:border-red-900/20">
+                      <p className="text-[10px] font-black text-red-400 uppercase mb-1">支出</p>
+                      <p className="text-xl font-black text-red-500">¥{formatCurrency(transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate) && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0))}</p>
+                    </div>
+                    <div className="p-4 rounded-2xl bg-green-50/50 dark:bg-green-900/10 border border-green-100/50 dark:border-green-900/20">
+                      <p className="text-[10px] font-black text-green-400 uppercase mb-1">收入</p>
+                      <p className="text-xl font-black text-green-500">¥{formatCurrency(transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate) && t.type === 'income').reduce((sum, t) => sum + t.amount, 0))}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Month Progress */}
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">本月进度</span>
+                    <span className="text-[10px] font-black">{stats.budgetUsage.toFixed(1)}%</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
+                      className={cn("h-full", stats.budgetUsage > 90 ? "bg-red-500" : theme.primary)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
       </main>
 
       {/* Voice Recognition Modal */}
