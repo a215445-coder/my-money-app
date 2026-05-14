@@ -1,7 +1,7 @@
 {
   "name": "my-money-app",
   "private": true,
-  "version": "1.0.0-pro",
+  "version": "1.0.1-pro-force",
   "type": "module",
   "scripts": {
     "dev": "vite",
