@@ -5100,6 +5100,205 @@ function TransactionForm({
     setTimeout(() => setIsAmountAnimating(false), 500);
   };
 
+  const dateDisplayText = useMemo(() => {
+    try {
+      return format(parseISO(date), 'yyyy/MM/dd');
+    } catch {
+      return date;
+    }
+  }, [date]);
+
+  const [isDateSheetOpen, setIsDateSheetOpen] = useState(false);
+  const [draftYear, setDraftYear] = useState(() => {
+    try {
+      return parseISO(date).getFullYear();
+    } catch {
+      return new Date().getFullYear();
+    }
+  });
+  const [draftMonth, setDraftMonth] = useState(() => {
+    try {
+      return parseISO(date).getMonth() + 1;
+    } catch {
+      return new Date().getMonth() + 1;
+    }
+  });
+  const [draftDay, setDraftDay] = useState(() => {
+    try {
+      return parseISO(date).getDate();
+    } catch {
+      return new Date().getDate();
+    }
+  });
+
+  const daysInMonth = (year: number, month: number) => new Date(year, month, 0).getDate();
+
+  const years = useMemo(() => {
+    const current = new Date().getFullYear();
+    const start = 1970;
+    const end = current + 30;
+    const out: number[] = [];
+    for (let y = start; y <= end; y += 1) out.push(y);
+    return out;
+  }, []);
+
+  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
+
+  const days = useMemo(() => {
+    const max = daysInMonth(draftYear, draftMonth);
+    return Array.from({ length: max }, (_, i) => i + 1);
+  }, [draftYear, draftMonth]);
+
+  useEffect(() => {
+    const max = daysInMonth(draftYear, draftMonth);
+    if (draftDay > max) setDraftDay(max);
+  }, [draftYear, draftMonth, draftDay]);
+
+  const WheelColumn = ({
+    items,
+    selected,
+    onSelect,
+    formatItem,
+  }: {
+    items: number[];
+    selected: number;
+    onSelect: (next: number) => void;
+    formatItem?: (n: number) => string;
+  }) => {
+    const rowH = 36;
+    const visibleRows = 5;
+    const centerRow = Math.floor(visibleRows / 2);
+    const startYRef = useRef<number | null>(null);
+    const startOffsetRef = useRef(0);
+    const lastMoveRef = useRef<{ t: number; y: number } | null>(null);
+    const offsetFromSelected = -Math.max(0, items.indexOf(selected)) * rowH;
+    const [offset, setOffset] = useState(offsetFromSelected);
+    const [dragging, setDragging] = useState(false);
+
+    useEffect(() => {
+      if (!dragging) setOffset(-Math.max(0, items.indexOf(selected)) * rowH);
+    }, [selected, items, dragging]);
+
+    const clampOffset = (raw: number) => {
+      const min = -(items.length - 1) * rowH;
+      return Math.max(min, Math.min(0, raw));
+    };
+
+    const snapTo = (raw: number, velocity: number) => {
+      const projected = clampOffset(raw + velocity * 140);
+      const idx = Math.round(-projected / rowH);
+      const clampedIdx = Math.max(0, Math.min(items.length - 1, idx));
+      const next = items[clampedIdx];
+      setOffset(-clampedIdx * rowH);
+      onSelect(next);
+      if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+        (navigator as any).vibrate?.(10);
+      }
+    };
+
+    return (
+      <div
+        className="relative overflow-hidden flex-1"
+        style={{ height: rowH * visibleRows }}
+        onPointerDown={(e) => {
+          (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+          setDragging(true);
+          startYRef.current = e.clientY;
+          startOffsetRef.current = offset;
+          lastMoveRef.current = { t: Date.now(), y: e.clientY };
+        }}
+        onPointerMove={(e) => {
+          if (startYRef.current == null) return;
+          const dy = e.clientY - startYRef.current;
+          const next = clampOffset(startOffsetRef.current + dy);
+          setOffset(next);
+          lastMoveRef.current = { t: Date.now(), y: e.clientY };
+        }}
+        onPointerUp={(e) => {
+          if (startYRef.current == null) return;
+          const last = lastMoveRef.current;
+          const now = Date.now();
+          const dy = last ? e.clientY - last.y : 0;
+          const dt = last ? Math.max(8, now - last.t) : 16;
+          const v = dy / dt;
+          setDragging(false);
+          startYRef.current = null;
+          snapTo(offset, v);
+        }}
+        onPointerCancel={() => {
+          setDragging(false);
+          startYRef.current = null;
+          setOffset(-Math.max(0, items.indexOf(selected)) * rowH);
+        }}
+      >
+        <div
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-1/3 pointer-events-none"
+          style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.55), rgba(0,0,0,0))" }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none"
+          style={{ background: "linear-gradient(to top, rgba(0,0,0,0.55), rgba(0,0,0,0))" }}
+        />
+        <div
+          aria-hidden
+          className="absolute left-0 right-0"
+          style={{
+            top: centerRow * rowH,
+            height: rowH,
+            borderTop: "1px solid rgba(255,255,255,0.18)",
+            borderBottom: "1px solid rgba(255,255,255,0.18)",
+            background: "rgba(255,255,255,0.06)",
+          }}
+        />
+        <div
+          className="absolute left-0 right-0"
+          style={{
+            top: centerRow * rowH,
+            height: rowH,
+            transform: "translate3d(0,0,0)",
+            perspective: 800,
+          }}
+        >
+          <div
+            className="absolute left-0 right-0"
+            style={{
+              top: 0,
+              transform: `translate3d(0, ${offset + centerRow * rowH}px, 0)`,
+              transition: dragging ? "none" : "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+              willChange: "transform",
+            }}
+          >
+            {items.map((n, idx) => {
+              const pos = idx * rowH + offset;
+              const dist = (pos - (-centerRow * rowH)) / rowH;
+              const rotateX = Math.max(-75, Math.min(75, -dist * 18));
+              const opacity = Math.max(0.22, 1 - Math.abs(dist) * 0.24);
+              const scale = 1 - Math.min(0.18, Math.abs(dist) * 0.06);
+              const isSelected = n === selected;
+              return (
+                <div
+                  key={n}
+                  className={cn("absolute left-0 right-0 flex items-center justify-center font-black select-none", isSelected ? "text-white" : "text-white/70")}
+                  style={{
+                    top: idx * rowH,
+                    height: rowH,
+                    transform: `rotateX(${rotateX}deg) translateZ(84px) scale(${scale})`,
+                    opacity,
+                    transition: dragging ? "none" : "opacity 180ms ease",
+                  }}
+                >
+                  {formatItem ? formatItem(n) : String(n)}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className={cn("flex p-1.5 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
@@ -5211,7 +5410,29 @@ function TransactionForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.date')}</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")} required />
+          <button
+            type="button"
+            onClick={() => {
+              try {
+                const d = parseISO(date);
+                setDraftYear(d.getFullYear());
+                setDraftMonth(d.getMonth() + 1);
+                setDraftDay(d.getDate());
+              } catch {
+                const d = new Date();
+                setDraftYear(d.getFullYear());
+                setDraftMonth(d.getMonth() + 1);
+                setDraftDay(d.getDate());
+              }
+              setIsDateSheetOpen(true);
+            }}
+            className={cn(
+              "w-full p-4 rounded-2xl text-xs font-bold focus:outline-none text-left active:scale-[0.99] transition-transform",
+              isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black"
+            )}
+          >
+            {dateDisplayText}
+          </button>
         </div>
         <div>
           <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.account')}</label>
@@ -5353,6 +5574,64 @@ function TransactionForm({
         {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2.5rem] font-black text-sm active:scale-95 transition-all">{t('delete')}</button>}
         <button type="submit" className={cn("flex-[3] py-5 rounded-[2.5rem] font-black text-sm shadow-xl active:scale-95 transition-all", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
       </div>
+
+      <AnimatePresence>
+        {isDateSheetOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[170] flex items-end justify-center bg-black/40"
+            onClick={() => setIsDateSheetOpen(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "w-full max-w-md rounded-t-[2.25rem] overflow-hidden border border-white/10",
+                "bg-black/35 backdrop-blur-[20px]"
+              )}
+              style={{ transform: "translate3d(0,0,0)" }}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setIsDateSheetOpen(false)}
+                  className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+                >
+                  {t('cancel')}
+                </button>
+                <div className="text-sm font-black text-white/90">{t('form.date')}</div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = format(new Date(draftYear, draftMonth - 1, draftDay), 'yyyy-MM-dd');
+                    setDate(next);
+                    setIsDateSheetOpen(false);
+                  }}
+                  className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+                >
+                  {t('confirm')}
+                </button>
+              </div>
+
+              <div className="px-6 py-6">
+                <div
+                  className="flex items-center justify-between gap-3 text-[15px]"
+                  style={{ perspective: 900, transform: "translate3d(0,0,0)" }}
+                >
+                  <WheelColumn items={years} selected={draftYear} onSelect={setDraftYear} formatItem={(n) => `${n}`} />
+                  <WheelColumn items={months} selected={draftMonth} onSelect={setDraftMonth} formatItem={(n) => String(n).padStart(2, '0')} />
+                  <WheelColumn items={days} selected={draftDay} onSelect={setDraftDay} formatItem={(n) => String(n).padStart(2, '0')} />
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </form>
   );
 }
