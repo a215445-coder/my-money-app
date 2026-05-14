@@ -12,38 +12,28 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
-  LayoutGrid,
   History,
-  BarChart3,
   ChevronDown,
   Lock,
-  ShieldCheck,
-  Zap,
   LineChart as LineIcon,
   Search,
-  Download,
   Cloud,
   Camera,
   Hash,
   Smile,
   Globe,
   ArrowRightLeft,
-  ChevronUp,
   User,
   Languages,
   Share2,
   Star,
   Moon,
   Sun,
-  Info,
   LogOut,
-  Copy,
-  Heart,
   Compass,
   Zap as ZapIcon,
   Calculator,
   AlertTriangle,
-  SunMedium
 } from 'lucide-react';
 import {
   format,
@@ -71,9 +61,6 @@ import { zhCN } from 'date-fns/locale';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import {
-  PieChart,
-  Pie,
-  Cell,
   ResponsiveContainer,
   Tooltip as RechartsTooltip,
   AreaChart,
@@ -133,15 +120,6 @@ const DEFAULT_ACCOUNTS: Account[] = [
   { id: 'ac-4', name: 'cash', type: 'cash', balance: 0, icon: '💵' },
 ];
 
-const QUOTES = [
-  "今天没花钱，你是省钱小能手！✨",
-  "每一分存下的钱，都是通往自由的基石。🏦",
-  "理财不在于钱多钱少，而在于习惯的养成。💡",
-  "记得给未来的自己留一份礼物。🎁",
-  "理性消费，快乐记账。😊",
-  "看，你的财富正在一点点积累！📈"
-];
-
 type FilterType = 'today' | 'week' | 'month' | 'year';
 
 export default function App() {
@@ -157,7 +135,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : DEFAULT_ACCOUNTS;
   });
 
-  const [budget, setBudget] = useState<number>(() => {
+  const [budget] = useState<number>(() => {
     const saved = localStorage.getItem('monthly_budget');
     return saved ? Number(saved) : 5000;
   });
@@ -171,7 +149,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'calendar' | 'discovery'>('list');
   const [filterType, setFilterType] = useState<FilterType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery] = useState('');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(new Date());
 
   // --- Pro Features State ---
@@ -200,19 +178,15 @@ export default function App() {
 
   // --- Privacy & Theme ---
   const [isLocked, setIsLocked] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
-  const [pin, setPin] = useState(() => localStorage.getItem('privacy_pin') || '');
-  const [isLockEnabled, setIsLockEnabled] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
+  const [pin] = useState(() => localStorage.getItem('privacy_pin') || '');
+  const [isLockEnabled] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
   const [inputPin, setInputPin] = useState('');
-  const [isSettingPin, setIsSettingPin] = useState(false);
-  const [themeKey, setThemeKey] = useState<ThemeKey>(() => (localStorage.getItem('app_theme') as ThemeKey) || 'black');
+  const [themeKey] = useState<ThemeKey>(() => (localStorage.getItem('app_theme') as ThemeKey) || 'black');
   const theme = THEMES[themeKey];
 
   // --- Settings & i18n ---
   const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('app_dark_mode') === 'true');
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [isRateModalOpen, setIsRateModalOpen] = useState(false);
   const [isLangPickerOpen, setIsLangPickerOpen] = useState(false);
-  const [lastRateUpdate, setLastRateUpdate] = useState(() => localStorage.getItem('last_rate_update') || format(new Date(), 'HH:mm'));
   const [showOriginalCurrency, setShowOriginalCurrency] = useState<Record<string, boolean>>({});
 
   const toggleCurrency = (id: string, e: React.MouseEvent) => {
@@ -238,7 +212,6 @@ export default function App() {
           });
           const now = format(new Date(), 'HH:mm');
           setRates(newRates);
-          setLastRateUpdate(now);
           localStorage.setItem('exchange_rates', JSON.stringify(newRates));
           localStorage.setItem('last_rate_update', now);
         }
@@ -467,11 +440,6 @@ export default function App() {
 
   const totalAssets = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
 
-  const dailyQuote = useMemo(() => {
-    if (stats.expense === 0) return QUOTES[0];
-    return QUOTES[Math.floor(Math.random() * (QUOTES.length - 1)) + 1];
-  }, [stats.expense]);
-
   // --- Handlers ---
   const changeDate = (direction: 'prev' | 'next') => {
     const amount = direction === 'prev' ? -1 : 1;
@@ -533,18 +501,6 @@ export default function App() {
       localStorage.clear();
       window.location.reload();
     }
-  };
-
-  const exportCSV = () => {
-    const headers = ['日期', '类型', '分类', '金额', '账户', '备注', '标签'];
-    const rows = transactions.map(t => [t.date, t.type === 'expense' ? '支出' : '收入', t.category, t.amount, accounts.find(a => a.id === t.accountId)?.name || '未知', t.note || '', t.tags?.join(';') || '']);
-    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
-    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `我的账本_导出_${format(new Date(), 'yyyyMMdd')}.csv`);
-    link.click();
   };
 
   const formatCurrency = (v: number) => v.toLocaleString('zh-CN', { minimumFractionDigits: 2 });
