@@ -73,7 +73,7 @@ import {
   PolarGrid,
   PolarAngleAxis,
 } from 'recharts';
-import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { useTranslation } from 'react-i18next';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
@@ -91,6 +91,9 @@ type OnboardingSlide = {
   accent: string;
   cta?: string;
 };
+
+const ONBOARDING_BG_STOPS: string[] = ['#DCEBFF', '#F6F0E6', '#141821', '#0B2A1A', '#FFFFFF'];
+const ONBOARDING_BG_LUMINANCE_STOPS: number[] = [0.9, 0.88, 0.12, 0.14, 1];
 
 const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
@@ -131,361 +134,359 @@ const ONBOARDING_SLIDES: OnboardingSlide[] = [
   },
 ];
 
-function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
-  const [index, setIndex] = useState(0);
-  const slide = ONBOARDING_SLIDES[index];
-
-  const go = (next: number) => setIndex(Math.max(0, Math.min(ONBOARDING_SLIDES.length - 1, next)));
-
-  const dragX = useMotionValue(0);
-  useEffect(() => {
-    dragX.set(0);
-  }, [index, dragX]);
-
-  const bgParallaxX = useTransform(dragX, [-200, 0, 200], [14, 0, -14]);
-  const fgParallaxX = useTransform(dragX, [-200, 0, 200], [46, 0, -46]);
-  const iconParallaxX = useTransform(dragX, [-200, 0, 200], [72, 0, -72]);
+function OnboardingSlideCard({
+  slideIndex,
+  isActive,
+  globalProgress,
+  contentColor,
+  mutedColor,
+}: {
+  slideIndex: number;
+  isActive: boolean;
+  globalProgress: any;
+  contentColor: any;
+  mutedColor: any;
+}) {
+  const slide = ONBOARDING_SLIDES[slideIndex];
+  const slideProgress = useTransform(globalProgress, (v: number) => v - slideIndex);
+  const bgParallaxX = useTransform(slideProgress, [-1, 0, 1], [12, 0, -12]);
+  const fgParallaxX = useTransform(slideProgress, [-1, 0, 1], [36, 0, -36]);
+  const iconParallaxX = useTransform(slideProgress, [-1, 0, 1], [64, 0, -64]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.07, delayChildren: 0.05 }
-    }
+      transition: { staggerChildren: 0.08, delayChildren: 0.06 },
+    },
   } as const;
 
   const titleVariants = {
     hidden: { opacity: 0, y: 10, filter: 'blur(6px)' },
-    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.35, ease: [0.23, 1, 0.32, 1] } }
+    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.38, ease: [0.23, 1, 0.32, 1] } },
   } as const;
 
   const descVariants = {
     hidden: { opacity: 0, y: 14, filter: 'blur(6px)' },
-    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.4, ease: [0.23, 1, 0.32, 1] } }
+    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.44, ease: [0.23, 1, 0.32, 1] } },
   } as const;
 
   const chromeVariants = {
     hidden: { opacity: 0, y: 6 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.23, 1, 0.32, 1] } }
+    show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.23, 1, 0.32, 1] } },
   } as const;
 
-  const Visual = () => {
-    if (index === 0) {
-      return (
-        <div className="relative h-56 w-full">
-          <motion.div style={{ x: bgParallaxX }} className="absolute inset-0">
-            <div className="absolute -top-10 -left-10 w-64 h-64 rounded-full blur-[90px] bg-white/10" />
-            <div className="absolute -bottom-10 -right-10 w-72 h-72 rounded-full blur-[110px] bg-white/10" />
+  return (
+    <div className="min-w-full w-full snap-center px-8 py-10 flex items-center justify-center">
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate={isActive ? "show" : "hidden"}
+        className="w-full max-w-md"
+        style={{ color: contentColor }}
+      >
+        <div className="relative rounded-[3.25rem] p-10 border border-white/15 bg-white/10 backdrop-blur-3xl shadow-[0_20px_80px_rgba(0,0,0,0.25)] overflow-hidden">
+          <motion.div style={{ x: bgParallaxX }} className="absolute inset-0 pointer-events-none">
+            <div className={cn("absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[110px] opacity-70 bg-gradient-to-br", slide.accent)} />
+            <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full blur-[120px] opacity-30 bg-white/20" />
           </motion.div>
 
-          <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
-            <div className="w-full max-w-sm">
-              <div className="rounded-[2rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_20px_60px_rgba(0,0,0,0.35)]">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60">WEALTH PULSE</div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                    <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
-                  </div>
-                </div>
-                <div className="relative h-24">
-                  <div className="absolute inset-0 grid grid-cols-10 gap-2 items-end">
-                    {Array.from({ length: 10 }).map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{ height: [18, 44, 26, 56, 34] }}
-                        transition={{ duration: 1.6, repeat: Infinity, ease: [0.23, 1, 0.32, 1], delay: i * 0.03 }}
-                        className={cn("rounded-xl bg-white/10 border border-white/10", i % 3 === 0 ? "bg-white/14" : "bg-white/8")}
-                      />
-                    ))}
-                  </div>
-                  <motion.div
-                    animate={{ opacity: [0.4, 0.75, 0.4] }}
-                    transition={{ duration: 1.8, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
-                    className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                  />
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div style={{ x: iconParallaxX }} className="absolute top-0 left-0 right-0 flex justify-center">
-            <div className={cn("w-14 h-14 rounded-[1.6rem] flex items-center justify-center bg-gradient-to-br shadow-lg border border-white/15", slide.accent)}>
-              <slide.Icon size={26} className="text-black/80" />
-            </div>
-          </motion.div>
-        </div>
-      );
-    }
-
-    if (index === 1) {
-      return (
-        <div className="relative h-56 w-full">
-          <motion.div style={{ x: bgParallaxX }} className="absolute inset-0">
-            <div className={cn("absolute -top-20 left-10 w-72 h-72 rounded-full blur-[120px] opacity-60 bg-gradient-to-br", slide.accent)} />
-          </motion.div>
-
-          <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-end justify-center pb-4">
-            <div className="w-full max-w-sm">
-              <motion.div
-                initial={{ y: 40, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ type: "spring", damping: 22, stiffness: 220 }}
-                className="rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60 mb-1">RECORD</div>
-                    <div className="text-lg font-black">¥ 50.00</div>
-                    <div className="text-[10px] text-white/50 font-bold mt-1">餐饮 · 肯德基</div>
-                  </div>
-                  <motion.div
-                    animate={{ boxShadow: ["0 0 0 rgba(255,255,255,0.0)", "0 0 26px rgba(255,255,255,0.28)", "0 0 0 rgba(255,255,255,0.0)"] }}
-                    transition={{ duration: 1.6, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
-                    className={cn("w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br border border-white/15", slide.accent)}
-                  >
-                    <Plus size={26} className="text-black/80" strokeWidth={3} />
+          <motion.div variants={chromeVariants} className="relative">
+            <div className="relative h-56 w-full">
+              {slideIndex === 0 && (
+                <>
+                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-full max-w-sm">
+                      <div className="rounded-[2rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>WEALTH PULSE</div>
+                          <div className="flex items-center space-x-1">
+                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
+                            <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
+                          </div>
+                        </div>
+                        <div className="relative h-24">
+                          <div className="absolute inset-0 grid grid-cols-10 gap-2 items-end">
+                            {Array.from({ length: 10 }).map((_, i) => (
+                              <motion.div
+                                key={i}
+                                animate={{ height: [18, 44, 26, 56, 34] }}
+                                transition={{ duration: 1.6, repeat: Infinity, ease: [0.23, 1, 0.32, 1], delay: i * 0.03 }}
+                                className={cn("rounded-xl border border-white/10", i % 3 === 0 ? "bg-white/20" : "bg-white/12")}
+                              />
+                            ))}
+                          </div>
+                          <motion.div
+                            animate={{ opacity: [0.3, 0.6, 0.3] }}
+                            transition={{ duration: 2.0, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
+                            className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </motion.div>
+                </>
+              )}
+
+              {slideIndex === 1 && (
+                <>
+                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-end justify-center pb-4">
+                    <div className="w-full max-w-sm">
+                      <motion.div
+                        initial={{ y: 40, opacity: 0 }}
+                        animate={isActive ? { y: 0, opacity: 1 } : { y: 40, opacity: 0 }}
+                        transition={{ type: "spring", damping: 22, stiffness: 220 }}
+                        className="rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>RECORD</div>
+                            <div className="text-lg font-black mt-1">¥ 50.00</div>
+                            <div className="text-[10px] font-bold mt-1" style={{ color: mutedColor }}>餐饮 · 肯德基</div>
+                          </div>
+                          <motion.div
+                            animate={{ boxShadow: ["0 0 0 rgba(255,255,255,0.0)", "0 0 26px rgba(255,255,255,0.26)", "0 0 0 rgba(255,255,255,0.0)"] }}
+                            transition={{ duration: 1.6, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
+                            className={cn("w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br border border-white/15", slide.accent)}
+                          >
+                            <Plus size={26} className="text-black/80" strokeWidth={3} />
+                          </motion.div>
+                        </div>
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+
+              {slideIndex === 2 && (
+                <>
+                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-full max-w-sm">
+                      <div className="rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+                        <div className="text-[10px] font-black uppercase tracking-[0.25em] mb-6" style={{ color: mutedColor }}>5 · 3 · 2</div>
+                        <div className="h-28 flex flex-col justify-end space-y-3">
+                          {[
+                            { w: 'w-[88%]', label: '50%', tone: 'bg-white/20' },
+                            { w: 'w-[72%]', label: '30%', tone: 'bg-white/14' },
+                            { w: 'w-[58%]', label: '20%', tone: 'bg-white/10' },
+                          ].map((b, i) => (
+                            <motion.div
+                              key={b.label}
+                              initial={{ y: 30, opacity: 0, scale: 0.98 }}
+                              animate={isActive ? { y: 0, opacity: 1, scale: 1 } : { y: 30, opacity: 0, scale: 0.98 }}
+                              transition={{ type: "spring", damping: 22, stiffness: 240, delay: 0.08 + i * 0.08 }}
+                              className={cn(
+                                "h-10 rounded-2xl border border-white/10 flex items-center justify-between px-4",
+                                b.w,
+                                b.tone
+                              )}
+                            >
+                              <span className="text-xs font-black">模块 {i + 1}</span>
+                              <span className="text-sm font-black">{b.label}</span>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+
+              {slideIndex === 3 && (
+                <>
+                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
+                    <motion.div
+                      animate={{
+                        boxShadow: [
+                          "0 0 0 rgba(255,255,255,0)",
+                          "0 0 40px rgba(255,255,255,0.16)",
+                          "0 0 0 rgba(255,255,255,0)"
+                        ],
+                      }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
+                      className="w-full max-w-sm rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>TIP</div>
+                          <div className="text-lg font-black leading-snug mt-2">本周餐饮支出偏高</div>
+                          <div className="mt-2 text-[10px] font-bold" style={{ color: mutedColor }}>试试把 2 次外卖替换成自制简餐</div>
+                        </div>
+                        <div className={cn("w-12 h-12 rounded-[1.4rem] flex items-center justify-center bg-gradient-to-br border border-white/15", slide.accent)}>
+                          <Smile size={22} className="text-black/80" />
+                        </div>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                </>
+              )}
+
+              {slideIndex === 4 && (
+                <>
+                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-end justify-center pb-4">
+                    <div className="w-full max-w-sm rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+                      <div className="grid grid-cols-2 gap-3">
+                        <button className="py-4 rounded-2xl bg-white text-black font-black text-xs shadow-lg active:scale-95 transition-all">
+                          手机号登录
+                        </button>
+                        <button className="py-4 rounded-2xl bg-white/10 border border-white/10 font-black text-xs active:scale-95 transition-all">
+                          微信登录
+                        </button>
+                      </div>
+                      <button className="mt-3 w-full py-4 rounded-2xl bg-white/10 border border-white/10 font-black text-xs active:scale-95 transition-all">
+                        Google 登录
+                      </button>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+
+              <motion.div style={{ x: iconParallaxX }} className="absolute top-0 left-0 right-0 flex justify-center">
+                <div className={cn("w-14 h-14 rounded-[1.6rem] flex items-center justify-center bg-gradient-to-br shadow-lg border border-white/15", slide.accent)}>
+                  <slide.Icon size={26} className="text-black/80" />
                 </div>
               </motion.div>
             </div>
           </motion.div>
 
-          <motion.div style={{ x: iconParallaxX }} className="absolute top-0 left-0 right-0 flex justify-center">
-            <div className={cn("w-14 h-14 rounded-[1.6rem] flex items-center justify-center bg-gradient-to-br shadow-lg border border-white/15", slide.accent)}>
-              <slide.Icon size={26} className="text-black/80" />
-            </div>
+          <motion.div variants={titleVariants} className="mt-10 relative">
+            <h1 className="text-4xl font-black tracking-tight leading-[1.05]">{slide.title}</h1>
           </motion.div>
+          <motion.p variants={descVariants} className="mt-4 text-base font-bold leading-relaxed" style={{ color: mutedColor }}>
+            {slide.description}
+          </motion.p>
         </div>
-      );
-    }
+      </motion.div>
+    </div>
+  );
+}
 
-    if (index === 2) {
-      const blocks = [
-        { w: 'w-[88%]', label: '50%', tone: 'bg-white/14', y: 0 },
-        { w: 'w-[72%]', label: '30%', tone: 'bg-white/10', y: 0 },
-        { w: 'w-[58%]', label: '20%', tone: 'bg-white/8', y: 0 },
-      ];
-      return (
-        <div className="relative h-56 w-full">
-          <motion.div style={{ x: bgParallaxX }} className="absolute inset-0">
-            <div className={cn("absolute -top-16 -left-10 w-72 h-72 rounded-full blur-[120px] opacity-60 bg-gradient-to-br", slide.accent)} />
-          </motion.div>
+function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
+  const total = ONBOARDING_SLIDES.length;
+  const scrollerRef = React.useRef<HTMLDivElement>(null);
+  const [index, setIndex] = useState(0);
 
-          <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
-            <div className="w-full max-w-sm">
-              <div className="rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
-                <div className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60 mb-6">5 · 3 · 2</div>
-                <div className="h-28 flex flex-col justify-end space-y-3">
-                  {blocks.map((b, i) => (
-                    <motion.div
-                      key={b.label}
-                      initial={{ y: 30, opacity: 0, scale: 0.98 }}
-                      animate={{ y: 0, opacity: 1, scale: 1 }}
-                      transition={{ type: "spring", damping: 22, stiffness: 240, delay: 0.1 + i * 0.08 }}
-                      className={cn(
-                        "h-10 rounded-2xl border border-white/10 flex items-center justify-between px-4",
-                        b.w,
-                        b.tone
-                      )}
-                    >
-                      <span className="text-xs font-black text-white/80">模块 {i + 1}</span>
-                      <span className="text-sm font-black">{b.label}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
+  const { scrollXProgress } = useScroll({ container: scrollerRef });
+  const bgColor = useTransform(scrollXProgress, [0, 0.25, 0.5, 0.75, 1], ONBOARDING_BG_STOPS);
+  const bgLum = useTransform(scrollXProgress, [0, 0.25, 0.5, 0.75, 1], ONBOARDING_BG_LUMINANCE_STOPS);
+  const contentColor = useTransform(bgLum, [0, 1], ['#FFFFFF', '#0B0B0C']);
+  const mutedColor = useTransform(bgLum, [0, 1], ['rgba(255,255,255,0.64)', 'rgba(11,11,12,0.55)']);
+  const contentInverseColor = useTransform(bgLum, [0, 1], ['#0B0B0C', '#FFFFFF']);
 
-          <motion.div style={{ x: iconParallaxX }} className="absolute top-0 left-0 right-0 flex justify-center">
-            <div className={cn("w-14 h-14 rounded-[1.6rem] flex items-center justify-center bg-gradient-to-br shadow-lg border border-white/15", slide.accent)}>
-              <slide.Icon size={26} className="text-black/80" />
-            </div>
-          </motion.div>
-        </div>
-      );
-    }
+  const globalProgress = useTransform(scrollXProgress, (v: number) => v * (total - 1));
 
-    if (index === 3) {
-      return (
-        <div className="relative h-56 w-full">
-          <motion.div style={{ x: bgParallaxX }} className="absolute inset-0">
-            <div className={cn("absolute -top-14 right-0 w-80 h-80 rounded-full blur-[140px] opacity-60 bg-gradient-to-br", slide.accent)} />
-          </motion.div>
+  useEffect(() => {
+    const unsubscribe = scrollXProgress.on('change', (v: number) => {
+      const next = Math.round(v * (total - 1));
+      setIndex(prev => (prev === next ? prev : next));
+    });
+    return () => unsubscribe();
+  }, [scrollXProgress, total]);
 
-          <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
-            <motion.div
-              animate={{
-                boxShadow: [
-                  "0 0 0 rgba(255,255,255,0)",
-                  "0 0 40px rgba(255,255,255,0.18)",
-                  "0 0 0 rgba(255,255,255,0)"
-                ],
-              }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
-              className="w-full max-w-sm rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.35)]"
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-[10px] font-black uppercase tracking-[0.25em] text-white/60 mb-2">TIP</div>
-                  <div className="text-lg font-black leading-snug">本周餐饮支出偏高</div>
-                  <div className="mt-2 text-[10px] text-white/60 font-bold">试试把 2 次外卖替换成自制简餐</div>
-                </div>
-                <div className={cn("w-12 h-12 rounded-[1.4rem] flex items-center justify-center bg-gradient-to-br border border-white/15", slide.accent)}>
-                  <Smile size={22} className="text-black/80" />
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-
-          <motion.div style={{ x: iconParallaxX }} className="absolute top-0 left-0 right-0 flex justify-center">
-            <div className={cn("w-14 h-14 rounded-[1.6rem] flex items-center justify-center bg-gradient-to-br shadow-lg border border-white/15", slide.accent)}>
-              <slide.Icon size={26} className="text-black/80" />
-            </div>
-          </motion.div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="relative h-56 w-full">
-        <motion.div style={{ x: bgParallaxX }} className="absolute inset-0">
-          <div className="absolute inset-0 bg-white/6" />
-          <div className={cn("absolute -top-20 -left-20 w-80 h-80 rounded-full blur-[140px] opacity-50 bg-gradient-to-br", slide.accent)} />
-          <div className="absolute inset-0 backdrop-blur-3xl" />
-        </motion.div>
-
-        <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-end justify-center pb-4">
-          <div className="w-full max-w-sm rounded-[2.25rem] border border-white/15 bg-white/10 backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.35)]">
-            <div className="grid grid-cols-2 gap-3">
-              <button className="py-4 rounded-2xl bg-white text-black font-black text-xs shadow-lg active:scale-95 transition-all">
-                手机号登录
-              </button>
-              <button className="py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-black text-xs active:scale-95 transition-all">
-                微信登录
-              </button>
-            </div>
-            <button className="mt-3 w-full py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-black text-xs active:scale-95 transition-all">
-              Google 登录
-            </button>
-          </div>
-        </motion.div>
-
-        <motion.div style={{ x: iconParallaxX }} className="absolute top-0 left-0 right-0 flex justify-center">
-          <div className={cn("w-14 h-14 rounded-[1.6rem] flex items-center justify-center bg-gradient-to-br shadow-lg border border-white/15", slide.accent)}>
-            <slide.Icon size={26} className="text-black/80" />
-          </div>
-        </motion.div>
-      </div>
-    );
+  const scrollToIndex = (next: number) => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const clamped = Math.max(0, Math.min(total - 1, next));
+    el.scrollTo({ left: el.clientWidth * clamped, behavior: 'smooth' });
   };
 
   return (
-    <div className="fixed inset-0 z-[300] overflow-hidden text-white">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={slide.title}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-          className={cn("absolute inset-0", slide.bg)}
-        />
-      </AnimatePresence>
+    <div className="fixed inset-0 z-[300] overflow-hidden">
+      <motion.div
+        className="absolute inset-0"
+        style={{
+          backgroundColor: bgColor,
+          backgroundImage:
+            "radial-gradient(circle at 18% 12%, rgba(255,255,255,0.35), transparent 55%), radial-gradient(circle at 82% 88%, rgba(0,0,0,0.18), transparent 60%)",
+        }}
+        animate={{
+          filter: [
+            "saturate(112%) brightness(1.02)",
+            "saturate(105%) brightness(0.98)",
+            "saturate(112%) brightness(1.02)",
+          ],
+        }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+      />
 
-      <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[120px] bg-white/10" />
-      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full blur-[140px] bg-white/10" />
+      <div className="absolute inset-0">
+        <div className="absolute top-0 left-0 right-0 px-8 pt-[calc(1.25rem+env(safe-area-inset-top))]">
+          <div className="flex items-center justify-between">
+            <motion.div className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: mutedColor }}>
+              PRO ONBOARDING
+            </motion.div>
+            <div className="flex items-center space-x-2">
+              {ONBOARDING_SLIDES.map((_, i) => (
+                <motion.div
+                  key={i}
+                  animate={{ width: i === index ? 18 : 6, opacity: i === index ? 1 : 0.35 }}
+                  transition={{ type: "spring", damping: 20, stiffness: 250 }}
+                  className="h-1.5 rounded-full bg-black/30"
+                  style={{ backgroundColor: contentColor }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
 
-      <div className="absolute inset-0 flex flex-col justify-between p-8">
-        <div className="flex items-center justify-between">
-          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">PRO ONBOARDING</div>
-          <div className="flex items-center space-x-2">
+        <div className="absolute inset-0 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
+          <div
+            ref={scrollerRef}
+            className="h-full w-full overflow-x-auto no-scrollbar flex snap-x snap-mandatory scroll-smooth"
+            style={{ WebkitOverflowScrolling: 'touch' as any }}
+          >
             {ONBOARDING_SLIDES.map((_, i) => (
-              <motion.div
+              <OnboardingSlideCard
                 key={i}
-                animate={{ width: i === index ? 18 : 6, opacity: i === index ? 1 : 0.35 }}
-                transition={{ type: "spring", damping: 20, stiffness: 250 }}
-                className={cn("h-1.5 rounded-full", i === index ? "bg-white" : "bg-white")}
+                slideIndex={i}
+                isActive={i === index}
+                globalProgress={globalProgress}
+                contentColor={contentColor}
+                mutedColor={mutedColor}
               />
             ))}
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center">
-          <motion.div
-            key={index}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            style={{ x: dragX }}
-            onDragEnd={(_, info) => {
-              const swipe = info.offset.x;
-              if (swipe < -80) go(index + 1);
-              if (swipe > 80) go(index - 1);
-            }}
-            initial={{ opacity: 0, scale: 0.98, x: 40 }}
-            animate={{ opacity: 1, scale: 1, x: 0 }}
-            exit={{ opacity: 0, scale: 0.98, x: -40 }}
-            transition={{ type: "spring", damping: 25, stiffness: 240 }}
-            className="w-full max-w-md"
-          >
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
-              className="relative rounded-[3.25rem] p-10 border border-white/15 bg-white/8 backdrop-blur-3xl shadow-[0_20px_80px_rgba(0,0,0,0.35)] overflow-hidden"
+        <div className="absolute bottom-0 left-0 right-0 px-8 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
+          <div className="max-w-md mx-auto flex items-center justify-between">
+            <motion.button
+              onClick={() => scrollToIndex(index - 1)}
+              disabled={index === 0}
+              className={cn(
+                "px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 disabled:opacity-30",
+                "border-black/10 hover:bg-white/40"
+              )}
+              style={{ color: contentColor }}
             >
-              <motion.div
-                variants={chromeVariants}
-                className={cn("absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[100px] opacity-60 bg-gradient-to-br", slide.accent)}
-              />
+              上一步
+            </motion.button>
 
-              <Visual />
+            {index < total - 1 ? (
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={() => scrollToIndex(index + 1)}
+                className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
+                style={{ backgroundColor: contentColor, color: contentInverseColor }}
+              >
+                继续
+              </motion.button>
+            ) : (
+              <motion.button
+                whileTap={{ scale: 0.96 }}
+                onClick={onGoLogin}
+                className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
+                style={{ backgroundColor: contentColor, color: contentInverseColor }}
+              >
+                进入登录
+              </motion.button>
+            )}
+          </div>
 
-              <motion.div variants={titleVariants} className="mt-10">
-                <h1 className="text-4xl font-black tracking-tight leading-[1.05]">{slide.title}</h1>
-              </motion.div>
-              <motion.p variants={descVariants} className="mt-4 text-white/70 text-base font-bold leading-relaxed">
-                {slide.description}
-              </motion.p>
-
-              <motion.div variants={chromeVariants} className="mt-10 flex items-center justify-between">
-                <button
-                  onClick={() => go(index - 1)}
-                  disabled={index === 0}
-                  className={cn(
-                    "px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95",
-                    index === 0 ? "border-white/10 text-white/30" : "border-white/15 text-white/80 hover:bg-white/5"
-                  )}
-                >
-                  上一步
-                </button>
-
-                {index < ONBOARDING_SLIDES.length - 1 ? (
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={() => go(index + 1)}
-                    className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-black shadow-lg transition-all"
-                  >
-                    继续
-                  </motion.button>
-                ) : (
-                  <motion.button
-                    whileTap={{ scale: 0.96 }}
-                    onClick={onGoLogin}
-                    className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-black shadow-lg transition-all"
-                  >
-                    {slide.cta || '进入登录'}
-                  </motion.button>
-                )}
-              </motion.div>
-            </motion.div>
+          <motion.div className="mt-4 text-center text-[10px] font-bold" style={{ color: mutedColor }}>
+            左右滑动切换 · 流光溢彩插值过渡
           </motion.div>
-        </div>
-
-        <div className="pb-[env(safe-area-inset-bottom)] text-center text-[10px] font-bold text-white/40">
-          左右滑动切换 · 单手可操作
         </div>
       </div>
     </div>
