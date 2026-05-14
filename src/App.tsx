@@ -83,6 +83,217 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+type OnboardingSlide = {
+  title: string;
+  description: string;
+  Icon: React.ElementType;
+  bg: string;
+  accent: string;
+  cta?: string;
+};
+
+const ONBOARDING_SLIDES: OnboardingSlide[] = [
+  {
+    title: '理财实验室',
+    description: '您的私人财务分析师，洞察每笔开支。',
+    Icon: LineIcon,
+    bg: 'bg-gradient-to-br from-indigo-950 via-slate-950 to-slate-950',
+    accent: 'from-indigo-400 to-purple-400',
+  },
+  {
+    title: '极速记账',
+    description: '单手操作，丝滑弹出，随时随地记录生活。',
+    Icon: ZapIcon,
+    bg: 'bg-gradient-to-br from-fuchsia-950 via-slate-950 to-slate-950',
+    accent: 'from-pink-400 to-fuchsia-400',
+  },
+  {
+    title: '财富自测',
+    description: '科学的 5:3:2 分配，让每一分钱都有归宿。',
+    Icon: Calculator,
+    bg: 'bg-gradient-to-br from-emerald-950 via-slate-950 to-slate-950',
+    accent: 'from-emerald-400 to-cyan-400',
+  },
+  {
+    title: '云端守护',
+    description: '数据实时备份，多设备同步，永不丢失。',
+    Icon: Cloud,
+    bg: 'bg-gradient-to-br from-sky-950 via-slate-950 to-slate-950',
+    accent: 'from-sky-400 to-indigo-400',
+  },
+  {
+    title: '开启旅程',
+    description: '进入登录页，开始你的专业理财体验。',
+    Icon: User,
+    bg: 'bg-gradient-to-br from-amber-950 via-slate-950 to-slate-950',
+    accent: 'from-amber-400 to-orange-400',
+    cta: '进入登录',
+  },
+];
+
+function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
+  const [index, setIndex] = useState(0);
+  const slide = ONBOARDING_SLIDES[index];
+
+  const go = (next: number) => setIndex(Math.max(0, Math.min(ONBOARDING_SLIDES.length - 1, next)));
+
+  return (
+    <div className="fixed inset-0 z-[300] overflow-hidden text-white">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={slide.title}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
+          className={cn("absolute inset-0", slide.bg)}
+        />
+      </AnimatePresence>
+
+      <div className="absolute -top-24 -left-24 w-80 h-80 rounded-full blur-[120px] bg-white/10" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full blur-[140px] bg-white/10" />
+
+      <div className="absolute inset-0 flex flex-col justify-between p-8">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/60">PRO ONBOARDING</div>
+          <div className="flex items-center space-x-2">
+            {ONBOARDING_SLIDES.map((_, i) => (
+              <motion.div
+                key={i}
+                animate={{ width: i === index ? 18 : 6, opacity: i === index ? 1 : 0.35 }}
+                transition={{ type: "spring", damping: 20, stiffness: 250 }}
+                className={cn("h-1.5 rounded-full", i === index ? "bg-white" : "bg-white")}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-center">
+          <motion.div
+            key={index}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            onDragEnd={(_, info) => {
+              const swipe = info.offset.x;
+              if (swipe < -80) go(index + 1);
+              if (swipe > 80) go(index - 1);
+            }}
+            initial={{ opacity: 0, scale: 0.98, x: 40 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.98, x: -40 }}
+            transition={{ type: "spring", damping: 25, stiffness: 240 }}
+            className="w-full max-w-md"
+          >
+            <div className="relative rounded-[3.25rem] p-10 border border-white/15 bg-white/8 backdrop-blur-3xl shadow-[0_20px_80px_rgba(0,0,0,0.35)] overflow-hidden">
+              <div className={cn("absolute -top-24 -right-24 w-60 h-60 rounded-full blur-[90px] opacity-60 bg-gradient-to-br", slide.accent)} />
+              <div className={cn("w-16 h-16 rounded-[1.75rem] flex items-center justify-center bg-gradient-to-br shadow-lg border border-white/15", slide.accent)} >
+                <slide.Icon size={30} className="text-black/80" />
+              </div>
+              <div className="mt-10">
+                <h1 className="text-4xl font-black tracking-tight">{slide.title}</h1>
+                <p className="mt-4 text-white/70 text-base font-bold leading-relaxed">{slide.description}</p>
+              </div>
+
+              <div className="mt-10 flex items-center justify-between">
+                <button
+                  onClick={() => go(index - 1)}
+                  disabled={index === 0}
+                  className={cn(
+                    "px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95",
+                    index === 0 ? "border-white/10 text-white/30" : "border-white/15 text-white/80 hover:bg-white/5"
+                  )}
+                >
+                  上一步
+                </button>
+
+                {index < ONBOARDING_SLIDES.length - 1 ? (
+                  <button
+                    onClick={() => go(index + 1)}
+                    className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-black shadow-lg active:scale-95 transition-all"
+                  >
+                    下一步
+                  </button>
+                ) : (
+                  <button
+                    onClick={onGoLogin}
+                    className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest bg-white text-black shadow-lg active:scale-95 transition-all"
+                  >
+                    {slide.cta || '进入登录'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="pb-[env(safe-area-inset-bottom)] text-center text-[10px] font-bold text-white/40">
+          左右滑动切换 · 单手可操作
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
+  const [phone, setPhone] = useState('');
+  return (
+    <div className="fixed inset-0 z-[300] overflow-hidden text-white bg-gradient-to-br from-slate-950 via-slate-950 to-indigo-950">
+      <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full blur-[140px] bg-indigo-500/20" />
+      <div className="absolute -bottom-24 -right-24 w-96 h-96 rounded-full blur-[140px] bg-fuchsia-500/20" />
+      <div className="absolute inset-0 p-8 flex flex-col">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-full max-w-md">
+            <h1 className="text-4xl font-black tracking-tight">欢迎回来</h1>
+            <p className="mt-3 text-white/60 text-sm font-bold">登录后即可同步多设备数据与 Pro 报表能力。</p>
+
+            <div className="mt-10 rounded-[3rem] p-8 border border-white/15 bg-white/8 backdrop-blur-3xl shadow-[0_20px_80px_rgba(0,0,0,0.35)]">
+              <div className="space-y-4">
+                <div className="relative">
+                  <input
+                    type="tel"
+                    inputMode="tel"
+                    placeholder="手机号"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full px-5 py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-bold placeholder:text-white/30 focus:outline-none focus:ring-4 ring-white/10"
+                  />
+                </div>
+
+                <button
+                  onClick={onAuthed}
+                  className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm shadow-lg active:scale-95 transition-all"
+                >
+                  手机号登录
+                </button>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={onAuthed}
+                    className="py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-black text-xs active:scale-95 transition-all"
+                  >
+                    微信登录
+                  </button>
+                  <button
+                    onClick={onAuthed}
+                    className="py-4 rounded-2xl bg-white/10 border border-white/10 text-white font-black text-xs active:scale-95 transition-all"
+                  >
+                    Google 登录
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 text-center text-[10px] font-bold text-white/40">
+              继续即代表你同意隐私政策与用户协议
+            </div>
+          </div>
+        </div>
+        <div className="pb-[env(safe-area-inset-bottom)]" />
+      </div>
+    </div>
+  );
+}
+
 const CURRENCIES: Currency[] = [
   { code: 'CNY', name: '人民币', flag: '🇨🇳', symbol: '¥' },
   { code: 'USD', name: '美元', flag: '🇺🇸', symbol: '$' },
@@ -152,6 +363,9 @@ export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(new Date());
+
+  const [hasOnboarded, setHasOnboarded] = useState(() => localStorage.getItem('onboarding_done') === 'true');
+  const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
 
   // --- Pro Features State ---
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -529,6 +743,28 @@ export default function App() {
       case 'month': default: return format(currentDate, 'yyyy年MM月');
     }
   };
+
+  if (!hasOnboarded) {
+    return (
+      <OnboardingScreen
+        onGoLogin={() => {
+          localStorage.setItem('onboarding_done', 'true');
+          setHasOnboarded(true);
+        }}
+      />
+    );
+  }
+
+  if (!isAuthed) {
+    return (
+      <LoginScreen
+        onAuthed={() => {
+          localStorage.setItem('auth_done', 'true');
+          setIsAuthed(true);
+        }}
+      />
+    );
+  }
 
   return (
     <div className={cn(
