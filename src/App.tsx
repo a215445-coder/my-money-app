@@ -27,6 +27,8 @@ import {
   Languages,
   Share2,
   Star,
+  Palette,
+  Sparkles,
   Moon,
   Sun,
   LogOut,
@@ -61,6 +63,9 @@ import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import {
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
   Tooltip as RechartsTooltip,
   AreaChart,
   Area,
@@ -564,6 +569,8 @@ const CURRENCIES: Currency[] = [
 
 const THEMES = {
   black: { primary: 'bg-black', text: 'text-black', border: 'border-black', shadow: 'shadow-black/20', ring: 'ring-black' },
+  blackGold: { primary: 'bg-gradient-to-r from-black via-zinc-950 to-amber-950', text: 'text-amber-500', border: 'border-amber-500', shadow: 'shadow-amber-500/20', ring: 'ring-amber-500' },
+  whiteMinimal: { primary: 'bg-white', text: 'text-gray-900', border: 'border-gray-900', shadow: 'shadow-black/10', ring: 'ring-gray-900' },
   gray: { primary: 'bg-slate-600', text: 'text-slate-600', border: 'border-slate-600', shadow: 'shadow-slate-600/20', ring: 'ring-slate-600' },
   mint: { primary: 'bg-emerald-500', text: 'text-emerald-500', border: 'border-emerald-500', shadow: 'shadow-emerald-500/20', ring: 'ring-emerald-500' },
   sakura: { primary: 'bg-pink-400', text: 'text-pink-400', border: 'border-pink-400', shadow: 'shadow-pink-400/20', ring: 'ring-pink-400' },
@@ -617,7 +624,7 @@ export default function App() {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [discoveryTool, setDiscoveryTool] = useState<null | 'categories' | 'exchange' | 'calculator'>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'calendar' | 'discovery'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'calendar' | 'discovery' | 'assets'>('list');
   const [filterType, setFilterType] = useState<FilterType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
@@ -630,7 +637,10 @@ export default function App() {
   // --- Pro Features State ---
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [voiceText, setVoiceText] = useState('');
-  const [isProActivated] = useState(true);
+  const [isProMember, setIsProMember] = useState(() => localStorage.getItem('pro_member') === 'true');
+  const [isProPaywallOpen, setIsProPaywallOpen] = useState(false);
+  const [exportCount, setExportCount] = useState(() => Number(localStorage.getItem('export_count') || '0'));
+  const [pendingExport, setPendingExport] = useState<'image' | 'csv' | 'pdf'>('image');
   const [timeContext, setTimeContext] = useState<'morning' | 'afternoon' | 'evening'>(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'morning';
@@ -668,7 +678,7 @@ export default function App() {
   const [pin] = useState(() => localStorage.getItem('privacy_pin') || '');
   const [isLockEnabled] = useState(() => localStorage.getItem('privacy_lock_enabled') === 'true');
   const [inputPin, setInputPin] = useState('');
-  const [themeKey] = useState<ThemeKey>(() => (localStorage.getItem('app_theme') as ThemeKey) || 'black');
+  const [themeKey, setThemeKey] = useState<ThemeKey>(() => (localStorage.getItem('app_theme') as ThemeKey) || 'black');
   const theme = THEMES[themeKey];
 
   // --- Settings & i18n ---
@@ -780,6 +790,104 @@ export default function App() {
     }
   };
 
+  const exportAsCSV = async () => {
+    const rows = (stats.filtered || []).map(t => ({
+      date: t.date.split('T')[0],
+      type: t.type,
+      category: t.category,
+      amount: t.amount,
+      currency: t.currency || 'CNY',
+      originalAmount: t.originalAmount ?? '',
+      note: (t.note || '').replace(/\n/g, ' ').trim(),
+      accountId: t.accountId,
+    }));
+
+    const header = ['date', 'type', 'category', 'amount', 'currency', 'originalAmount', 'note', 'accountId'];
+    const csv = [
+      header.join(','),
+      ...rows.map(r => header.map(k => {
+        const value = (r as any)[k];
+        const s = String(value ?? '');
+        const escaped = s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+        return escaped;
+      }).join(',')),
+    ].join('\n');
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `账单明细_${format(currentDate, 'yyyy-MM')}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportAsPDF = async () => {
+    const element = document.getElementById('stats-content');
+    if (!element) return;
+
+    const branding = element.querySelector('.show-on-export');
+    if (branding) branding.classList.remove('hidden');
+
+    try {
+      const canvas = await html2canvas(element, {
+        backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const image = canvas.toDataURL("image/png");
+      const win = window.open('', '_blank');
+      if (!win) return;
+      win.document.write(`<html><head><title>账单月报</title></head><body style="margin:0;background:#fff"><img src="${image}" style="width:100%;height:auto" /></body></html>`);
+      win.document.close();
+      win.focus();
+      setTimeout(() => win.print(), 300);
+    } catch (err) {
+      console.error('Export failed', err);
+    } finally {
+      if (branding) branding.classList.add('hidden');
+    }
+  };
+
+  const FREE_EXPORT_LIMIT = 10;
+  const remainingFreeExports = Math.max(FREE_EXPORT_LIMIT - exportCount, 0);
+
+  const doExport = async (kind: 'image' | 'csv' | 'pdf') => {
+    if (kind === 'image') await exportAsImage();
+    if (kind === 'csv') await exportAsCSV();
+    if (kind === 'pdf') await exportAsPDF();
+  };
+
+  const requestExport = (kind: 'image' | 'csv' | 'pdf' = 'image') => {
+    setPendingExport(kind);
+    if (isProMember) {
+      doExport(kind);
+      return;
+    }
+    setIsProPaywallOpen(true);
+  };
+
+  const proceedFreeExport = async () => {
+    if (isProMember) {
+      setIsProPaywallOpen(false);
+      await doExport(pendingExport);
+      return;
+    }
+    if (remainingFreeExports <= 0) return;
+    const next = exportCount + 1;
+    setExportCount(next);
+    localStorage.setItem('export_count', String(next));
+    setIsProPaywallOpen(false);
+    await doExport(pendingExport);
+  };
+
+  const purchasePro = () => {
+    localStorage.setItem('pro_member', 'true');
+    setIsProMember(true);
+    setIsProPaywallOpen(false);
+  };
+
   // --- Persistence ---
   useEffect(() => localStorage.setItem('transactions', JSON.stringify(transactions)), [transactions]);
   useEffect(() => localStorage.setItem('accounts', JSON.stringify(accounts)), [accounts]);
@@ -791,6 +899,8 @@ export default function App() {
   useEffect(() => localStorage.setItem('app_theme', themeKey), [themeKey]);
   useEffect(() => localStorage.setItem('app_lang', i18n.language), [i18n.language]);
   useEffect(() => localStorage.setItem('app_dark_mode', isDarkMode.toString()), [isDarkMode]);
+  useEffect(() => localStorage.setItem('pro_member', isProMember.toString()), [isProMember]);
+  useEffect(() => localStorage.setItem('export_count', String(exportCount)), [exportCount]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -927,6 +1037,58 @@ export default function App() {
   }, [transactions, budget, currentDate, filterType, searchQuery]);
 
   const totalAssets = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
+
+  const assetDashboard = useMemo(() => {
+    const now = new Date();
+    const days = eachDayOfInterval({ start: subDays(now, 29), end: now });
+    const netChangeByDay: Record<string, number> = {};
+    days.forEach(d => { netChangeByDay[format(d, 'yyyy-MM-dd')] = 0; });
+
+    transactions.forEach(t => {
+      const key = format(parseISO(t.date), 'yyyy-MM-dd');
+      if (key in netChangeByDay) {
+        netChangeByDay[key] += t.type === 'income' ? t.amount : -t.amount;
+      }
+    });
+
+    const netChangeTotal = Object.values(netChangeByDay).reduce((s, v) => s + v, 0);
+    let running = totalAssets - netChangeTotal;
+    const netWorthSeries = days.map(d => {
+      const key = format(d, 'yyyy-MM-dd');
+      running += netChangeByDay[key] || 0;
+      return { date: format(d, 'MM-dd'), value: Math.max(0, running) };
+    });
+
+    const liabilities = accounts.reduce((sum, a) => sum + (a.balance < 0 ? Math.abs(a.balance) : 0), 0);
+    const assetsPositive = accounts.reduce((sum, a) => sum + (a.balance > 0 ? a.balance : 0), 0);
+    const netAssets = Math.max(assetsPositive - liabilities, 0);
+
+    const cash = accounts
+      .filter(a => a.type === 'cash' || a.type === 'wechat' || a.type === 'alipay')
+      .reduce((sum, a) => sum + Math.max(0, a.balance), 0);
+    const savings = accounts
+      .filter(a => a.type === 'bank')
+      .reduce((sum, a) => sum + Math.max(0, a.balance), 0);
+    const investment = 0;
+
+    return {
+      netWorthSeries,
+      liabilityPie: [
+        { name: '净资产', value: netAssets, color: '#22c55e' },
+        { name: '负债', value: liabilities, color: '#ef4444' },
+      ],
+      distributionPie: [
+        { name: '现金', value: cash, color: '#3b82f6' },
+        { name: '储蓄', value: savings, color: '#a855f7' },
+        { name: '投资', value: investment, color: '#f59e0b' },
+      ],
+      liabilities,
+      netAssets,
+      cash,
+      savings,
+      investment,
+    };
+  }, [transactions, accounts, totalAssets]);
 
   // --- Handlers ---
   const changeDate = (direction: 'prev' | 'next') => {
@@ -1334,6 +1496,113 @@ export default function App() {
               </div>
             )}
 
+            {activeTab === 'assets' && (
+              <div className="space-y-6 pb-10 p-4">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => setActiveTab('discovery')}
+                    className={cn("p-2 rounded-2xl border active:scale-95 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                  >
+                    <ChevronLeft size={18} className={cn(isDarkMode ? "text-white" : "text-gray-900")} />
+                  </button>
+                  <div className="text-center">
+                    <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>资产大盘</p>
+                    <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>总览 · 近 30 天</p>
+                  </div>
+                  <div className="w-10" />
+                </div>
+
+                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                  <div className="flex items-end justify-between mb-6">
+                    <div>
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>当前总资产</p>
+                      <p className="text-3xl font-black">¥{formatCurrency(totalAssets)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>净资产</p>
+                      <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
+                    </div>
+                  </div>
+                  <div className="h-44 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={assetDashboard.netWorthSeries}>
+                        <defs>
+                          <linearGradient id="assetsLine" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0.25} />
+                            <stop offset="95%" stopColor={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
+                        <YAxis hide />
+                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                        <Area type="monotone" dataKey="value" stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')} fillOpacity={1} fill="url(#assetsLine)" strokeWidth={4} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                    <h3 className="font-black text-lg mb-4 flex items-center"><PieIcon size={20} className="mr-2 text-emerald-500" />负债 / 净资产</h3>
+                    <div className="h-52 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={assetDashboard.liabilityPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>
+                            {assetDashboard.liabilityPie.map((d) => (
+                              <Cell key={d.name} fill={d.color} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>负债</p>
+                        <p className="text-lg font-black text-rose-500">¥{formatCurrency(assetDashboard.liabilities)}</p>
+                      </div>
+                      <div className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>净资产</p>
+                        <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
+                    <h3 className="font-black text-lg mb-4 flex items-center"><Wallet size={20} className="mr-2 text-indigo-500" />资产分布比例</h3>
+                    <div className="h-52 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie data={assetDashboard.distributionPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>
+                            {assetDashboard.distributionPie.map((d) => (
+                              <Cell key={d.name} fill={d.color} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 space-y-2">
+                      {assetDashboard.distributionPie.map(d => {
+                        const total = assetDashboard.distributionPie.reduce((s, x) => s + x.value, 0) || 1;
+                        const pct = (d.value / total) * 100;
+                        return (
+                          <div key={d.name} className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                              <span className={cn("text-xs font-bold", isDarkMode ? "text-white/80" : "text-gray-700")}>{d.name}</span>
+                            </div>
+                            <span className={cn("text-xs font-black", isDarkMode ? "text-white/60" : "text-gray-500")}>{pct.toFixed(0)}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {activeTab === 'chart' && (
               <div id="stats-content" className="space-y-6 pb-10 p-4">
                 {/* Branding for Export */}
@@ -1359,80 +1628,116 @@ export default function App() {
                   </div>
                 </div>
                 {/* Pro Forecast Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
-                >
-                  <div className="absolute top-0 right-0 p-4">
-                    <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Pro Analysis</div>
-                  </div>
-                  <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-                  <div className="flex items-end justify-between mb-4">
-                    <div>
-                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">预计本月总支出</p>
-                      <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
+                {isProMember ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                  >
+                    <div className="absolute top-0 right-0 p-4">
+                      <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">Pro Analysis</div>
                     </div>
-                    <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
-                      <p className="text-[10px] font-black uppercase tracking-widest mb-1">超支风险</p>
-                      <p className="text-lg font-black">{stats.isOverBudgetRisk ? '极高 ⚠️' : '极低 ✅'}</p>
+                    <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
+                    <div className="flex items-end justify-between mb-4">
+                      <div>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">预计本月总支出</p>
+                        <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
+                      </div>
+                      <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
+                        <p className="text-[10px] font-black uppercase tracking-widest mb-1">超支风险</p>
+                        <p className="text-lg font-black">{stats.isOverBudgetRisk ? '极高 ⚠️' : '极低 ✅'}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
-                      className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
-                    />
-                  </div>
-                  <p className="mt-4 text-[10px] text-gray-400 font-bold leading-relaxed">
-                    基于您本月前 {differenceInDays(new Date(), startOfMonth(currentDate)) + 1} 天的消费频率，预测月底总额将达到 ¥{formatCurrency(stats.predictedTotal)}。
-                    {stats.isOverBudgetRisk ? "建议削减非必要开支。" : "目前预算控制良好，请继续保持。"}
-                  </p>
-                </motion.div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
+                        className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
+                      />
+                    </div>
+                    <p className="mt-4 text-[10px] text-gray-400 font-bold leading-relaxed">
+                      基于您本月前 {differenceInDays(new Date(), startOfMonth(currentDate)) + 1} 天的消费频率，预测月底总额将达到 ¥{formatCurrency(stats.predictedTotal)}。
+                      {stats.isOverBudgetRisk ? "建议削减非必要开支。" : "目前预算控制良好，请继续保持。"}
+                    </p>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
+                    <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
+                    <p className={cn("text-sm font-bold leading-relaxed", isDarkMode ? "text-white/60" : "text-gray-500")}>永久会员解锁：消费预测、超支风险与更深度的财富趋势洞察。</p>
+                    <div className="mt-5 flex items-center justify-between">
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>高级理财实验室</div>
+                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                        ￥60 永久解锁
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
 
                 {/* Radar Comparison Card */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
-                >
-                  <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-                  <div className="h-64 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
-                        <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
-                        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} />
-                        <Radar
-                          name="本月"
-                          dataKey="A"
-                          stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
-                          fill={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
-                          fillOpacity={0.6}
-                        />
-                        <Radar
-                          name="上月"
-                          dataKey="B"
-                          stroke="#94a3b8"
-                          fill="#94a3b8"
-                          fillOpacity={0.3}
-                        />
-                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
-                      </RadarChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex justify-center space-x-6 mt-4">
-                    <div className="flex items-center space-x-2">
-                      <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
-                      <span className="text-[10px] font-black text-gray-400">本月</span>
+                {isProMember ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                  >
+                    <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
+                          <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} />
+                          <Radar
+                            name="本月"
+                            dataKey="A"
+                            stroke={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
+                            fill={themeKey === 'black' ? (isDarkMode ? '#fff' : '#000') : theme.text.replace('text-', '')}
+                            fillOpacity={0.6}
+                          />
+                          <Radar
+                            name="上月"
+                            dataKey="B"
+                            stroke="#94a3b8"
+                            fill="#94a3b8"
+                            fillOpacity={0.3}
+                          />
+                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkMode ? '#1e293b' : '#fff', color: isDarkMode ? '#fff' : '#000' }} />
+                        </RadarChart>
+                      </ResponsiveContainer>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-gray-300" />
-                      <span className="text-[10px] font-black text-gray-400">上月</span>
+                    <div className="flex justify-center space-x-6 mt-4">
+                      <div className="flex items-center space-x-2">
+                        <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
+                        <span className="text-[10px] font-black text-gray-400">本月</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 rounded-full bg-gray-300" />
+                        <span className="text-[10px] font-black text-gray-400">上月</span>
+                      </div>
                     </div>
-                  </div>
-                </motion.div>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 }}
+                    className={cn("rounded-[2.5rem] p-8 shadow-sm border relative overflow-hidden", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}
+                  >
+                    <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
+                    <p className={cn("text-sm font-bold leading-relaxed", isDarkMode ? "text-white/60" : "text-gray-500")}>永久会员解锁：本月 vs 上月消费构成雷达图，对比习惯变化。</p>
+                    <div className="mt-5 flex items-center justify-between">
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>Pro 可视化</div>
+                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                        ￥60 永久解锁
+                      </motion.button>
+                    </div>
+                  </motion.div>
+                )}
 
                 <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
                   <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
@@ -1489,16 +1794,33 @@ export default function App() {
                         <User size={24} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
                       </div>
                       <div>
-                        <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>理财达人</p>
+                        <div className="flex items-center space-x-2">
+                          <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>理财达人</p>
+                          {isProMember && (
+                            <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200">
+                              <Star size={10} fill="currentColor" />
+                              <span className="text-[8px] font-black uppercase tracking-widest">PRO</span>
+                            </div>
+                          )}
+                        </div>
                         <p className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/60" : "text-gray-500")}>
                           {timeContext === 'morning' ? '早安' : timeContext === 'afternoon' ? '午安' : '晚安'}，欢迎回来
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <div className={cn("px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-white/50 border-white/60 text-gray-600")}>
-                        PRO
-                      </div>
+                      {!isProMember && (
+                        <motion.button
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setIsProPaywallOpen(true)}
+                          className={cn(
+                            "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                            isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-white/50 border-white/60 text-gray-600"
+                          )}
+                        >
+                          升级 PRO
+                        </motion.button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1514,9 +1836,9 @@ export default function App() {
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     {[
-                      { key: 'assets', label: '资产分析', Icon: LineIcon, onClick: () => setActiveTab('chart') },
-                      { key: 'budget', label: '预算设置', Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
-                      { key: 'export', label: '账单导出', Icon: Share2, onClick: exportAsImage },
+                      { key: 'assets', label: '资产分析', Icon: LineIcon, onClick: () => setActiveTab('assets') },
+                      { key: 'budget', label: '设置', Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
+                      { key: 'export', label: '账单导出', Icon: Share2, onClick: () => requestExport('image') },
                       { key: 'categories', label: '分类管理', Icon: Hash, onClick: () => setDiscoveryTool('categories') },
                       { key: 'fx', label: '汇率换算', Icon: ArrowRightLeft, onClick: () => setDiscoveryTool('exchange') },
                       { key: 'calc', label: '理财计算器', Icon: Calculator, onClick: () => setDiscoveryTool('calculator') },
@@ -1539,6 +1861,131 @@ export default function App() {
                         <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/80" : "text-gray-700")}>{item.label}</span>
                       </motion.button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Pro Perks */}
+                <div className={cn(
+                  "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden relative",
+                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
+                )}>
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-sm font-black">永久会员专属特权</h3>
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => setIsProPaywallOpen(true)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                        isProMember
+                          ? (isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-600")
+                          : "bg-amber-500 text-black border-amber-400 shadow-lg"
+                      )}
+                    >
+                      {isProMember ? '已解锁' : '￥60 永久'}
+                    </motion.button>
+                  </div>
+
+                  <div className={cn("space-y-3", !isProMember && "opacity-60")}>
+                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                      <div className="flex items-center space-x-3">
+                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                          <Palette size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black">专属皮肤</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>黑金 / 极简白</p>
+                        </div>
+                      </div>
+                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                    </div>
+
+                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                      <div className="flex items-center space-x-3">
+                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                          <Share2 size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black">导出无限制</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>Excel / PDF / 图片</p>
+                        </div>
+                      </div>
+                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                    </div>
+
+                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                      <div className="flex items-center space-x-3">
+                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                          <Sparkles size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black">高级理财实验室</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>更深度趋势预测</p>
+                        </div>
+                      </div>
+                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                    </div>
+
+                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                      <div className="flex items-center space-x-3">
+                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                          <Star size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black">会员专属标识</p>
+                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>头像旁皇冠 PRO</p>
+                        </div>
+                      </div>
+                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>专属皮肤</span>
+                      {!isProMember && (
+                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>锁定</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { key: 'blackGold' as ThemeKey, label: '黑金' },
+                        { key: 'whiteMinimal' as ThemeKey, label: '极简白' },
+                      ].map(tk => (
+                        <motion.button
+                          key={tk.key}
+                          whileTap={{ scale: 0.96 }}
+                          disabled={!isProMember}
+                          onClick={() => setThemeKey(tk.key)}
+                          className={cn(
+                            "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all",
+                            themeKey === tk.key ? cn("shadow-lg", THEMES[tk.key].primary) : (isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-700"),
+                            !isProMember && "opacity-60"
+                          )}
+                        >
+                          {tk.label}
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="mt-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>导出</span>
+                      {!isProMember && (
+                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>剩余 {remainingFreeExports} 次</span>
+                      )}
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('image')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
+                        图片
+                      </motion.button>
+                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('csv')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
+                        Excel
+                      </motion.button>
+                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('pdf')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
+                        PDF
+                      </motion.button>
+                    </div>
                   </div>
                 </div>
 
@@ -1931,7 +2378,7 @@ export default function App() {
             <div className="flex justify-between items-center mb-8">
               <div className="flex items-center space-x-2">
                 <h2 className="text-xl font-black">{t('settings')}</h2>
-                {isProActivated && (
+                {isProMember && (
                   <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-0.5 rounded-md flex items-center space-x-1">
                     <Star size={8} fill="currentColor" />
                     <span>PRO</span>
@@ -2128,6 +2575,90 @@ export default function App() {
                   </div>
                 </div>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isProPaywallOpen && (
+          <div className="fixed inset-0 z-[190] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-md" onClick={() => setIsProPaywallOpen(false)}>
+            <motion.div
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 240 }}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl border overflow-hidden relative",
+                isDarkMode ? "bg-slate-900/95 border-slate-700 text-white" : "bg-white/95 border-gray-100 text-gray-900"
+              )}
+            >
+              <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-[110px] opacity-50 bg-gradient-to-br from-amber-400 to-fuchsia-400" />
+              <div className="relative">
+                <div className="flex items-start justify-between mb-6">
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-500 text-black flex items-center justify-center shadow-lg">
+                        <Star size={18} fill="currentColor" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-black">￥60 永久会员</p>
+                        <p className={cn("text-[10px] font-bold mt-1", isDarkMode ? "text-white/60" : "text-gray-500")}>永久解锁所有特权</p>
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsProPaywallOpen(false)} className={cn("p-2 rounded-2xl border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-gray-50 border-gray-100")}>
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div className={cn("rounded-[2rem] p-5 border", isDarkMode ? "bg-slate-800/70 border-slate-700" : "bg-gray-50 border-gray-100")}>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: '专属皮肤', desc: '黑金 / 极简白' },
+                      { label: '导出无限制', desc: 'Excel / PDF / 图片' },
+                      { label: '高级实验室', desc: '更深度趋势预测' },
+                      { label: '会员皇冠', desc: '头像旁 PRO 标识' },
+                    ].map(i => (
+                      <div key={i.label} className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-900/60 border-slate-700" : "bg-white border-white")}>
+                        <p className="text-xs font-black">{i.label}</p>
+                        <p className={cn("mt-1 text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>{i.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  {!isProMember && (
+                    <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>
+                      普通用户免费导出仅限 10 次，当前已使用 {exportCount} 次，剩余 {remainingFreeExports} 次。
+                    </p>
+                  )}
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 gap-3">
+                  {!isProMember && remainingFreeExports > 0 && (
+                    <motion.button
+                      whileTap={{ scale: 0.96 }}
+                      onClick={proceedFreeExport}
+                      className={cn(
+                        "py-4 rounded-2xl font-black text-xs border active:scale-95 transition-all",
+                        isDarkMode ? "bg-slate-800 border-slate-700 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700"
+                      )}
+                    >
+                      继续免费导出（剩余 {remainingFreeExports} 次）
+                    </motion.button>
+                  )}
+                  <motion.button
+                    whileTap={{ scale: 0.96 }}
+                    onClick={purchasePro}
+                    className="py-4 rounded-2xl font-black text-xs bg-amber-500 text-black shadow-lg transition-all"
+                  >
+                    立即购买
+                  </motion.button>
+                </div>
+              </div>
             </motion.div>
           </div>
         )}
