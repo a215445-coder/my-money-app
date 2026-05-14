@@ -5109,6 +5109,8 @@ function TransactionForm({
   }, [date]);
 
   const [isDateSheetOpen, setIsDateSheetOpen] = useState(false);
+  const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
+  const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
   const [draftYear, setDraftYear] = useState(() => {
     try {
       return parseISO(date).getFullYear();
@@ -5153,6 +5155,8 @@ function TransactionForm({
     const max = daysInMonth(draftYear, draftMonth);
     if (draftDay > max) setDraftDay(max);
   }, [draftYear, draftMonth, draftDay]);
+
+  const selectedAccount = useMemo(() => accounts.find(a => a.id === accountId) || accounts[0], [accounts, accountId]);
 
   const WheelColumn = ({
     items,
@@ -5299,6 +5303,53 @@ function TransactionForm({
     );
   };
 
+  const BottomSheet = ({
+    open,
+    onClose,
+    header,
+    children,
+  }: {
+    open: boolean;
+    onClose: () => void;
+    header: React.ReactNode;
+    children: React.ReactNode;
+  }) => {
+    const ease: [number, number, number, number] = [0.32, 0.72, 0, 1];
+    return (
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease }}
+            className="fixed inset-0 z-[170] flex items-end justify-center bg-black/50"
+            onClick={onClose}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.38, ease }}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                "w-full max-w-md overflow-hidden border border-white/10",
+                "rounded-t-[32px]",
+                "bg-black/80 backdrop-blur-[20px]"
+              )}
+              style={{ transform: "translate3d(0,0,0)" }}
+            >
+              {header}
+              <div className="px-6 py-6">
+                {children}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className={cn("flex p-1.5 rounded-2xl", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
@@ -5436,13 +5487,31 @@ function TransactionForm({
         </div>
         <div>
           <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.account')}</label>
-          <select value={accountId} onChange={e => setAccountId(e.target.value)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.icon} {t(`accounts.${acc.name}`)}</option>)}</select>
+          <button
+            type="button"
+            onClick={() => setIsAccountSheetOpen(true)}
+            className={cn(
+              "w-full p-4 rounded-2xl text-xs font-bold focus:outline-none text-left active:scale-[0.99] transition-transform",
+              isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black"
+            )}
+          >
+            {selectedAccount?.icon} {t(`accounts.${selectedAccount?.name}`)}
+          </button>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('category_label')}</label>
-          <select value={category} onChange={e => setCategory(e.target.value as Category)} className={cn("w-full p-4 rounded-2xl text-xs font-bold focus:outline-none appearance-none", isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black")}>{CATEGORIES.map(c => <option key={c.label} value={c.label}>{c.icon} {t(`categories.${c.label}`)}</option>)}</select>
+          <button
+            type="button"
+            onClick={() => setIsCategorySheetOpen(true)}
+            className={cn(
+              "w-full p-4 rounded-2xl text-xs font-bold focus:outline-none text-left active:scale-[0.99] transition-transform",
+              isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black"
+            )}
+          >
+            {CATEGORIES.find(c => c.label === category)?.icon} {t(`categories.${category}`)}
+          </button>
         </div>
         <div className="flex flex-col">
           <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('mood')}</label>
@@ -5575,63 +5644,151 @@ function TransactionForm({
         <button type="submit" className={cn("flex-[3] py-5 rounded-[2.5rem] font-black text-sm shadow-xl active:scale-95 transition-all", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
       </div>
 
-      <AnimatePresence>
-        {isDateSheetOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[170] flex items-end justify-center bg-black/40"
-            onClick={() => setIsDateSheetOpen(false)}
-          >
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                "w-full max-w-md rounded-t-[2.25rem] overflow-hidden border border-white/10",
-                "bg-black/35 backdrop-blur-[20px]"
-              )}
-              style={{ transform: "translate3d(0,0,0)" }}
+      <BottomSheet
+        open={isDateSheetOpen}
+        onClose={() => setIsDateSheetOpen(false)}
+        header={
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsDateSheetOpen(false)}
+              className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
             >
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                <button
-                  type="button"
-                  onClick={() => setIsDateSheetOpen(false)}
-                  className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
-                >
-                  {t('cancel')}
-                </button>
-                <div className="text-sm font-black text-white/90">{t('form.date')}</div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = format(new Date(draftYear, draftMonth - 1, draftDay), 'yyyy-MM-dd');
-                    setDate(next);
-                    setIsDateSheetOpen(false);
-                  }}
-                  className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
-                >
-                  {t('confirm')}
-                </button>
-              </div>
+              {t('cancel')}
+            </button>
+            <div className="text-sm font-black text-white/90">{t('form.date')}</div>
+            <button
+              type="button"
+              onClick={() => {
+                const next = format(new Date(draftYear, draftMonth - 1, draftDay), 'yyyy-MM-dd');
+                setDate(next);
+                setIsDateSheetOpen(false);
+              }}
+              className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+            >
+              {t('confirm')}
+            </button>
+          </div>
+        }
+      >
+        <div
+          className="flex items-center justify-between gap-3 text-[15px]"
+          style={{ perspective: 900, transform: "translate3d(0,0,0)" }}
+        >
+          <WheelColumn items={years} selected={draftYear} onSelect={setDraftYear} formatItem={(n) => `${n}`} />
+          <WheelColumn items={months} selected={draftMonth} onSelect={setDraftMonth} formatItem={(n) => String(n).padStart(2, '0')} />
+          <WheelColumn items={days} selected={draftDay} onSelect={setDraftDay} formatItem={(n) => String(n).padStart(2, '0')} />
+        </div>
+      </BottomSheet>
 
-              <div className="px-6 py-6">
-                <div
-                  className="flex items-center justify-between gap-3 text-[15px]"
-                  style={{ perspective: 900, transform: "translate3d(0,0,0)" }}
-                >
-                  <WheelColumn items={years} selected={draftYear} onSelect={setDraftYear} formatItem={(n) => `${n}`} />
-                  <WheelColumn items={months} selected={draftMonth} onSelect={setDraftMonth} formatItem={(n) => String(n).padStart(2, '0')} />
-                  <WheelColumn items={days} selected={draftDay} onSelect={setDraftDay} formatItem={(n) => String(n).padStart(2, '0')} />
+      <BottomSheet
+        open={isAccountSheetOpen}
+        onClose={() => setIsAccountSheetOpen(false)}
+        header={
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsAccountSheetOpen(false)}
+              className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+            >
+              {t('cancel')}
+            </button>
+            <div className="text-sm font-black text-white/90">{t('form.account')}</div>
+            <button
+              type="button"
+              onClick={() => setIsAccountSheetOpen(false)}
+              className={cn("text-sm font-black opacity-0 pointer-events-none", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+            >
+              {t('confirm')}
+            </button>
+          </div>
+        }
+      >
+        <div className="grid grid-cols-2 gap-3">
+          {accounts.map((acc) => {
+            const on = acc.id === accountId;
+            return (
+              <motion.button
+                key={acc.id}
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  setAccountId(acc.id);
+                  setIsAccountSheetOpen(false);
+                }}
+                className={cn(
+                  "p-4 rounded-2xl border text-left transition-colors",
+                  on ? "border-[#D4AF37] bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+                )}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-xl", on ? "bg-[#D4AF37]/15 text-[#D4AF37]" : "bg-white/10 text-white")}>
+                    {acc.icon}
+                  </div>
+                  <div className="min-w-0 overflow-hidden">
+                    <div className={cn("text-sm font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap", on ? "text-[#D4AF37]" : "text-white")}>
+                      {t(`accounts.${acc.name}`)}
+                    </div>
+                    <div className="text-[10px] font-bold text-white/45 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                      {acc.type.toUpperCase()}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </motion.button>
+            );
+          })}
+        </div>
+      </BottomSheet>
+
+      <BottomSheet
+        open={isCategorySheetOpen}
+        onClose={() => setIsCategorySheetOpen(false)}
+        header={
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsCategorySheetOpen(false)}
+              className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+            >
+              {t('cancel')}
+            </button>
+            <div className="text-sm font-black text-white/90">{t('category_label')}</div>
+            <button
+              type="button"
+              onClick={() => setIsCategorySheetOpen(false)}
+              className={cn("text-sm font-black opacity-0 pointer-events-none", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+            >
+              {t('confirm')}
+            </button>
+          </div>
+        }
+      >
+        <div className="grid grid-cols-4 gap-3">
+          {CATEGORIES.map((c) => {
+            const on = c.label === category;
+            return (
+              <motion.button
+                key={c.label}
+                type="button"
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setCategory(c.label);
+                  setIsCategorySheetOpen(false);
+                }}
+                className={cn(
+                  "p-3 rounded-2xl border text-center transition-colors",
+                  on ? "border-[#D4AF37] bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+                )}
+              >
+                <div className={cn("text-2xl", on ? "text-[#D4AF37]" : "text-white")}>{c.icon}</div>
+                <div className={cn("mt-1 text-[10px] font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap", on ? "text-[#D4AF37]" : "text-white/85")}>
+                  {t(`categories.${c.label}`)}
+                </div>
+              </motion.button>
+            );
+          })}
+        </div>
+      </BottomSheet>
     </form>
   );
 }
