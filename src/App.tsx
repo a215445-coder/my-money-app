@@ -745,13 +745,17 @@ export default function App() {
     localStorage.setItem('local_user_id', next);
     return next;
   });
-  const [localUserName] = useState(() => {
+  const [localUserName, setLocalUserName] = useState(() => {
     const existing = localStorage.getItem('local_user_name');
     if (existing) return existing;
     const next = t('user_title');
     localStorage.setItem('local_user_name', next);
     return next;
   });
+  const [localUserAvatar, setLocalUserAvatar] = useState(() => localStorage.getItem('local_user_avatar') || '');
+  const [isProfileActionSheetOpen, setIsProfileActionSheetOpen] = useState(false);
+  const [isEditNameModalOpen, setIsEditNameModalOpen] = useState(false);
+  const [draftUserName, setDraftUserName] = useState('');
 
   const GROUP_SAVING_POOL_KEY = 'group_saving_pool_v1';
   const [groupSaving, setGroupSaving] = useState<GroupSavingGroup | null>(() => {
@@ -832,11 +836,68 @@ export default function App() {
   }, [groupSaving?.id, groupActivities]);
 
   useEffect(() => {
+    localStorage.setItem('local_user_name', localUserName);
+  }, [localUserName]);
+
+  useEffect(() => {
+    if (localUserAvatar) localStorage.setItem('local_user_avatar', localUserAvatar);
+    else localStorage.removeItem('local_user_avatar');
+  }, [localUserAvatar]);
+
+  useEffect(() => {
     if (activeTab !== 'list') {
       setIsHomeEditMode(false);
       setIsWidgetCenterOpen(false);
     }
   }, [activeTab]);
+
+  const avatarLibraryInputRef = useRef<HTMLInputElement>(null);
+  const avatarCameraInputRef = useRef<HTMLInputElement>(null);
+
+  const fileToAvatarDataUrl = async (file: File) => {
+    const dataUrl: string = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('read_failed'));
+      reader.readAsDataURL(file);
+    });
+
+    const img: HTMLImageElement = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error('image_decode_failed'));
+      i.src = dataUrl;
+    });
+
+    const side = Math.min(img.naturalWidth || img.width, img.naturalHeight || img.height);
+    const sx = Math.max(0, ((img.naturalWidth || img.width) - side) / 2);
+    const sy = Math.max(0, ((img.naturalHeight || img.height) - side) / 2);
+
+    const outSize = 320;
+    const canvas = document.createElement('canvas');
+    canvas.width = outSize;
+    canvas.height = outSize;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, sx, sy, side, side, 0, 0, outSize, outSize);
+    return canvas.toDataURL('image/jpeg', 0.9);
+  };
+
+  const handleAvatarFile = async (file: File | null | undefined) => {
+    if (!file) return;
+    try {
+      const dataUrl = await fileToAvatarDataUrl(file);
+      setLocalUserAvatar(dataUrl);
+    } finally {
+      setIsProfileActionSheetOpen(false);
+    }
+  };
+
+  const openEditName = () => {
+    setDraftUserName(localUserName);
+    setIsEditNameModalOpen(true);
+    setIsProfileActionSheetOpen(false);
+  };
 
   const wealthMarquee = useMemo(() => wealthTips.join('  ·  '), [wealthTips]);
 
@@ -2100,6 +2161,30 @@ export default function App() {
           </button>
         </header>
 
+        <input
+          ref={avatarLibraryInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.currentTarget.value = '';
+            await handleAvatarFile(file);
+          }}
+        />
+        <input
+          ref={avatarCameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="hidden"
+          onChange={async (e) => {
+            const file = e.target.files?.[0];
+            e.currentTarget.value = '';
+            await handleAvatarFile(file);
+          }}
+        />
+
         <div className="relative overflow-hidden">
           <AnimatePresence mode="wait">
             <motion.div
@@ -2940,12 +3025,26 @@ export default function App() {
                     <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full blur-[90px] opacity-40 bg-gradient-to-br from-indigo-500 to-fuchsia-500" />
                     <div className="relative flex items-center justify-between">
                       <div className="flex items-center space-x-4">
-                        <div className={cn("w-14 h-14 rounded-[1.5rem] border backdrop-blur-xl flex items-center justify-center", isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : "bg-white/30 border-white/30")}>
-                          <User size={24} className={cn(isBlackGold ? "text-[#D4AF37]" : (isDarkMode ? "text-white" : "text-gray-800"))} />
-                        </div>
-                        <div>
+                        <motion.button
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setIsProfileActionSheetOpen(true)}
+                          className={cn("w-14 h-14 rounded-full border backdrop-blur-xl overflow-hidden flex items-center justify-center", isBlackGold ? "lux-carbon-soft border-[#2A2A2A]" : "bg-white/30 border-white/30")}
+                        >
+                          {localUserAvatar ? (
+                            <img src={localUserAvatar} alt="avatar" className="w-full h-full object-cover rounded-full" />
+                          ) : (
+                            <User size={24} className={cn(isBlackGold ? "text-[#D4AF37]" : (isDarkMode ? "text-white" : "text-gray-800"))} />
+                          )}
+                        </motion.button>
+                        <div className="min-w-0">
                           <div className="flex items-center space-x-2">
-                            <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>{t('user_title')}</p>
+                            <motion.button
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setIsProfileActionSheetOpen(true)}
+                              className={cn("text-sm font-black truncate", isDarkMode ? "text-white" : "text-gray-900")}
+                            >
+                              {localUserName}
+                            </motion.button>
                             {isProMember && (
                               <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200">
                                 <Star size={10} fill="currentColor" />
@@ -4111,6 +4210,118 @@ export default function App() {
                     {t('pro.buy_now')}
                   </motion.button>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Profile Action Sheet */}
+      <AnimatePresence>
+        {isProfileActionSheetOpen && (
+          <div
+            className="fixed inset-0 z-[170] flex items-end justify-center bg-black/60 backdrop-blur-md"
+            onClick={() => setIsProfileActionSheetOpen(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className={cn(
+                "w-full max-w-md rounded-t-[3rem] p-8 pb-10 border",
+                "lux-carbon-soft border-[#2A2A2A] text-[#F5F5F5]"
+              )}
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="w-12 h-1.5 rounded-full mx-auto mb-8 bg-white/10" />
+              <h3 className="text-lg font-black mb-6">{t('profile.edit_profile')}</h3>
+              <div className="space-y-3">
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => avatarLibraryInputRef.current?.click()}
+                  className={cn(
+                    "w-full py-4 rounded-2xl font-black text-xs border transition-all",
+                    "lux-carbon border-[#2A2A2A] text-[#D4AF37]"
+                  )}
+                >
+                  {t('profile.choose_from_library')}
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => avatarCameraInputRef.current?.click()}
+                  className={cn(
+                    "w-full py-4 rounded-2xl font-black text-xs border transition-all",
+                    "lux-carbon border-[#2A2A2A] text-[#D4AF37]"
+                  )}
+                >
+                  {t('profile.take_photo')}
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={openEditName}
+                  className={cn(
+                    "w-full py-4 rounded-2xl font-black text-xs border transition-all",
+                    "lux-carbon border-[#2A2A2A] text-[#D4AF37]"
+                  )}
+                >
+                  {t('profile.edit_name')}
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setIsProfileActionSheetOpen(false)}
+                  className={cn(
+                    "w-full py-4 rounded-2xl font-black text-xs border transition-all",
+                    "bg-white/5 border-white/10 text-white/80"
+                  )}
+                >
+                  {t('cancel')}
+                </motion.button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Edit Username Modal */}
+      <AnimatePresence>
+        {isEditNameModalOpen && (
+          <div className="fixed inset-0 z-[180] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md" onClick={() => setIsEditNameModalOpen(false)}>
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 10 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={cn("w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl", "lux-carbon-soft border-[#2A2A2A] text-[#F5F5F5]")}
+              onClick={e => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-black">{t('profile.edit_name')}</h3>
+              <input
+                value={draftUserName}
+                onChange={(e) => setDraftUserName(e.target.value)}
+                placeholder={t('profile.name_placeholder')}
+                className={cn(
+                  "mt-6 w-full rounded-2xl px-4 py-4 text-sm font-bold outline-none border",
+                  "bg-black/30 border-white/10 text-white placeholder:text-white/30"
+                )}
+              />
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                <button
+                  onClick={() => setIsEditNameModalOpen(false)}
+                  className={cn("py-4 rounded-2xl font-black text-xs active:scale-95 transition-all border", "bg-white/5 border-white/10 text-white/80")}
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  onClick={() => {
+                    const next = draftUserName.trim();
+                    if (next) setLocalUserName(next);
+                    setIsEditNameModalOpen(false);
+                  }}
+                  className="py-4 rounded-2xl font-black text-xs bg-[#D4AF37] text-black shadow-lg active:scale-95 transition-all"
+                >
+                  {t('confirm')}
+                </button>
               </div>
             </motion.div>
           </div>
