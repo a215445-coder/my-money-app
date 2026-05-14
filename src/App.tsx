@@ -79,7 +79,7 @@ import {
   PolarGrid,
   PolarAngleAxis,
 } from 'recharts';
-import { motion, AnimatePresence, Reorder, useScroll, useTransform } from 'framer-motion';
+import { motion, AnimatePresence, Reorder, useMotionValue, useScroll, useTransform } from 'framer-motion';
 import html2canvas from 'html2canvas';
 import { useTranslation } from 'react-i18next';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
@@ -732,6 +732,7 @@ export default function App() {
   const homeLongPressStartRef = useRef<{ x: number; y: number } | null>(null);
   const homeLongPressFiredRef = useRef(false);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
+  const vaultJarRef = useRef<HTMLDivElement>(null);
 
   const [localUserId] = useState(() => {
     const existing = localStorage.getItem('local_user_id');
@@ -1328,6 +1329,58 @@ export default function App() {
   }, [transactions, budget, currentDate, filterType, searchQuery]);
 
   const totalAssets = useMemo(() => accounts.reduce((sum, acc) => sum + acc.balance, 0), [accounts]);
+  const [vaultCap, setVaultCap] = useState<number>(() => {
+    const raw = localStorage.getItem('vault_cap_v1');
+    const v = raw ? Number(raw) : NaN;
+    return Number.isFinite(v) && v > 0 ? v : 10000;
+  });
+  const [vaultCoins, setVaultCoins] = useState<Array<{ id: string; seed: number }>>([]);
+  const [vaultGlowTick, setVaultGlowTick] = useState(0);
+  const pendingVaultDropsRef = useRef(0);
+  const prevTotalAssetsRef = useRef<number>(totalAssets);
+
+  const vaultFillPct = useMemo(() => {
+    const cap = Math.max(1000, vaultCap);
+    return clamp(totalAssets / cap, 0, 1);
+  }, [totalAssets, vaultCap]);
+
+  const queueVaultCoins = (count: number) => {
+    const next = Math.max(0, Math.min(30, count));
+    if (next === 0) return;
+    setVaultGlowTick(v => v + 1);
+    setVaultCoins(prev => {
+      const added = Array.from({ length: next }).map(() => ({ id: crypto.randomUUID(), seed: Math.random() }));
+      const merged = [...prev, ...added];
+      return merged.length > 24 ? merged.slice(merged.length - 24) : merged;
+    });
+  };
+
+  useEffect(() => {
+    const prev = prevTotalAssetsRef.current;
+    prevTotalAssetsRef.current = totalAssets;
+    if (totalAssets <= prev) return;
+
+    const nextCap = Math.max(vaultCap, totalAssets, 10000);
+    if (nextCap !== vaultCap) {
+      setVaultCap(nextCap);
+      localStorage.setItem('vault_cap_v1', String(nextCap));
+    }
+
+    const dropCount = 3;
+    if (activeTab === 'vault') {
+      queueVaultCoins(dropCount);
+    } else {
+      pendingVaultDropsRef.current = Math.min(30, pendingVaultDropsRef.current + dropCount);
+    }
+  }, [totalAssets, activeTab, vaultCap]);
+
+  useEffect(() => {
+    if (activeTab !== 'vault') return;
+    const pending = pendingVaultDropsRef.current;
+    if (pending <= 0) return;
+    pendingVaultDropsRef.current = 0;
+    queueVaultCoins(pending);
+  }, [activeTab]);
 
   const assetDashboard = useMemo(() => {
     const now = new Date();
@@ -1748,6 +1801,137 @@ export default function App() {
           );
         })}
       </span>
+    );
+  };
+
+  const GoldCoin = ({
+    coinId,
+    seed,
+    onRest,
+  }: {
+    coinId: string;
+    seed: number;
+    onRest: (coinId: string) => void;
+  }) => {
+    const x = useMotionValue(0);
+    const y = useMotionValue(0);
+    const rotateX = useMotionValue(62);
+    const rotateY = useMotionValue(0);
+    const rotateZ = useMotionValue(seed * 120 - 60);
+    const scale = useMotionValue(1);
+
+    useEffect(() => {
+      const rect = vaultJarRef.current?.getBoundingClientRect();
+      if (!rect) {
+        onRest(coinId);
+        return;
+      }
+
+      const jarW = rect.width;
+      const targetX = rect.left + rect.width / 2 + (seed - 0.5) * jarW * 0.55;
+      const groundY = rect.top + rect.height * 0.76;
+
+      let posX = targetX + (seed - 0.5) * jarW * 0.25;
+      let posY = -window.innerHeight * 0.12;
+      let velX = (seed - 0.5) * 140;
+      let velY = 0;
+
+      x.set(posX);
+      y.set(posY);
+
+      const g = 2400;
+      const bounce = 0.56;
+      const friction = 0.86;
+      const spin = (seed - 0.5) * 220;
+
+      let raf = 0;
+      let last = performance.now();
+      let settledFrames = 0;
+
+      const tick = (now: number) => {
+        const dt = Math.min(0.028, Math.max(0.008, (now - last) / 1000));
+        last = now;
+
+        velY += g * dt;
+        posY += velY * dt;
+        posX += velX * dt;
+
+        rotateY.set((rotateY.get() + spin * dt) % 360);
+        rotateZ.set((rotateZ.get() + spin * 0.6 * dt) % 360);
+
+        if (posY >= groundY) {
+          posY = groundY;
+          velY = -velY * bounce;
+          velX *= friction;
+          scale.set(1.02);
+        } else {
+          scale.set(1);
+        }
+
+        x.set(posX);
+        y.set(posY);
+
+        if (Math.abs(velY) < 70 && posY >= groundY - 0.5) settledFrames += 1;
+        else settledFrames = 0;
+
+        if (settledFrames > 18) {
+          onRest(coinId);
+          return;
+        }
+        raf = requestAnimationFrame(tick);
+      };
+
+      raf = requestAnimationFrame(tick);
+      return () => cancelAnimationFrame(raf);
+    }, [coinId, onRest, seed, x, y, rotateX, rotateY, rotateZ, scale]);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{ duration: 0.25, ease: "easeInOut" }}
+        className="fixed left-0 top-0 pointer-events-none z-[130] will-change-transform"
+        style={{
+          x,
+          y,
+          rotateX,
+          rotateY,
+          rotateZ,
+          scale,
+          transformPerspective: 900,
+          translateZ: 0,
+        }}
+      >
+        <div className="w-[clamp(0.9rem,4vw,1.15rem)] aspect-square rounded-full relative">
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 30% 28%, rgba(255,255,255,0.55), rgba(255,255,255,0.08) 22%, rgba(212,175,55,0.95) 48%, rgba(212,175,55,0.65) 70%, rgba(0,0,0,0.25) 100%)",
+              boxShadow: "0 10px 22px rgba(0,0,0,0.35), 0 0 22px rgba(212,175,55,0.25)",
+            }}
+          />
+          <div
+            className="absolute inset-[12%] rounded-full"
+            style={{
+              backgroundImage:
+                "linear-gradient(145deg, rgba(255,255,255,0.22), rgba(0,0,0,0.20)), radial-gradient(circle at 40% 40%, rgba(255,255,255,0.25), transparent 55%)",
+              mixBlendMode: "screen",
+              opacity: 0.85,
+            }}
+          />
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{
+              border: "1px solid rgba(255,255,255,0.22)",
+              maskImage: "radial-gradient(circle at 50% 50%, black 48%, transparent 70%)",
+              WebkitMaskImage: "radial-gradient(circle at 50% 50%, black 48%, transparent 70%)",
+              opacity: 0.75,
+            }}
+          />
+        </div>
+      </motion.div>
     );
   };
 
@@ -3054,25 +3238,97 @@ export default function App() {
                     </div>
 
                     <div className="relative mt-[clamp(1.25rem,4vw,2rem)] flex justify-center">
-                      <motion.div
-                        initial={{ y: "-100%", opacity: 0, rotate: -6, scale: 0.98 }}
-                        animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
-                        transition={{ type: "spring", stiffness: 260, damping: 22 }}
-                        className="relative w-[clamp(10rem,55vw,14rem)] aspect-square max-w-full"
-                      >
-                        <div className="absolute inset-0 rounded-[3.2rem] bg-white/5 border border-white/10 backdrop-blur-2xl shadow-[0_26px_90px_rgba(0,0,0,0.35)]" />
-                        <div className="absolute left-1/2 -translate-x-1/2 top-[10%] w-[72%] h-[22%] rounded-[2rem] bg-white/5 border border-[#D4AF37]/25" />
-                        <div className="absolute left-1/2 -translate-x-1/2 top-[28%] w-[78%] h-[56%] rounded-[2.8rem] bg-black/25 border border-white/10 overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/18 via-transparent to-transparent" />
-                          <div className="absolute -top-[18%] -right-[18%] w-[78%] aspect-square rounded-full blur-[70px] bg-[#D4AF37]/30" />
-                        </div>
-                        <div className="absolute left-1/2 -translate-x-1/2 bottom-[12%] w-[86%] h-[28%] rounded-[2.8rem] bg-white/5 border border-white/10" />
-                        <motion.div
-                          animate={{ opacity: [0.25, 0.55, 0.25], x: [-8, 8, -8] }}
-                          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
-                          className="absolute inset-0 rounded-[3.2rem] bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                        />
-                      </motion.div>
+                      <div className="fixed inset-0 pointer-events-none z-[120]">
+                        <AnimatePresence>
+                          {vaultCoins.map(c => (
+                            <GoldCoin
+                              key={c.id}
+                              coinId={c.id}
+                              seed={c.seed}
+                              onRest={(id) => setVaultCoins(prev => prev.filter(x => x.id !== id))}
+                            />
+                          ))}
+                        </AnimatePresence>
+                      </div>
+
+                      {(() => {
+                        const pilePct = clamp(10 + vaultFillPct * 72, 10, 84);
+                        return (
+                          <motion.div
+                            initial={{ y: "-100%", opacity: 0, rotate: -3, scale: 0.98 }}
+                            animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                            className="relative w-[clamp(12rem,62vw,16rem)] aspect-square max-w-full will-change-transform"
+                            style={{ transform: "translate3d(0,0,0)" }}
+                          >
+                            <motion.div
+                              key={vaultGlowTick}
+                              initial={{ opacity: 0 }}
+                              animate={{
+                                opacity: [0, 1, 0],
+                                boxShadow: [
+                                  "0 0 0 rgba(212,175,55,0)",
+                                  "0 0 34px rgba(212,175,55,0.22)",
+                                  "0 0 0 rgba(212,175,55,0)",
+                                ],
+                              }}
+                              transition={{ duration: 0.9, ease: "easeInOut" }}
+                              className="absolute -inset-[clamp(0.3rem,1vw,0.75rem)] rounded-[3.6rem] pointer-events-none"
+                              style={{ transform: "translate3d(0,0,0)" }}
+                            />
+
+                            <div
+                              ref={vaultJarRef}
+                              className="absolute inset-0 rounded-[3.2rem] bg-gradient-to-br from-[#D4AF37]/55 via-[#D4AF37]/12 to-white/5 p-[0.08rem]"
+                              style={{ transform: "translate3d(0,0,0)", perspective: "900px" }}
+                            >
+                              <div className="relative w-full h-full rounded-[3.15rem] overflow-hidden border border-white/10 bg-black/40 backdrop-blur-3xl">
+                                <motion.div
+                                  aria-hidden
+                                  className="absolute inset-0 opacity-65"
+                                  style={{
+                                    backgroundImage:
+                                      "linear-gradient(120deg, transparent 0%, rgba(212,175,55,0.18) 18%, rgba(255,255,255,0.14) 26%, transparent 40%)",
+                                    transform: "translateX(-40%)",
+                                  }}
+                                  animate={{ transform: ["translateX(-40%)", "translateX(40%)"] }}
+                                  transition={{ duration: 2.4, ease: "linear", repeat: Infinity }}
+                                />
+
+                                <div className="absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-black/35 pointer-events-none" />
+
+                                <div className="absolute inset-x-[10%] top-[12%] h-[16%] rounded-[1.9rem] bg-black/35 border border-white/10" />
+                                <div className="absolute inset-x-[6%] top-[28%] bottom-[12%] rounded-[2.8rem] bg-black/25 border border-white/10 overflow-hidden">
+                                  <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/10 via-transparent to-black/35" />
+                                </div>
+
+                                <motion.div
+                                  className="absolute left-[8%] right-[8%] bottom-[10%] rounded-[2.6rem] overflow-hidden"
+                                  initial={{ height: "10%" }}
+                                  animate={{ height: `${pilePct}%` }}
+                                  transition={{ type: "spring", stiffness: 220, damping: 26 }}
+                                  style={{
+                                    backgroundImage:
+                                      "radial-gradient(circle at 24% 30%, rgba(255,255,255,0.20), transparent 42%), radial-gradient(circle at 64% 38%, rgba(255,255,255,0.12), transparent 46%), radial-gradient(circle at 42% 68%, rgba(255,255,255,0.10), transparent 50%), linear-gradient(180deg, rgba(212,175,55,0.85) 0%, rgba(212,175,55,0.55) 55%, rgba(0,0,0,0.15) 100%)",
+                                    transform: "translate3d(0,0,0)",
+                                  }}
+                                >
+                                  <motion.div
+                                    className="absolute inset-0"
+                                    animate={{ opacity: [0.35, 0.6, 0.35] }}
+                                    transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+                                    style={{
+                                      backgroundImage:
+                                        "radial-gradient(circle at 18% 20%, rgba(255,255,255,0.22), transparent 45%), radial-gradient(circle at 78% 36%, rgba(255,255,255,0.14), transparent 52%)",
+                                      mixBlendMode: "screen",
+                                    }}
+                                  />
+                                </motion.div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
