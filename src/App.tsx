@@ -1773,67 +1773,39 @@ export default function App() {
   const formatCurrency = (v: number) => v.toLocaleString(i18n.language === 'en-US' ? 'en-US' : 'zh-CN', { minimumFractionDigits: 2 });
   const dateLocale = i18n.language === 'zh-CN' ? zhCN : enUS;
 
-  const liquidGoldSpring = { type: 'spring', mass: 1, damping: 15, stiffness: 60 } as const;
-  const liquidGoldEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
-  const liquidGoldGroups = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.1 } },
-  } as const;
-  const liquidGoldGroup = {
-    hidden: {},
-    show: { transition: { staggerChildren: 0.05, staggerDirection: -1 } },
-  } as const;
-  const liquidGoldChar = {
-    hidden: { y: 10, opacity: 0, scale: 0.9, filter: 'blur(10px)' },
-    show: {
-      y: 0,
-      opacity: 1,
-      scale: 1,
-      filter: 'blur(0px)',
-      transition: {
-        y: liquidGoldSpring,
-        scale: liquidGoldSpring,
-        opacity: { duration: 0.35, ease: liquidGoldEase },
-        filter: { duration: 0.35, ease: liquidGoldEase },
-      },
-    },
-  } as const;
+  const RollingNumber = ({ value }: { value: number }) => {
+    const prevRef = useRef(value);
+    const direction = value >= prevRef.current ? 1 : -1;
+    useEffect(() => {
+      prevRef.current = value;
+    }, [value]);
 
-  const StaggerChars = ({
-    text,
-    className,
-  }: {
-    text: string;
-    className?: string;
-  }) => {
+    const str = formatCurrency(value);
     return (
-      <motion.span
-        variants={liquidGoldGroup}
-        className={cn("inline-flex items-end tabular-nums will-change-transform", className)}
-        style={{
-          translateZ: 0,
-          ['--maskX' as any]: '120%',
-          WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 20%, black 80%, transparent 100%)",
-          WebkitMaskSize: "200% 100%",
-          WebkitMaskPosition: "var(--maskX) 0%",
-          maskImage: "linear-gradient(90deg, transparent 0%, black 20%, black 80%, transparent 100%)",
-          maskSize: "200% 100%",
-          maskPosition: "var(--maskX) 0%",
-        }}
-        animate={{ ['--maskX' as any]: ['120%', '-20%'] }}
-        transition={{ duration: 0.9, ease: liquidGoldEase }}
-      >
-        {text.split('').map((ch, idx) => (
-          <motion.span
-            key={`${idx}-${ch}`}
-            variants={liquidGoldChar}
-            className="inline-block will-change-transform"
-            style={{ translateZ: 0 }}
-          >
-            {ch === ' ' ? '\u00A0' : ch}
-          </motion.span>
-        ))}
-      </motion.span>
+      <span className="inline-flex items-end tabular-nums">
+        {str.split('').map((ch, idx) => {
+          const isDigit = ch >= '0' && ch <= '9';
+          if (!isDigit) {
+            return <span key={`s-${idx}`} className="inline-block">{ch}</span>;
+          }
+          return (
+            <span key={`d-${idx}`} className="relative inline-block w-[0.62em] h-[1.05em] overflow-hidden">
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.span
+                  key={`${idx}-${ch}`}
+                  initial={{ y: 14 * direction, opacity: 0, filter: 'blur(4px)' }}
+                  animate={{ y: 0, opacity: 1, filter: 'blur(0px)' }}
+                  exit={{ y: -14 * direction, opacity: 0, filter: 'blur(4px)' }}
+                  transition={{ duration: 0.38, ease: [0.23, 1, 0.32, 1] }}
+                  className="absolute inset-0 flex items-end justify-center"
+                >
+                  {ch}
+                </motion.span>
+              </AnimatePresence>
+            </span>
+          );
+        })}
+      </span>
     );
   };
 
@@ -2413,54 +2385,31 @@ export default function App() {
                                   "text-white"
                                 )}
                               >
+                                <motion.div
+                                  aria-hidden
+                                  className="absolute inset-0 z-0 lux-abyss-gold-wave pointer-events-none"
+                                  initial={{ opacity: 0, scale: 0.98 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  transition={{ duration: 1, ease: "easeInOut" }}
+                                  style={{ transform: "translate3d(0,0,0)" }}
+                                />
                                 <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
                                 <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
-                                <motion.div
-                                  aria-hidden
-                                  className="absolute inset-0 opacity-50"
-                                  style={{
-                                    backgroundImage: "linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.10) 22%, rgba(255,255,255,0.18) 28%, transparent 40%)",
-                                    transform: 'translateX(-35%)',
-                                  }}
-                                  animate={{ transform: ['translateX(-35%)', 'translateX(35%)'] }}
-                                  transition={{ duration: 2.6, ease: 'linear', repeat: Infinity }}
-                                />
-                                <motion.div
-                                  aria-hidden
-                                  className="absolute inset-0 pointer-events-none"
-                                  initial={{ x: "55%", opacity: 0 }}
-                                  animate={{ x: "-55%", opacity: [0, 1, 0] }}
-                                  transition={{ duration: 1.15, ease: liquidGoldEase }}
-                                  style={{ filter: "blur(14px)", translateZ: 0 }}
-                                >
-                                  <div className="absolute inset-y-0 left-0 w-[60%] bg-gradient-to-l from-transparent via-[#D4AF37]/40 to-transparent" />
-                                </motion.div>
 
-                                <motion.div
-                                  variants={liquidGoldGroups}
-                                  initial="hidden"
-                                  animate="show"
-                                  className="flex justify-between items-start mb-12 relative z-10"
-                                  style={{ translateZ: 0 }}
-                                >
+
+                                <div className="flex justify-between items-start mb-12 relative z-10">
                                   <div>
-                                    <motion.div variants={liquidGoldGroup}>
-                                      <StaggerChars
-                                        text={t('total_assets')}
-                                        className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", "text-white/60")}
-                                      />
-                                    </motion.div>
-                                    <motion.div variants={liquidGoldGroup} className="text-5xl font-black tracking-tighter drop-shadow-lg flex items-end">
-                                      <StaggerChars text={`¥${formatCurrency(totalAssets)}`} />
-                                    </motion.div>
-                                  </div>
-                                  <motion.div variants={liquidGoldGroup}>
-                                    <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
-                                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                      <StaggerChars text={i18n.language} />
+                                    <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", "text-white/60")}>{t('total_assets')}</p>
+                                    <div className="text-5xl font-black tracking-tighter drop-shadow-lg flex items-end">
+                                      <span className="mr-1">¥</span>
+                                      <RollingNumber value={totalAssets} />
                                     </div>
-                                  </motion.div>
-                                </motion.div>
+                                  </div>
+                                  <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                    <span>{i18n.language}</span>
+                                  </div>
+                                </div>
 
                                 <div className="grid grid-cols-2 gap-10 relative z-10">
                                   <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
