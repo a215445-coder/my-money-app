@@ -731,6 +731,8 @@ export default function App() {
       return DEFAULT_HOME_WIDGET_CONFIG;
     }
   });
+  const HOME_EDIT_HINT_KEY = 'has_interacted_with_edit';
+  const [hasInteractedWithEdit, setHasInteractedWithEdit] = useState(() => localStorage.getItem(HOME_EDIT_HINT_KEY) === 'true');
 
   const homeLongPressTimeoutRef = useRef<number | null>(null);
   const homeLongPressStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -807,6 +809,11 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(HOME_WIDGETS_STORAGE_KEY, JSON.stringify(homeWidgetConfig));
   }, [homeWidgetConfig]);
+
+  useEffect(() => {
+    const existing = localStorage.getItem(HOME_EDIT_HINT_KEY);
+    if (existing == null) localStorage.setItem(HOME_EDIT_HINT_KEY, 'false');
+  }, []);
 
   useEffect(() => {
     if (groupSaving) localStorage.setItem(GROUP_SAVING_STORAGE_KEY, JSON.stringify(groupSaving));
@@ -1726,6 +1733,12 @@ export default function App() {
     homeLongPressFiredRef.current = false;
   };
 
+  const markHomeEditInteracted = () => {
+    if (hasInteractedWithEdit) return;
+    setHasInteractedWithEdit(true);
+    localStorage.setItem(HOME_EDIT_HINT_KEY, 'true');
+  };
+
   const beginHomeLongPress = (e: React.PointerEvent) => {
     if (isHomeEditMode) return;
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -1734,6 +1747,7 @@ export default function App() {
     if (homeLongPressTimeoutRef.current != null) window.clearTimeout(homeLongPressTimeoutRef.current);
     homeLongPressTimeoutRef.current = window.setTimeout(() => {
       homeLongPressFiredRef.current = true;
+      markHomeEditInteracted();
       setIsHomeEditMode(true);
     }, 420);
   };
@@ -2211,14 +2225,30 @@ export default function App() {
                     <div className="flex items-center justify-between px-1">
                       <div>
                         <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.section_title')}</div>
-                        <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
-                          {isHomeEditMode ? t('home_widgets.hint_edit') : t('home_widgets.hint_view')}
-                        </div>
+                        {isHomeEditMode ? (
+                          <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
+                            {t('home_widgets.hint_edit')}
+                          </div>
+                        ) : (
+                          <AnimatePresence>
+                            {!hasInteractedWithEdit && (
+                              <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                                className={cn("text-xs font-black mt-1", "text-[#ffffff4d]")}
+                              >
+                                {t('home_widgets.hint_view')}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        )}
                       </div>
                       <div className="flex items-center space-x-2">
                         <motion.button
                           whileTap={{ scale: 0.96 }}
-                          onClick={() => setIsWidgetCenterOpen(true)}
+                          onClick={() => { markHomeEditInteracted(); setIsWidgetCenterOpen(true); }}
                           className={cn(
                             "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center space-x-1.5",
                             isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
@@ -2229,7 +2259,7 @@ export default function App() {
                         </motion.button>
                         <motion.button
                           whileTap={{ scale: 0.96 }}
-                          onClick={() => setIsHomeEditMode(v => !v)}
+                          onClick={() => { markHomeEditInteracted(); setIsHomeEditMode(v => !v); }}
                           className={cn(
                             "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
                             isHomeEditMode ? "bg-rose-500 border-rose-500 text-white" : (isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700")
