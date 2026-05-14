@@ -145,11 +145,12 @@ export default function App() {
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'calendar' | 'discovery'>('list');
   const [filterType, setFilterType] = useState<FilterType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [searchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedCalendarDate, setSelectedCalendarDate] = useState(new Date());
 
   // --- Pro Features State ---
@@ -623,7 +624,7 @@ export default function App() {
               <button onClick={() => changeDate('next')} className="p-1 hover:scale-125 transition-transform"><ChevronRight size={16} /></button>
             </div>
           </div>
-          <button onClick={() => setIsBudgetModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+          <button onClick={() => setIsSearchModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
             <Search size={20} />
           </button>
         </header>
@@ -1205,6 +1206,83 @@ export default function App() {
           </motion.div>
         </div>
       )}
+
+      {/* Search & Advanced Filter Modal */}
+      <AnimatePresence>
+        {isSearchModalOpen && (
+          <div className="fixed inset-0 z-[160] flex items-start justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ y: "-100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "-100%", opacity: 0 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={cn(
+                "w-full max-w-md rounded-b-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden",
+                isDarkMode ? "bg-slate-800/95 text-white" : "bg-white/95 text-gray-900"
+              )}
+            >
+              <div className="absolute inset-0 backdrop-blur-2xl -z-10" />
+              <div className="flex justify-between items-center mb-8">
+                <h2 className="text-xl font-black">账单搜索</h2>
+                <button onClick={() => { setIsSearchModalOpen(false); setSearchQuery(''); }} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="relative mb-6">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="搜索备注、分类或标签..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={cn(
+                    "w-full pl-12 pr-4 py-4 rounded-2xl font-bold focus:outline-none transition-all",
+                    isDarkMode ? "bg-slate-700 text-white placeholder:text-slate-500" : "bg-gray-100 text-black placeholder:text-gray-400"
+                  )}
+                />
+              </div>
+
+              <div className="max-h-[50vh] overflow-y-auto no-scrollbar space-y-3">
+                {searchQuery ? (
+                  transactions
+                    .filter(t =>
+                      t.note?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      t.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      t.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+                    )
+                    .map(t => (
+                      <div key={t.id} onClick={() => { setEditingTransaction(t); setIsModalOpen(true); setIsSearchModalOpen(false); }} className={cn("p-4 rounded-2xl flex items-center justify-between border transition-all active:scale-[0.98]", isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="flex items-center space-x-3">
+                          <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-lg", CATEGORIES.find(c => c.label === t.category)?.color)}>
+                            {CATEGORIES.find(c => c.label === t.category)?.icon}
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold">{t.note || t.category}</p>
+                            <p className="text-[10px] text-gray-400">{format(parseISO(t.date), 'yyyy-MM-dd')}</p>
+                          </div>
+                        </div>
+                        <p className={cn("font-black", t.type === 'expense' ? "text-red-500" : "text-green-500")}>
+                          {t.type === 'expense' ? '-' : '+'}¥{formatCurrency(t.amount)}
+                        </p>
+                      </div>
+                    ))
+                    .slice(0, 10)
+                ) : (
+                  <div className="py-10 text-center text-gray-400">
+                    <Search size={32} className="mx-auto mb-2 opacity-20" />
+                    <p className="text-xs font-bold">输入关键词开始搜索</p>
+                  </div>
+                )}
+                {searchQuery && transactions.filter(t => t.note?.toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase())).length === 0 && (
+                  <p className="text-center py-10 text-gray-400 text-xs font-bold">未找到相关账单</p>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Settings Modal */}
       {isBudgetModalOpen && (
