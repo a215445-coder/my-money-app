@@ -787,6 +787,8 @@ export default function App() {
   const [isProUpsellOpen, setIsProUpsellOpen] = useState(false);
   const [pressedStatsModule, setPressedStatsModule] = useState<string | null>(null);
   const [consumptionRadarFocus, setConsumptionRadarFocus] = useState<string | null>(null);
+  const [incomeRadarFocus, setIncomeRadarFocus] = useState<string | null>(null);
+  const [isWealthMilestoneSheetOpen, setIsWealthMilestoneSheetOpen] = useState(false);
   const [exportCount, setExportCount] = useState(() => Number(localStorage.getItem('export_count') || '0'));
   const [timeContext, setTimeContext] = useState<'morning' | 'afternoon' | 'evening'>(() => {
     const hour = new Date().getHours();
@@ -3292,67 +3294,6 @@ export default function App() {
                     </motion.div>
                   )}
 
-                  {/* Radar Comparison Card */}
-                  {isProMember ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className={cn("p-8", surfaceCard())}
-                    >
-                      <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-                      <div className="h-64 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
-                            <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
-                            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} tickFormatter={(v) => t(`categories.${v}`)} />
-                            <Radar
-                              name={t('month')}
-                              dataKey="A"
-                              stroke={accentHex}
-                              fill={accentHex}
-                              fillOpacity={0.6}
-                            />
-                            <Radar
-                              name={t('last_month')}
-                              dataKey="B"
-                              stroke="#94a3b8"
-                              fill="#94a3b8"
-                              fillOpacity={0.3}
-                            />
-                            <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
-                          </RadarChart>
-                        </ResponsiveContainer>
-                      </div>
-                      <div className="flex justify-center space-x-6 mt-4">
-                        <div className="flex items-center space-x-2">
-                          <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
-                          <span className={cn("text-[10px] font-black", mutedText)}>{t('month')}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-gray-300" />
-                          <span className={cn("text-[10px] font-black", mutedText)}>{t('last_month')}</span>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                    >
-                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_radar')}</p>
-                      <div className="mt-5 flex items-center justify-between">
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
-                        <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                          {t('pro.unlock_price')}
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-
                   <div className={cn("p-8", surfaceCard())}>
                     <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
                     {stats.trendData.some(d => d.amount > 0) ? (
@@ -3515,6 +3456,147 @@ export default function App() {
                     >
                       <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#D4AF37]" />{t('pro.consumption_radar_title')}</h3>
                       <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_consumption_radar')}</p>
+                      <div className="mt-5 flex items-center justify-between">
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                          {t('upgrade_pro')}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {isProMember ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.08 }}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                    >
+                      <motion.div
+                        onPointerDown={() => setPressedStatsModule('incomeRadar')}
+                        onPointerUp={() => setPressedStatsModule(null)}
+                        onPointerCancel={() => setPressedStatsModule(null)}
+                        onPointerLeave={() => setPressedStatsModule(null)}
+                        animate={pressedStatsModule === 'incomeRadar' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
+                        transition={pressedStatsModule === 'incomeRadar' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
+                        className="relative"
+                      >
+                        <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
+                          <PieIcon size="1.5em" className="mr-[2.4vw] text-[#00C853] max-w-full h-auto" />
+                          收入雷达
+                        </h3>
+                        <div className="h-52 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart
+                              cx="50%"
+                              cy="50%"
+                              outerRadius="78%"
+                              data={(() => {
+                                const incomeMock = [
+                                  { name: '工资收入', value: 85 },
+                                  { name: '理财收益', value: 60 },
+                                  { name: '副业兼职', value: 45 },
+                                  { name: '奖金福利', value: 70 },
+                                  { name: '其他', value: 30 }
+                                ];
+                                return incomeMock.map(i => ({ subject: i.name, value: i.value }));
+                              })()}
+                            >
+                              <defs>
+                                <linearGradient id="luxRadarEmerald" x1="0" y1="0" x2="1" y2="1">
+                                  <stop offset="0%" stopColor="#00C853" stopOpacity="0.2" />
+                                  <stop offset="50%" stopColor="#00C853" stopOpacity="0.95" />
+                                  <stop offset="100%" stopColor="#B9FFCF" stopOpacity="0.35" />
+                                </linearGradient>
+                              </defs>
+                              <PolarGrid stroke="rgba(0,200,83,0.22)" />
+                              <PolarAngleAxis
+                                dataKey="subject"
+                                tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(245,245,245,0.7)' }}
+                                tickFormatter={(v) => String(v)}
+                              />
+                              <Radar
+                                name={t('income')}
+                                dataKey="value"
+                                stroke="url(#luxRadarEmerald)"
+                                fill="url(#luxRadarEmerald)"
+                                fillOpacity={0.22}
+                                strokeWidth={3}
+                                isAnimationActive
+                                animationDuration={900}
+                                dot={(props: any) => {
+                                  const subject = props?.payload?.subject as string | undefined;
+                                  if (!subject) return null;
+                                  const on = incomeRadarFocus === subject;
+                                  return (
+                                    <circle
+                                      cx={props.cx}
+                                      cy={props.cy}
+                                      r={on ? 6 : 4}
+                                      fill={on ? "#00C853" : "rgba(0,200,83,0.55)"}
+                                      stroke={on ? "#B9FFCF" : "rgba(0,0,0,0)"}
+                                      strokeWidth={on ? 2 : 0}
+                                      style={{ cursor: 'pointer' }}
+                                      onClick={() => setIncomeRadarFocus(subject)}
+                                    />
+                                  );
+                                }}
+                              />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        <div className="mt-[3.2vw]">
+                          {(() => {
+                            if (!incomeRadarFocus) {
+                              return <div className="text-[3.2vw] font-bold text-white/55">点击雷达图任一顶点，查看该收入来源建议。</div>;
+                            }
+                            const incomeMock = [
+                              { name: '工资收入', value: 85 },
+                              { name: '理财收益', value: 60 },
+                              { name: '副业兼职', value: 45 },
+                              { name: '奖金福利', value: 70 },
+                              { name: '其他', value: 30 }
+                            ];
+                            const found = incomeMock.find(i => i.name === incomeRadarFocus);
+                            const value = found?.value ?? 0;
+                            const adviceMap: Record<string, string> = {
+                              '工资收入': '保持稳定现金流：优先提升主业技能与谈薪空间。',
+                              '理财收益': '建议控制波动：分散配置并关注长期年化与回撤。',
+                              '副业兼职': '副业适合做增量：优先选择可复制、可复利的方向。',
+                              '奖金福利': '奖金波动较大：建议将其更多用于储蓄或一次性目标。',
+                              '其他': '其他转入建议标注来源：避免现金流统计失真。',
+                            };
+                            return (
+                              <div className="flex items-start justify-between gap-[3vw]">
+                                <div className="min-w-0 overflow-hidden">
+                                  <div className="text-[3.6vw] font-black text-[#00C853] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                    {incomeRadarFocus}
+                                  </div>
+                                  <div className="mt-[1.2vw] text-[3.1vw] font-bold text-white/65 leading-snug">
+                                    {adviceMap[incomeRadarFocus] || '建议保持收入结构多元，同时优先保证稳定现金流。'}
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0 text-right">
+                                  <div className="text-[4.8vw] leading-none font-black text-white">{value.toFixed(0)}%</div>
+                                  <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">Mock</div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.08 }}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      onClick={openProUpsell}
+                    >
+                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#00C853]" />收入雷达</h3>
+                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>永久会员解锁：收入来源雷达，查看结构与建议。</p>
                       <div className="mt-5 flex items-center justify-between">
                         <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
                         <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
@@ -3931,6 +4013,130 @@ export default function App() {
                         <div className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[clamp(1.55rem,8.5cqw,2.25rem)] whitespace-nowrap overflow-hidden" title={formatMoney(totalAssets)}>{formatMoney(totalAssets)}</div>
                         <div className={cn("mt-[clamp(0.25rem,1vw,0.5rem)] text-[clamp(0.55rem,2.2cqw,0.7rem)] font-bold max-w-full overflow-hidden text-ellipsis whitespace-nowrap", mutedText)}>{t('assets_dashboard.subtitle')}</div>
                       </div>
+                    </div>
+
+                    <div className="relative mt-[4.2vw] w-full">
+                      {(() => {
+                        const p = clamp(vaultFillPct, 0, 1);
+                        const bubbleLeft = clamp(p * 100, 10, 90);
+                        const bubbleTop = clamp((1 - p) * 100, 14, 92);
+                        const nextText = displayCurrency.symbol === 'RM'
+                          ? `RM ${formatMilestoneCurrency(convertCNYToDisplay(vaultNextTarget))}`
+                          : formatMilestoneMoney(vaultNextTarget);
+                        const marks = [
+                          { f: 0.2, label: '初见' },
+                          { f: 0.4, label: '积累' },
+                          { f: 0.6, label: '小康' },
+                          { f: 0.8, label: '自由' },
+                        ];
+                        const nodes = [0.25, 0.5, 0.75, 1];
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setIsWealthMilestoneSheetOpen(true)}
+                            className="w-full text-left active:scale-[0.995] transition-transform"
+                          >
+                            <div className="p-[4.2vw] rounded-[4.6vw] border border-white/10 bg-[rgba(20,20,20,0.8)] backdrop-blur-[25px] overflow-hidden">
+                              <div className="flex items-center justify-between mb-[3.6vw]">
+                                <div className="text-[4.1vw] font-black font-cinzel lux-text-gold-glow tracking-tight whitespace-nowrap">
+                                  Wealth Milestone
+                                </div>
+                                <div className="text-[3.1vw] font-bold text-white/55 whitespace-nowrap">
+                                  Next: {nextText}
+                                </div>
+                              </div>
+
+                              <div className="relative w-full aspect-[16/9]">
+                                <div
+                                  className="absolute z-[10] px-[3.2vw] py-[1.8vw] rounded-[3.2vw] border border-white/10 bg-black/70 backdrop-blur-[20px]"
+                                  style={{
+                                    left: `${bubbleLeft}%`,
+                                    top: `${bubbleTop}%`,
+                                    transform: "translate(-50%, -120%) translate3d(0,0,0)",
+                                  }}
+                                >
+                                  <div className="text-[3.1vw] font-black text-[#D4AF37] whitespace-nowrap">Next: {nextText}</div>
+                                </div>
+
+                                <svg
+                                  className="absolute inset-0 w-full h-full"
+                                  viewBox="0 0 160 90"
+                                  preserveAspectRatio="none"
+                                >
+                                  <defs>
+                                    <linearGradient id="milestoneBorderGold" x1="0" y1="1" x2="1" y2="0">
+                                      <stop offset="0%" stopColor="#D4AF37" stopOpacity="1" />
+                                      <stop offset="100%" stopColor="#F9DF91" stopOpacity="1" />
+                                    </linearGradient>
+                                    <linearGradient id="milestoneFillGold" x1="0" y1="1" x2="1" y2="0">
+                                      <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.9" />
+                                      <stop offset="60%" stopColor="#F9DF91" stopOpacity="0.55" />
+                                      <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.2" />
+                                    </linearGradient>
+                                    <clipPath id="milestoneTriangleClip">
+                                      <polygon points="0,90 160,0 160,90" />
+                                    </clipPath>
+                                  </defs>
+
+                                  <polygon points="0,90 160,0 160,90" fill="rgba(20, 20, 20, 0.8)" />
+
+                                  <motion.g
+                                    clipPath="url(#milestoneTriangleClip)"
+                                    initial={{ scaleY: 0 }}
+                                    animate={{ scaleY: p }}
+                                    transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
+                                    style={{ transformOrigin: "50% 100%", transformBox: "fill-box" as any }}
+                                  >
+                                    <rect x="0" y="0" width="160" height="90" fill="url(#milestoneFillGold)" />
+                                    <rect x="0" y="0" width="160" height="90" fill="rgba(255,255,255,0.06)" />
+                                  </motion.g>
+
+                                  {marks.map((m) => (
+                                    <g key={m.label} opacity="0.72">
+                                      <line
+                                        x1={160 * m.f}
+                                        x2={160 * m.f}
+                                        y1={90}
+                                        y2={72}
+                                        stroke="rgba(255,255,255,0.20)"
+                                        strokeWidth="1"
+                                        strokeDasharray="2 3"
+                                      />
+                                      <text
+                                        x={160 * m.f}
+                                        y={88.5}
+                                        textAnchor="middle"
+                                        fill="rgba(245,245,245,0.70)"
+                                        fontSize="6"
+                                        fontWeight="800"
+                                      >
+                                        {m.label}
+                                      </text>
+                                    </g>
+                                  ))}
+
+                                  {nodes.map((tNode) => {
+                                    const x = 160 * tNode;
+                                    const y = 90 * (1 - tNode);
+                                    return (
+                                      <circle
+                                        key={tNode}
+                                        cx={x}
+                                        cy={y}
+                                        r={2.1}
+                                        fill="#D4AF37"
+                                        opacity={0.95}
+                                      />
+                                    );
+                                  })}
+
+                                  <polygon points="0,90 160,0 160,90" fill="none" stroke="url(#milestoneBorderGold)" strokeWidth="2" />
+                                </svg>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })()}
                     </div>
 
                     <div className="relative mt-[clamp(1.25rem,4vw,2rem)] flex justify-center">
@@ -4870,6 +5076,70 @@ export default function App() {
               )}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isWealthMilestoneSheetOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: proUpsellSheetEase }}
+            className="fixed inset-0 z-[187] flex items-end justify-center bg-black/50"
+            onClick={() => setIsWealthMilestoneSheetOpen(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.38, ease: proUpsellSheetEase }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md overflow-hidden rounded-t-[32px] border border-white/10 bg-black/80 backdrop-blur-[20px]"
+              style={{ transform: "translate3d(0,0,0)" }}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <button
+                  onClick={() => setIsWealthMilestoneSheetOpen(false)}
+                  className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+                >
+                  {t('cancel')}
+                </button>
+                <div className="text-sm font-black text-white/90">Wealth Milestone</div>
+                <div className="w-10" />
+              </div>
+              <div className="px-6 py-6">
+                <div className="text-[4.2vw] font-black text-white">财富等级说明</div>
+                <div className="mt-2 text-[3.4vw] font-bold text-white/55 leading-relaxed">
+                  斜边上的节点代表阶段进度，金色水位代表当前资产占比；点击三角形可随时查看说明与下一目标。
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {[
+                    { title: '初见', desc: '建立记录习惯，现金流开始可视化。' },
+                    { title: '积累', desc: '形成预算边界，减少冲动消费与漏记。' },
+                    { title: '小康', desc: '收支结构稳定，开始关注长期配置与风险。' },
+                    { title: '自由', desc: '目标导向的资金分配，关注复利与可持续。' },
+                  ].map((x) => (
+                    <div key={x.title} className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[3.6vw] font-black text-[#D4AF37]">{x.title}</div>
+                        <div className="text-[3.2vw] font-bold text-white/45">Milestone</div>
+                      </div>
+                      <div className="mt-1 text-[3.2vw] font-bold text-white/60 leading-relaxed">{x.desc}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setIsWealthMilestoneSheetOpen(false)}
+                  className="mt-6 w-full py-4 rounded-2xl font-black text-xs bg-[#D4AF37] text-black shadow-lg active:scale-[0.98] transition-transform"
+                >
+                  知道了
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
