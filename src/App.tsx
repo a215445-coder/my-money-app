@@ -858,7 +858,8 @@ export default function App() {
   const mutedText = theme.mutedText;
   const chipNeutral = "bg-white/10 text-white/70";
   const surfaceCard = (...extra: ClassValue[]) => cn(
-    "border",
+    "border rounded-2xl overflow-hidden",
+    "shadow-[0_0.25rem_1.25rem_rgba(0,0,0,0.55),0_0_1.5rem_rgba(212,175,55,0.10)]",
     cn(theme.surfaceSoft, theme.surfaceBorder, theme.appText, 'lux-gold-glow-soft lux-gold-glow-breathe'),
     ...extra
   );
@@ -2220,7 +2221,7 @@ export default function App() {
                                 <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
                                   <motion.div
                                     layout
-                                    className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                    className={cn("min-w-[240px] snap-start p-5", surfaceCard())}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_expense')}</div>
@@ -2232,7 +2233,7 @@ export default function App() {
 
                                   <motion.div
                                     layout
-                                    className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                    className={cn("min-w-[240px] snap-start p-5", surfaceCard())}
                                   >
                                     <div className="flex items-center justify-between">
                                       <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.month_remaining_budget')}</div>
@@ -2255,7 +2256,7 @@ export default function App() {
 
                                   <motion.div
                                     layout
-                                    className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                    className={cn("min-w-[240px] snap-start p-5", surfaceCard())}
                                   >
                                     <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_count')}</div>
                                     <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} {t('home_widgets.count_unit')}</div>
@@ -2266,7 +2267,7 @@ export default function App() {
                             )}
 
                             {wid === 'weekTrend' && (
-                              <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                              <div className={cn("p-6", surfaceCard())}>
                                 <div className="flex items-center justify-between mb-4">
                                   <div>
                                     <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_trend')}</div>
@@ -2324,7 +2325,7 @@ export default function App() {
                             )}
 
                             {wid === 'topCategories' && (
-                              <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                              <div className={cn("p-6", surfaceCard())}>
                                 <div className="flex items-center justify-between mb-4">
                                   <div>
                                     <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.top_categories')}</div>
@@ -2437,8 +2438,8 @@ export default function App() {
                             {wid === 'budgetProgress' && (
                               <div
                                 className={cn(
-                                  "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
-                                  surfaceCard("rounded-[3rem]")
+                                  "p-8 backdrop-blur-xl transition-all",
+                                  surfaceCard()
                                 )}
                               >
                                 <div className="flex justify-between items-center mb-6">
@@ -2587,7 +2588,7 @@ export default function App() {
                       }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
                         <div key={date}>
                           <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), i18n.language === 'zh-CN' ? 'MM月dd日 EEEE' : 'MMM dd EEEE', { locale: dateLocale })}</p>
-                          <div className={cn("rounded-[2.5rem] shadow-sm overflow-hidden", surfaceCard())}>
+                          <div className={cn("overflow-hidden", surfaceCard())}>
                             {items.map((item, idx) => (
                               <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center transition-colors group", idx !== items.length - 1 && "border-b", isBlackGold ? "border-[#2A2A2A]" : isDarkMode ? "border-slate-700" : "border-gray-50")}>
                                 <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm mr-4", CATEGORIES.find(c => c.label === item.category)?.color)}>
@@ -2662,7 +2663,7 @@ export default function App() {
                     <div className="w-10" />
                   </div>
 
-                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                  <div className={cn("p-8", surfaceCard())}>
                     <div className="flex items-end justify-between mb-6">
                       <div>
                         <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.current_total_assets')}</p>
@@ -2693,7 +2694,7 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                    <div className={cn("p-8", surfaceCard())}>
                       <h3 className="font-black text-lg mb-4 flex items-center"><PieIcon size={20} className="mr-2 text-emerald-500" />{t('assets_dashboard.liability_vs_net')}</h3>
                       <div className="h-52 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -2719,7 +2720,7 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                    <div className={cn("p-8", surfaceCard())}>
                       <h3 className="font-black text-lg mb-4 flex items-center"><Wallet size={20} className="mr-2 text-indigo-500" />{t('assets_dashboard.distribution')}</h3>
                       <div className="h-52 w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -2782,7 +2783,7 @@ export default function App() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
                     >
                       <div className="absolute top-0 right-0 p-4">
                         <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">{t('pro.analysis_badge')}</div>
@@ -2817,7 +2818,7 @@ export default function App() {
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
                     >
                       <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
                       <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
@@ -2837,7 +2838,7 @@ export default function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 }}
-                      className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                      className={cn("p-8", surfaceCard())}
                     >
                       <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
                       <div className="h-64 w-full">
@@ -2879,7 +2880,7 @@ export default function App() {
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.1 }}
-                      className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
                     >
                       <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
                       <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_radar')}</p>
@@ -2892,7 +2893,7 @@ export default function App() {
                     </motion.div>
                   )}
 
-                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                  <div className={cn("p-8", surfaceCard())}>
                     <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
                     {stats.trendData.some(d => d.amount > 0) ? (
                       <div className="h-48 w-full">
@@ -2935,7 +2936,7 @@ export default function App() {
               {activeTab === 'discovery' && (
                 <div className="space-y-6">
                   {/* User Header */}
-                  <div className={cn("rounded-[2.5rem] p-6 shadow-xl overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                  <div className={cn("p-6 overflow-hidden relative", surfaceCard())}>
                     <div className="absolute inset-0 backdrop-blur-2xl" />
                     <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full blur-[90px] opacity-40 bg-gradient-to-br from-indigo-500 to-fuchsia-500" />
                     <div className="relative flex items-center justify-between">
@@ -3011,7 +3012,7 @@ export default function App() {
                   </motion.button>
 
                   {/* Quick Tools Grid */}
-                  <div className={cn("rounded-[2.5rem] p-6 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                  <div className={cn("p-6", surfaceCard())}>
                     <div className="flex items-center justify-between mb-5">
                       <h3 className="text-sm font-black">{t('common_tools')}</h3>
                       <span className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('toolkit_tag')}</span>
@@ -3048,7 +3049,7 @@ export default function App() {
                   </div>
 
                   {/* Pro Perks */}
-                  <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                  <div className={cn("p-6 overflow-hidden relative", surfaceCard())}>
                     <div className="flex items-center justify-between mb-5">
                       <h3 className="text-sm font-black">{t('pro.perks_title')}</h3>
                       <motion.button
@@ -3151,7 +3152,7 @@ export default function App() {
                   </div>
 
                   {/* Finance Management Card */}
-                  <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                  <div className={cn("p-6 overflow-hidden relative", surfaceCard())}>
                     <div className="flex items-center justify-between mb-6">
                       <h3 className="font-black text-sm">{t('finance_management')}</h3>
                       <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>
@@ -3219,7 +3220,7 @@ export default function App() {
 
               {activeTab === 'vault' && (
                 <div className="space-y-[clamp(1rem,2.5vw,1.5rem)] pb-[clamp(2.5rem,6vw,3.25rem)]">
-                  <div className={cn("rounded-[2.5rem] p-[clamp(1.25rem,3vw,2rem)] shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                  <div className={cn("p-[clamp(1.25rem,3vw,2rem)] overflow-hidden relative", surfaceCard())}>
                     <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-[120px] opacity-35 bg-[#D4AF37]/25" />
                     <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full blur-[140px] opacity-20 bg-white/10" />
 
