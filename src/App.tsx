@@ -605,9 +605,16 @@ export default function App() {
       {/* Main Content */}
       <main className="max-w-lg mx-auto p-6 pt-12 space-y-8 relative z-10">
         <header className="flex justify-between items-center mb-12">
-          <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
-            <Menu size={20} />
-          </button>
+          <div className="flex items-center space-x-2">
+            <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+              <Menu size={20} />
+            </button>
+            <button onClick={() => setIsVoiceModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+              <svg className="w-5 h-5 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+              </svg>
+            </button>
+          </div>
           <div className="text-center">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{getFilterLabel()}</p>
             <div className="flex items-center justify-center space-x-4">
@@ -616,7 +623,7 @@ export default function App() {
               <button onClick={() => changeDate('next')} className="p-1 hover:scale-125 transition-transform"><ChevronRight size={16} /></button>
             </div>
           </div>
-          <button onClick={() => setIsBudgetModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+          <button onClick={() => setIsBudgetModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
             <Search size={20} />
           </button>
         </header>
@@ -1033,36 +1040,6 @@ export default function App() {
         )}
       </main>
 
-      {/* Action FAB Area */}
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center items-end pb-[calc(2.5rem+env(safe-area-inset-bottom))] space-x-6 pointer-events-none z-[100]">
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setIsMenuOpen(true)}
-          className={cn("w-14 h-14 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center shadow-xl pointer-events-auto border border-white/20", isDarkMode ? "bg-slate-800/80 text-white" : "text-gray-600")}
-        >
-          <Menu size={24} className="text-indigo-500" />
-        </motion.button>
-
-        <motion.button
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => { setEditingTransaction(null); setIsModalOpen(true); }}
-          className={cn("w-20 h-20 text-white rounded-full flex items-center justify-center shadow-2xl transition-all pointer-events-auto hover:brightness-110", theme.primary)}
-        >
-          <Plus size={40} strokeWidth={3} />
-        </motion.button>
-
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={() => setIsVoiceModalOpen(true)}
-          className={cn("w-14 h-14 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center shadow-xl pointer-events-auto border border-white/20", isDarkMode ? "bg-slate-800/80 text-white" : "text-gray-600")}
-        >
-          <svg className="w-6 h-6 text-pink-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-          </svg>
-        </motion.button>
-      </div>
-
       {/* Voice Recognition Modal */}
       <AnimatePresence>
         {isVoiceModalOpen && (
@@ -1070,7 +1047,7 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-3xl p-6"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-3xl p-6"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -1413,34 +1390,55 @@ export default function App() {
 
       {/* Navigation */}
       <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 px-6 pb-8 pt-4 backdrop-blur-xl border-t border-white/5 shadow-2xl transition-all duration-500",
+        "fixed bottom-0 left-0 right-0 z-[100] px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4 backdrop-blur-xl border-t border-white/5 shadow-2xl transition-all duration-500",
         isDarkMode ? "bg-slate-900/80" : "bg-white/80"
       )}>
-        <div className="flex justify-between items-center max-w-lg mx-auto">
+        <div className="flex justify-between items-center max-w-lg mx-auto relative">
           {[
-            { id: 'list', icon: <History size={24} />, label: t('bill_detail') },
-            { id: 'chart', icon: <PieIcon size={24} />, label: t('stats') },
-            { id: 'calendar', icon: <CalendarIcon size={24} />, label: t('calendar') },
-            { id: 'discovery', icon: <Compass size={24} />, label: '发现' },
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={cn(
-                "flex flex-col items-center space-y-1 transition-all relative group",
-                activeTab === tab.id ? theme.text : "text-gray-400"
-              )}
-            >
-              <div className={cn(
-                "p-2 rounded-2xl transition-all duration-500",
-                activeTab === tab.id ? "bg-gray-100/50 scale-110 shadow-sm" : "group-hover:bg-gray-50"
-              )}>
-                {tab.icon}
-              </div>
-              <span className="text-[8px] font-black uppercase tracking-tighter">{tab.label}</span>
-              {activeTab === tab.id && <div className={cn("absolute -top-1 w-1 h-1 rounded-full", theme.primary)} />}
-            </button>
-          ))}
+            { id: 'list', icon: <History size={22} />, label: t('bill_detail') },
+            { id: 'chart', icon: <PieIcon size={22} />, label: t('stats') },
+            { id: 'plus', icon: null, label: '' }, // Placeholder for the big plus
+            { id: 'calendar', icon: <CalendarIcon size={22} />, label: t('calendar') },
+            { id: 'discovery', icon: <Compass size={22} />, label: '发现' },
+          ].map((tab) => {
+            if (tab.id === 'plus') {
+              return (
+                <div key="plus-container" className="relative flex-1 flex justify-center -mt-12">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => { setEditingTransaction(null); setIsModalOpen(true); }}
+                    className={cn(
+                      "w-16 h-16 text-white rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-white dark:border-slate-900 transition-all pointer-events-auto",
+                      theme.primary
+                    )}
+                  >
+                    <Plus size={32} strokeWidth={3} />
+                  </motion.button>
+                  <span className="absolute -bottom-6 text-[8px] font-black uppercase tracking-tighter text-gray-400">记一笔</span>
+                </div>
+              );
+            }
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={cn(
+                  "flex-1 flex flex-col items-center space-y-1 transition-all relative group",
+                  activeTab === tab.id ? theme.text : "text-gray-400"
+                )}
+              >
+                <div className={cn(
+                  "p-2 rounded-2xl transition-all duration-500",
+                  activeTab === tab.id ? "bg-gray-100/50 scale-110 shadow-sm" : "group-hover:bg-gray-50"
+                )}>
+                  {tab.icon}
+                </div>
+                <span className="text-[8px] font-black uppercase tracking-tighter">{tab.label}</span>
+                {activeTab === tab.id && <motion.div layoutId="nav-dot" className={cn("absolute -top-1 w-1 h-1 rounded-full", theme.primary)} />}
+              </button>
+            );
+          })}
         </div>
       </nav>
     </div>
