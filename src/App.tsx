@@ -1034,7 +1034,7 @@ export default function App() {
       </main>
 
       {/* Action FAB Area */}
-      <div className="fixed bottom-10 left-0 right-0 flex justify-center items-center space-x-6 pointer-events-none z-50">
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center items-end pb-[calc(2.5rem+env(safe-area-inset-bottom))] space-x-6 pointer-events-none z-[100]">
         <motion.button
           whileTap={{ scale: 0.9 }}
           onClick={() => setIsMenuOpen(true)}
@@ -1186,21 +1186,30 @@ export default function App() {
 
       {/* Transaction Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-md">
+        <div className="fixed inset-0 z-[150] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-md">
           <motion.div
             initial={{ y: "100%", opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
+            exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className={cn(
-              "w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl",
+              "w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl relative",
               isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
             )}
           >
-            <div className="flex justify-between items-center mb-10">
+            {/* Close button for mobile accessibility */}
+            <button
+              onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }}
+              className={cn(
+                "absolute top-6 right-8 p-3 rounded-full transition-all active:scale-90 z-10",
+                isDarkMode ? "bg-slate-700 text-white/60" : "bg-gray-100 text-gray-400"
+              )}
+            >
+              <X size={24} />
+            </button>
+
+            <div className="flex justify-between items-center mb-10 pr-12">
               <h2 className="text-2xl font-black">{editingTransaction ? t('edit_bill') : t('add_bill')}</h2>
-              <button onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }} className={cn("p-3 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
-                <X size={20} />
-              </button>
             </div>
             <TransactionForm
               accounts={accounts}
@@ -1741,9 +1750,9 @@ function TransactionForm({
           )}
         </div>
       </div>
-      <div className="flex space-x-3 pt-4">
-        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2rem] font-black text-sm">{t('delete')}</button>}
-        <button type="submit" className={cn("flex-[2] py-5 rounded-[2rem] font-black text-sm shadow-xl active:scale-95", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
+      <div className="flex space-x-3 pt-4 pb-[env(safe-area-inset-bottom)]">
+        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2rem] font-black text-sm active:scale-95 transition-all">{t('delete')}</button>}
+        <button type="submit" className={cn("flex-[2] py-5 rounded-[2rem] font-black text-sm shadow-xl active:scale-95 transition-all", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
       </div>
     </form>
   );
