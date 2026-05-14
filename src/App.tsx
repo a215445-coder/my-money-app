@@ -37,6 +37,8 @@ import {
   GripVertical,
   Users,
   Vault,
+  Volume2,
+  VolumeX,
 } from 'lucide-react';
 import {
   format,
@@ -1411,6 +1413,8 @@ export default function App() {
   const [vaultGlowTick, setVaultGlowTick] = useState(0);
   const [vaultRipples, setVaultRipples] = useState<Array<{ id: string; seed: number }>>([]);
   const [vaultPopCoin, setVaultPopCoin] = useState<{ id: string; seed: number } | null>(null);
+  const [isVaultMuted, setIsVaultMuted] = useState(() => localStorage.getItem('vault_muted_v1') === 'true');
+  const isVaultMutedRef = useRef(isVaultMuted);
   const pendingVaultDropsRef = useRef(0);
   const prevTotalAssetsRef = useRef<number>(totalAssets);
   const vaultTiltX = useMotionValue(0);
@@ -1422,6 +1426,15 @@ export default function App() {
   const vaultReflectionY = useTransform(vaultTiltYSmooth, [-1, 1], ['-14%', '14%']);
   const vaultPileX = useTransform(vaultTiltXSmooth, [-1, 1], [-6, 6]);
   const vaultPileY = useTransform(vaultTiltYSmooth, [-1, 1], [4, -4]);
+
+  const vaultAudioCtxRef = useRef<AudioContext | null>(null);
+  const vaultLastAudioAtRef = useRef(0);
+  const vaultCoinRuntimesRef = useRef(new Map<string, any>());
+
+  useEffect(() => {
+    isVaultMutedRef.current = isVaultMuted;
+    localStorage.setItem('vault_muted_v1', String(isVaultMuted));
+  }, [isVaultMuted]);
 
   const vaultFillPct = useMemo(() => {
     const cap = Math.max(1000, vaultCap);
@@ -1464,7 +1477,7 @@ export default function App() {
       localStorage.setItem('vault_cap_v1', String(nextCap));
     }
 
-    const dropCount = 3;
+    const dropCount = 6;
     if (activeTab === 'vault') {
       queueVaultCoins(dropCount);
     } else {
@@ -1524,6 +1537,197 @@ export default function App() {
     setVaultPopCoin({ id, seed });
     window.setTimeout(() => setVaultPopCoin(cur => (cur?.id === id ? null : cur)), 900);
   };
+
+  const ensureVaultAudio = async () => {
+    const AudioCtor: any = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtor) return null;
+    if (!vaultAudioCtxRef.current) vaultAudioCtxRef.current = new AudioCtor();
+    const ctx = vaultAudioCtxRef.current;
+    if (!ctx) return null;
+    if (ctx.state === 'suspended') {
+      try { await ctx.resume(); } catch { }
+    }
+    return ctx;
+  };
+
+  const playVaultClink = async (intensity: number) => {
+    if (isVaultMutedRef.current) return;
+    const now = performance.now();
+    if (now - vaultLastAudioAtRef.current < 70) return;
+    vaultLastAudioAtRef.current = now;
+
+    const ctx = await ensureVaultAudio();
+    if (!ctx) return;
+    if (ctx.state !== 'running') return;
+
+    const t0 = ctx.currentTime;
+    const i = clamp(intensity, 0, 1);
+    const variant = Math.floor(Math.random() * 4);
+    const base = [980, 1220, 1480, 1780][variant] * (0.92 + Math.random() * 0.16);
+
+    const oscA = ctx.createOscillator();
+    const oscB = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const bp = ctx.createBiquadFilter();
+    const hp = ctx.createBiquadFilter();
+
+    oscA.type = 'triangle';
+    oscB.type = 'sine';
+    oscA.frequency.setValueAtTime(base, t0);
+    oscB.frequency.setValueAtTime(base * 2.01, t0);
+
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(base * 1.18, t0);
+    bp.Q.setValueAtTime(10 + i * 14, t0);
+
+    hp.type = 'highpass';
+    hp.frequency.setValueAtTime(520, t0);
+
+    const vol = 0.02 + i * 0.085;
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0008, t0 + 0.20 + i * 0.10);
+
+    oscA.connect(bp);
+    oscB.connect(bp);
+    bp.connect(hp);
+    hp.connect(gain);
+    gain.connect(ctx.destination);
+
+    const bend = 1 + i * 0.12;
+    oscA.frequency.exponentialRampToValueAtTime(base * bend, t0 + 0.04);
+    oscB.frequency.exponentialRampToValueAtTime(base * 2.01 * (1 + i * 0.08), t0 + 0.05);
+
+    oscA.start(t0);
+    oscB.start(t0);
+    oscA.stop(t0 + 0.28);
+    oscB.stop(t0 + 0.28);
+
+    try {
+      if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+        navigator.vibrate(10 + Math.round(i * 16));
+      }
+    } catch { }
+  };
+
+  useEffect(() => {
+    if (activeTab !== 'vault') return;
+    let raf = 0;
+    let last = performance.now();
+
+    const tick = (now: number) => {
+      const dt = Math.min(0.028, Math.max(0.008, (now - last) / 1000));
+      last = now;
+      const runtimes = Array.from(vaultCoinRuntimesRef.current.values());
+      if (!runtimes.length) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+
+      const g = 2600;
+      const bounce = 0.42;
+      const pairRestitution = 0.06;
+      const pairFriction = 0.86;
+
+      for (const r of runtimes) {
+        r.velY += g * dt;
+        r.posY += r.velY * dt;
+        r.posX += r.velX * dt;
+
+        r.velX += Math.sin(now / 620 + r.seed * 12) * 26 * dt;
+        r.velX = clamp(r.velX, -520, 520);
+
+        r.rotateY.set((r.rotateY.get() + r.spin * dt) % 360);
+        r.rotateZ.set((r.rotateZ.get() + r.spin * 0.6 * dt + Math.sin(now / 480 + r.seed * 18) * 6 * dt) % 360);
+
+        if (r.posY >= r.groundY) {
+          const impactSpeed = Math.abs(r.velY);
+          r.posY = r.groundY;
+          if (!r.landed) {
+            r.landed = true;
+            const intensity = clamp(impactSpeed / 1700, 0, 1);
+            void playVaultClink(intensity);
+          }
+
+          if (impactSpeed > 140) r.bounces += 1;
+          const k = r.bounces >= 3 ? 0.18 : bounce;
+          r.velY = -r.velY * k;
+          r.velX *= 0.82;
+          r.scale.set(1.02);
+        } else {
+          r.scale.set(1);
+        }
+
+        r.x.set(r.posX);
+        r.y.set(r.posY);
+      }
+
+      for (let i = 0; i < runtimes.length; i += 1) {
+        for (let j = i + 1; j < runtimes.length; j += 1) {
+          const a = runtimes[i];
+          const b = runtimes[j];
+          const dx = b.posX - a.posX;
+          const dy = b.posY - a.posY;
+          const dist2 = dx * dx + dy * dy;
+          const r = Math.max(10, Math.min(a.radius, b.radius));
+          const minDist = r * 2;
+          if (dist2 <= 0 || dist2 > minDist * minDist) continue;
+
+          const dist = Math.sqrt(dist2);
+          const nx = dx / dist;
+          const ny = dy / dist;
+          const overlap = minDist - dist;
+          a.posX -= nx * overlap * 0.5;
+          a.posY -= ny * overlap * 0.5;
+          b.posX += nx * overlap * 0.5;
+          b.posY += ny * overlap * 0.5;
+
+          const rvx = b.velX - a.velX;
+          const rvy = b.velY - a.velY;
+          const vn = rvx * nx + rvy * ny;
+          if (vn > 0) continue;
+
+          const impulse = -(1 + pairRestitution) * vn * 0.5;
+          a.velX -= impulse * nx;
+          a.velY -= impulse * ny;
+          b.velX += impulse * nx;
+          b.velY += impulse * ny;
+
+          a.velX *= pairFriction;
+          b.velX *= pairFriction;
+
+          const strength = Math.abs(vn);
+          if (strength > 520) {
+            const intensity = clamp(strength / 1800, 0, 1);
+            void playVaultClink(intensity);
+          }
+        }
+      }
+
+      for (const r of runtimes) {
+        if (r.posY > r.groundY) r.posY = r.groundY;
+        r.x.set(r.posX);
+        r.y.set(r.posY);
+      }
+
+      for (const r of runtimes) {
+        if (r.posY >= r.groundY - 0.5 && Math.abs(r.velY) < 36 && Math.abs(r.velX) < 18 && r.bounces >= 2) {
+          r.settledFrames += 1;
+        } else {
+          r.settledFrames = 0;
+        }
+        if (r.settledFrames > 22) {
+          vaultCoinRuntimesRef.current.delete(r.id);
+          r.onRest(r.id);
+        }
+      }
+
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [activeTab]);
 
   const assetDashboard = useMemo(() => {
     const now = new Date();
@@ -1993,74 +2197,44 @@ export default function App() {
       }
 
       const jarW = rect.width;
-      const targetX = rect.left + rect.width / 2 + (seed - 0.5) * jarW * 0.55;
+      const targetX = rect.left + rect.width / 2 + (seed - 0.5) * jarW * 0.6;
       const groundY = rect.top + rect.height * 0.76;
+      const radius = Math.max(10, jarW * 0.042);
 
-      let posX = targetX + (seed - 0.5) * jarW * 0.25;
-      let posY = -window.innerHeight * 0.12;
-      let velX = (seed - 0.5) * 140;
+      let posX = targetX + (seed - 0.5) * jarW * 0.38;
+      let posY = -window.innerHeight * 0.18;
+      let velX = (seed - 0.5) * 260 + (Math.random() - 0.5) * 80;
       let velY = 0;
+      const spin = (seed - 0.5) * 360 + (Math.random() - 0.5) * 140;
 
       x.set(posX);
       y.set(posY);
+      rotateY.set(Math.random() * 360);
+      rotateZ.set(seed * 220 - 110);
 
-      const g = 2400;
-      const bounce = 0.56;
-      const friction = 0.86;
-      const spin = (seed - 0.5) * 220;
-
-      let raf = 0;
-      let last = performance.now();
-      let settledFrames = 0;
-      let lastHapticAt = 0;
-
-      const tick = (now: number) => {
-        const dt = Math.min(0.028, Math.max(0.008, (now - last) / 1000));
-        last = now;
-
-        velY += g * dt;
-        posY += velY * dt;
-        posX += velX * dt;
-
-        rotateY.set((rotateY.get() + spin * dt) % 360);
-        rotateZ.set((rotateZ.get() + spin * 0.6 * dt) % 360);
-
-        if (posY >= groundY) {
-          posY = groundY;
-          const impactSpeed = Math.abs(velY);
-          velY = -velY * bounce;
-          velX *= friction;
-          scale.set(1.02);
-          if (now - lastHapticAt > 120) {
-            lastHapticAt = now;
-            const impact = clamp(impactSpeed / 1400, 0, 1);
-            const base = impact > 0.65 ? 22 : impact > 0.35 ? 14 : 8;
-            const jitter = Math.random() < 0.4 ? 0 : 4;
-            try {
-              if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
-                navigator.vibrate(base + jitter);
-              }
-            } catch { }
-          }
-        } else {
-          scale.set(1);
-        }
-
-        x.set(posX);
-        y.set(posY);
-
-        if (Math.abs(velY) < 70 && posY >= groundY - 0.5) settledFrames += 1;
-        else settledFrames = 0;
-
-        if (settledFrames > 18) {
-          onRest(coinId);
-          return;
-        }
-        raf = requestAnimationFrame(tick);
+      const runtime = {
+        id: coinId,
+        seed,
+        x,
+        y,
+        rotateX,
+        rotateY,
+        rotateZ,
+        scale,
+        posX,
+        posY,
+        velX,
+        velY,
+        spin,
+        groundY,
+        radius,
+        bounces: 0,
+        settledFrames: 0,
+        landed: false,
+        onRest,
       };
-
-      raf = requestAnimationFrame(tick);
-      return () => cancelAnimationFrame(raf);
+      vaultCoinRuntimesRef.current.set(coinId, runtime);
+      return () => { vaultCoinRuntimesRef.current.delete(coinId); };
     }, [coinId, onRest, seed, x, y, rotateX, rotateY, rotateZ, scale]);
 
     return (
@@ -3455,7 +3629,20 @@ export default function App() {
                         <Vault size={20} className={cn("mr-2", isDarkMode ? "text-[#D4AF37]" : "text-amber-500")} />
                         {t('vault')}
                       </h3>
-                      <div className={cn("text-[0.625rem] font-black uppercase tracking-widest", mutedText)}>{t('total_assets')}</div>
+                      <div className="flex items-center gap-2">
+                        <div className={cn("text-[0.625rem] font-black uppercase tracking-widest", mutedText)}>{t('total_assets')}</div>
+                        <motion.button
+                          whileTap={{ scale: 0.92 }}
+                          onClick={() => setIsVaultMuted(v => !v)}
+                          className={cn(
+                            "w-8 h-8 rounded-2xl border flex items-center justify-center",
+                            "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
+                          )}
+                          aria-label={isVaultMuted ? 'unmute' : 'mute'}
+                        >
+                          {isVaultMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                        </motion.button>
+                      </div>
                     </div>
 
                     <div className="relative mt-[clamp(1rem,3vw,1.5rem)] flex flex-col gap-[clamp(0.75rem,2vw,1rem)] sm:flex-row sm:items-end sm:justify-between">
@@ -3531,6 +3718,7 @@ export default function App() {
                               style={{ transform: "translate3d(0,0,0)", perspective: "900px" }}
                               onClick={async () => {
                                 await requestVaultTiltPermission();
+                                await ensureVaultAudio();
                                 triggerVaultRipple();
                                 triggerVaultPopCoin();
                               }}
