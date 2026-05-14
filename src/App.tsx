@@ -37,8 +37,6 @@ import {
   GripVertical,
   Users,
   Vault,
-  Volume2,
-  VolumeX,
 } from 'lucide-react';
 import {
   format,
@@ -1415,8 +1413,7 @@ export default function App() {
   const [vaultPopCoin, setVaultPopCoin] = useState<{ id: string; seed: number } | null>(null);
   const [vaultMilestoneRipples, setVaultMilestoneRipples] = useState<Array<{ id: string; amount: number }>>([]);
   const vaultMilestoneRippledRef = useRef<Set<number>>(new Set());
-  const [isVaultMuted, setIsVaultMuted] = useState(() => localStorage.getItem('vault_muted_v1') === 'true');
-  const isVaultMutedRef = useRef(isVaultMuted);
+  const isVaultMutedRef = useRef(false);
   const pendingVaultDropsRef = useRef(0);
   const prevTotalAssetsRef = useRef<number>(totalAssets);
   const vaultTiltX = useMotionValue(0);
@@ -1432,11 +1429,6 @@ export default function App() {
   const vaultAudioCtxRef = useRef<AudioContext | null>(null);
   const vaultLastAudioAtRef = useRef(0);
   const vaultCoinRuntimesRef = useRef(new Map<string, any>());
-
-  useEffect(() => {
-    isVaultMutedRef.current = isVaultMuted;
-    localStorage.setItem('vault_muted_v1', String(isVaultMuted));
-  }, [isVaultMuted]);
 
   const vaultFillPct = useMemo(() => {
     const cap = Math.max(1000, vaultCap);
@@ -3658,23 +3650,10 @@ export default function App() {
                         <Vault size={20} className={cn("mr-2", isDarkMode ? "text-[#D4AF37]" : "text-amber-500")} />
                         {t('vault')}
                       </h3>
-                      <div className="flex items-center gap-2">
-                        <div className={cn("text-[0.625rem] font-black uppercase tracking-widest", mutedText)}>{t('total_assets')}</div>
-                        <motion.button
-                          whileTap={{ scale: 0.92 }}
-                          onClick={() => setIsVaultMuted(v => !v)}
-                          className={cn(
-                            "w-8 h-8 rounded-2xl border flex items-center justify-center",
-                            "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
-                          )}
-                          aria-label={isVaultMuted ? 'unmute' : 'mute'}
-                        >
-                          {isVaultMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
-                        </motion.button>
-                      </div>
+                      <div className={cn("text-[0.625rem] font-black uppercase tracking-widest", mutedText)}>{t('total_assets')}</div>
                     </div>
 
-                    <div className="relative mt-[clamp(1rem,3vw,1.5rem)] flex flex-col gap-[clamp(0.75rem,2vw,1rem)] sm:flex-row sm:items-end sm:justify-between">
+                    <div className="relative mt-[clamp(1rem,3vw,1.5rem)] flex flex-col items-center text-center gap-[clamp(0.75rem,2vw,1rem)]">
                       <div className="min-w-0">
                         <div className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[clamp(1.75rem,5vw,2.25rem)] break-words">¥{formatCurrency(totalAssets)}</div>
                         <div className={cn("mt-[clamp(0.25rem,1vw,0.5rem)] text-[0.625rem] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</div>
