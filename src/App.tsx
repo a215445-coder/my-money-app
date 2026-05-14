@@ -2788,7 +2788,7 @@ export default function App() {
                             {wid === 'summary' && (
                               <div
                                 className={cn(
-                                  "p-[clamp(1.25rem,6cqw,2.5rem)] rounded-[clamp(2.25rem,14cqw,4rem)] shadow-2xl relative overflow-hidden group border border-white/20 [container-type:inline-size]",
+                                  "p-[6vw] rounded-[10vw] shadow-[0_2vw_6vw_rgba(0,0,0,0.35)] relative overflow-hidden group border-[0.35vw] border-white/20",
                                   theme.primary,
                                   "text-white"
                                 )}
@@ -2801,44 +2801,44 @@ export default function App() {
                                   transition={{ duration: 1, ease: "easeInOut" }}
                                   style={{ transform: "translate3d(0,0,0)" }}
                                 />
-                                <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
-                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
+                                <div className="absolute top-0 right-0 w-[30vw] h-[30vw] bg-white/10 rounded-full -mr-[10vw] -mt-[10vw] blur-[8vw] transition-all group-hover:scale-125" />
+                                <div className="absolute bottom-0 left-0 w-[22vw] h-[22vw] bg-black/10 rounded-full -ml-[10vw] -mb-[10vw] blur-[6vw]" />
 
 
-                                <div className="flex flex-wrap justify-between items-start gap-[clamp(0.75rem,4cqw,1.25rem)] mb-[clamp(1.25rem,8cqw,3rem)] relative z-10">
+                                <div className="flex flex-wrap justify-between items-start gap-[4vw] mb-[8vw] relative z-10">
                                   <div className="min-w-0 flex-1 overflow-hidden">
-                                    <p className={cn("text-[clamp(0.55rem,2.2cqw,0.65rem)] font-black uppercase tracking-[0.2em] mb-[clamp(0.4rem,2cqw,0.75rem)]", "text-white/60", "max-w-full overflow-hidden text-ellipsis whitespace-nowrap")}>{t('total_assets')}</p>
-                                    <div className="text-[clamp(1.6rem,10cqw,3rem)] leading-none font-black tracking-tighter drop-shadow-lg flex items-end min-w-0 overflow-hidden">
-                                      <span className="mr-[0.25em] flex-shrink-0">¥</span>
-                                      <div className="min-w-0 flex-1 overflow-hidden">
+                                    <p className={cn("text-[3.5vw] font-black uppercase tracking-[0.2em] mb-[2.5vw]", "text-white/60", "max-w-full overflow-hidden text-ellipsis whitespace-nowrap")}>{t('total_assets')}</p>
+                                    <div className="text-[8vw] leading-none font-black tracking-tighter drop-shadow-[0_1vw_2vw_rgba(0,0,0,0.35)] flex items-end min-w-0 overflow-hidden">
+                                      <span className="mr-[1.2vw] flex-shrink-0">¥</span>
+                                      <div className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                         <RollingNumber value={totalAssets} />
                                       </div>
                                     </div>
                                   </div>
-                                  <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-[clamp(0.75rem,4cqw,1rem)] py-[clamp(0.4rem,2cqw,0.5rem)] rounded-2xl text-[clamp(0.55rem,2.2cqw,0.65rem)] font-black uppercase tracking-widest flex items-center space-x-2 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                  <div className="bg-white/10 backdrop-blur-[3vw] border-[0.35vw] border-white/20 px-[3vw] py-[1.5vw] rounded-[4vw] text-[3.2vw] font-black uppercase tracking-widest flex items-center space-x-[2vw] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                    <div className="w-[2vw] h-[2vw] bg-green-400 rounded-full animate-pulse flex-shrink-0" />
                                     <span>{i18n.language}</span>
                                   </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-[clamp(0.75rem,5cqw,2.5rem)] relative z-10">
-                                  <div className="bg-white/10 backdrop-blur-md p-[clamp(0.75rem,4cqw,1.5rem)] rounded-[clamp(1.5rem,10cqw,2.5rem)] border border-white/10 transition-transform hover:scale-105">
-                                    <div className="flex items-center space-x-2 mb-[clamp(0.35rem,2cqw,0.5rem)] min-w-0 overflow-hidden">
-                                      <div className="w-[clamp(1.1rem,5cqw,1.5rem)] h-[clamp(1.1rem,5cqw,1.5rem)] bg-red-400/20 rounded-lg flex items-center justify-center flex-shrink-0 text-[clamp(0.8rem,4cqw,0.95rem)]">
+                                <div className="grid grid-cols-2 gap-[4vw] relative z-10">
+                                  <div className="bg-white/10 backdrop-blur-[2vw] p-[4vw] rounded-[7vw] border-[0.35vw] border-white/10 transition-transform hover:scale-105 overflow-hidden">
+                                    <div className="flex items-center space-x-[2vw] mb-[2vw] min-w-0 overflow-hidden">
+                                      <div className="w-[6vw] h-[6vw] bg-red-400/20 rounded-[2vw] flex items-center justify-center flex-shrink-0 text-[4vw]">
                                         <TrendingDown size="1em" className="text-red-200 max-w-full h-auto" />
                                       </div>
-                                      <span className={cn("text-[clamp(0.55rem,2.2cqw,0.65rem)] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('expense')}</span>
+                                      <span className={cn("text-[3.2vw] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('expense')}</span>
                                     </div>
-                                    <p className="text-[clamp(1.05rem,6cqw,1.5rem)] font-black">¥{formatCurrency(stats.expense)}</p>
+                                    <p className="text-[5vw] font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">¥{formatCurrency(stats.expense)}</p>
                                   </div>
-                                  <div className="bg-white/10 backdrop-blur-md p-[clamp(0.75rem,4cqw,1.5rem)] rounded-[clamp(1.5rem,10cqw,2.5rem)] border border-white/10 transition-transform hover:scale-105">
-                                    <div className="flex items-center space-x-2 mb-[clamp(0.35rem,2cqw,0.5rem)] min-w-0 overflow-hidden">
-                                      <div className="w-[clamp(1.1rem,5cqw,1.5rem)] h-[clamp(1.1rem,5cqw,1.5rem)] bg-green-400/20 rounded-lg flex items-center justify-center flex-shrink-0 text-[clamp(0.8rem,4cqw,0.95rem)]">
+                                  <div className="bg-white/10 backdrop-blur-[2vw] p-[4vw] rounded-[7vw] border-[0.35vw] border-white/10 transition-transform hover:scale-105 overflow-hidden">
+                                    <div className="flex items-center space-x-[2vw] mb-[2vw] min-w-0 overflow-hidden">
+                                      <div className="w-[6vw] h-[6vw] bg-green-400/20 rounded-[2vw] flex items-center justify-center flex-shrink-0 text-[4vw]">
                                         <TrendingUp size="1em" className="text-green-200 max-w-full h-auto" />
                                       </div>
-                                      <span className={cn("text-[clamp(0.55rem,2.2cqw,0.65rem)] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('income')}</span>
+                                      <span className={cn("text-[3.2vw] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('income')}</span>
                                     </div>
-                                    <p className="text-[clamp(1.05rem,6cqw,1.5rem)] font-black">¥{formatCurrency(stats.income)}</p>
+                                    <p className="text-[5vw] font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">¥{formatCurrency(stats.income)}</p>
                                   </div>
                                 </div>
                               </div>
