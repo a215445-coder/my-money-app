@@ -1170,33 +1170,38 @@ export default function App() {
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className={cn(
-              "w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl relative",
-              isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+              "w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden",
+              isDarkMode ? "bg-slate-800/90 text-white" : "bg-white/90 text-gray-900"
             )}
           >
+            <div className="absolute inset-0 backdrop-blur-2xl -z-10" />
+
             {/* Close button for mobile accessibility */}
             <button
               onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }}
               className={cn(
-                "absolute top-6 right-8 p-3 rounded-full transition-all active:scale-90 z-10",
+                "absolute top-6 right-6 p-2 rounded-full transition-all active:scale-90 z-10",
                 isDarkMode ? "bg-slate-700 text-white/60" : "bg-gray-100 text-gray-400"
               )}
             >
-              <X size={24} />
+              <X size={20} />
             </button>
 
-            <div className="flex justify-between items-center mb-10 pr-12">
-              <h2 className="text-2xl font-black">{editingTransaction ? t('edit_bill') : t('add_bill')}</h2>
+            <div className="mb-6">
+              <h2 className="text-xl font-black">{editingTransaction ? t('edit_bill') : t('add_bill')}</h2>
             </div>
-            <TransactionForm
-              accounts={accounts}
-              transactions={transactions}
-              rates={rates}
-              onSubmit={addOrUpdateTransaction}
-              initialData={editingTransaction || undefined}
-              onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
-              isDarkMode={isDarkMode}
-            />
+
+            <div className="max-h-[70vh] overflow-y-auto no-scrollbar pb-4">
+              <TransactionForm
+                accounts={accounts}
+                transactions={transactions}
+                rates={rates}
+                onSubmit={addOrUpdateTransaction}
+                initialData={editingTransaction || undefined}
+                onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
+                isDarkMode={isDarkMode}
+              />
+            </div>
           </motion.div>
         </div>
       )}
@@ -1749,8 +1754,8 @@ function TransactionForm({
         </div>
       </div>
       <div className="flex space-x-3 pt-4 pb-[env(safe-area-inset-bottom)]">
-        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2rem] font-black text-sm active:scale-95 transition-all">{t('delete')}</button>}
-        <button type="submit" className={cn("flex-[2] py-5 rounded-[2rem] font-black text-sm shadow-xl active:scale-95 transition-all", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
+        {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2.5rem] font-black text-sm active:scale-95 transition-all">{t('delete')}</button>}
+        <button type="submit" className={cn("flex-[3] py-5 rounded-[2.5rem] font-black text-sm shadow-xl active:scale-95 transition-all", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
       </div>
     </form>
   );
