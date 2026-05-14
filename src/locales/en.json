@@ -30,13 +30,21 @@
       "financial_freedom": "Goal-driven allocation with compounding and sustainability in mind."
     }
   },
-  "stats": {
+  "stats_ui": {
     "income_radar_title": "Income Radar",
     "income_radar_hint": "Tap a vertex to see guidance for this income source.",
     "mock": "Mock"
   },
   "pro": {
     "unlock_income_radar": "Lifetime unlock: income source radar for structure and suggestions."
+  },
+  "export_viz": {
+    "trend_line": "Trend Line",
+    "radar": "Income / Expense Radar",
+    "category_donut": "Category Donut Chart",
+    "savings_progress": "Savings Progress",
+    "summary": "Summary",
+    "watermark": "Exclusive for Black-Gold VIP"
   },
   "income_sources": {
     "salary": "Salary Income",

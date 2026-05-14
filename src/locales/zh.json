@@ -30,13 +30,21 @@
       "financial_freedom": "目标导向的资金分配，关注复利与可持续。"
     }
   },
-  "stats": {
+  "stats_ui": {
     "income_radar_title": "收入雷达",
     "income_radar_hint": "点击雷达图任一顶点，查看该收入来源建议。",
     "mock": "示例"
   },
   "pro": {
     "unlock_income_radar": "永久会员解锁：收入来源雷达，查看结构与建议。"
+  },
+  "export_viz": {
+    "trend_line": "消费趋势折线图",
+    "radar": "收支分布雷达",
+    "category_donut": "分类占比圆环图",
+    "savings_progress": "储蓄比例进度条",
+    "summary": "三大汇总",
+    "watermark": "Exclusive for Black-Gold VIP"
   },
   "income_sources": {
     "salary": "工资收入",

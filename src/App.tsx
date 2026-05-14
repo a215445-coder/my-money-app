@@ -1143,11 +1143,16 @@ export default function App() {
     const element = document.getElementById('stats-content');
     if (!element) return;
 
-    // Temporarily show branding for export
-    const branding = element.querySelector('.show-on-export');
-    if (branding) branding.classList.remove('hidden');
+    const setExportMode = (root: HTMLElement, on: boolean) => {
+      root.querySelectorAll('.show-on-export').forEach((el) => el.classList.toggle('hidden', !on));
+      root.querySelectorAll('.export-only').forEach((el) => el.classList.toggle('hidden', !on));
+      root.querySelectorAll('.export-hide').forEach((el) => el.classList.toggle('hidden', on));
+    };
+
+    setExportMode(element, true);
 
     try {
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const canvas = await html2canvas(element, {
         backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
         scale: 2,
@@ -1156,8 +1161,7 @@ export default function App() {
         onclone: (clonedDoc) => {
           const clonedElement = clonedDoc.getElementById('stats-content');
           if (clonedElement) {
-            const b = clonedElement.querySelector('.show-on-export');
-            if (b) b.classList.remove('hidden');
+            setExportMode(clonedElement as any, true);
           }
         }
       });
@@ -1169,7 +1173,7 @@ export default function App() {
     } catch (err) {
       console.error('Export failed', err);
     } finally {
-      if (branding) branding.classList.add('hidden');
+      setExportMode(element, false);
     }
   };
 
@@ -1209,10 +1213,16 @@ export default function App() {
     const element = document.getElementById('stats-content');
     if (!element) return;
 
-    const branding = element.querySelector('.show-on-export');
-    if (branding) branding.classList.remove('hidden');
+    const setExportMode = (root: HTMLElement, on: boolean) => {
+      root.querySelectorAll('.show-on-export').forEach((el) => el.classList.toggle('hidden', !on));
+      root.querySelectorAll('.export-only').forEach((el) => el.classList.toggle('hidden', !on));
+      root.querySelectorAll('.export-hide').forEach((el) => el.classList.toggle('hidden', on));
+    };
+
+    setExportMode(element, true);
 
     try {
+      await new Promise<void>(resolve => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
       const canvas = await html2canvas(element, {
         backgroundColor: isDarkMode ? '#0f172a' : '#f8fafc',
         scale: 2,
@@ -1229,7 +1239,7 @@ export default function App() {
     } catch (err) {
       console.error('Export failed', err);
     } finally {
-      if (branding) branding.classList.add('hidden');
+      setExportMode(element, false);
     }
   };
 
@@ -3240,473 +3250,740 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  {/* Pro Forecast Card */}
-                  {isProMember ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                    >
-                      <div className="absolute top-0 right-0 p-4">
-                        <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">{t('pro.analysis_badge')}</div>
-                      </div>
-                      <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-                      <div className="flex items-end justify-between mb-4">
-                        <div>
-                          <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>{t('pro.forecast_estimated_month_total')}</p>
-                          <p className="text-3xl font-black">{formatMoney(stats.predictedTotal)}</p>
-                        </div>
-                        <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
-                          <p className="text-[10px] font-black uppercase tracking-widest mb-1">{t('pro.over_budget_risk')}</p>
-                          <p className="text-lg font-black">{stats.isOverBudgetRisk ? t('pro.risk_high') : t('pro.risk_low')}</p>
-                        </div>
-                      </div>
-                      <div className={cn("w-full h-2 rounded-full overflow-hidden", isBlackGold ? "bg-white/10" : "bg-gray-100")}>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
-                          className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
-                        />
-                      </div>
-                      <p className={cn("mt-4 text-[10px] font-bold leading-relaxed", mutedText)}>
-                        {t('pro.forecast_desc', {
-                          days: differenceInDays(new Date(), startOfMonth(currentDate)) + 1,
-                          amount: formatMoney(stats.predictedTotal),
-                        })}{' '}
-                        {stats.isOverBudgetRisk ? t('pro.forecast_advice_over') : t('pro.forecast_advice_ok')}
-                      </p>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
-                      <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_forecast')}</p>
-                      <div className="mt-5 flex items-center justify-between">
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.lab')}</div>
-                        <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                          {t('pro.unlock_price')}
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  <div className={cn("p-8", surfaceCard())}>
-                    <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
-                    {stats.trendData.some(d => d.amount > 0) ? (
-                      <div className="h-48 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={stats.trendData}>
-                            <defs>
-                              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={accentHex} stopOpacity={0.3} />
-                                <stop offset="95%" stopColor={accentHex} stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkUI ? "#334155" : "#f1f5f9"} />
-                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
-                            <YAxis hide />
-                            <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                            <Area type="monotone" dataKey="amount" stroke={accentHex} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    ) : (
-                      <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
-                        <Smile size={32} className="mb-2 opacity-20" />
-                        <p className="text-xs font-bold">{t('no_bills')}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {isProMember ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.08 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                    >
-                      <motion.div
-                        onPointerDown={() => setPressedStatsModule('consumptionRadar')}
-                        onPointerUp={() => setPressedStatsModule(null)}
-                        onPointerCancel={() => setPressedStatsModule(null)}
-                        onPointerLeave={() => setPressedStatsModule(null)}
-                        animate={pressedStatsModule === 'consumptionRadar' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
-                        transition={pressedStatsModule === 'consumptionRadar' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
-                        className="relative"
-                      >
-                        <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
-                          <PieIcon size="1.5em" className="mr-[2.4vw] text-[#D4AF37] max-w-full h-auto" />
-                          {t('pro.consumption_radar_title')}
-                        </h3>
-                        <div className="h-52 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart
-                              cx="50%"
-                              cy="50%"
-                              outerRadius="78%"
-                              data={(() => {
-                                const dims = ['餐饮', '购物', '娱乐', '交通', '医疗', '教育'];
-                                const map = stats.pieData.reduce<Record<string, number>>((acc, x) => {
-                                  acc[x.name] = x.value;
-                                  return acc;
-                                }, {});
-                                const total = Math.max(0, stats.expense);
-                                return dims.map(subject => {
-                                  const value = map[subject] || 0;
-                                  const pct = total > 0 ? (value / total) * 100 : 0;
-                                  return { subject, value, pct };
-                                });
-                              })()}
-                            >
-                              <defs>
-                                <linearGradient id="luxRadarGold" x1="0" y1="0" x2="1" y2="1">
-                                  <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
-                                  <stop offset="45%" stopColor="#D4AF37" stopOpacity="0.95" />
-                                  <stop offset="100%" stopColor="#FFF2C6" stopOpacity="0.35" />
-                                </linearGradient>
-                              </defs>
-                              <PolarGrid stroke="rgba(212,175,55,0.22)" />
-                              <PolarAngleAxis
-                                dataKey="subject"
-                                tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(245,245,245,0.7)' }}
-                                tickFormatter={(v) => t(`categories.${v}`)}
-                              />
-                              <Radar
-                                name={t('month')}
-                                dataKey="pct"
-                                stroke="url(#luxRadarGold)"
-                                fill="url(#luxRadarGold)"
-                                fillOpacity={0.22}
-                                strokeWidth={3}
-                                isAnimationActive
-                                animationDuration={900}
-                                dot={(props: any) => {
-                                  const subject = props?.payload?.subject as string | undefined;
-                                  if (!subject) return null;
-                                  const on = consumptionRadarFocus === subject;
-                                  return (
-                                    <circle
-                                      cx={props.cx}
-                                      cy={props.cy}
-                                      r={on ? 6 : 4}
-                                      fill={on ? "#D4AF37" : "rgba(212,175,55,0.55)"}
-                                      stroke={on ? "#FFF2C6" : "rgba(0,0,0,0)"}
-                                      strokeWidth={on ? 2 : 0}
-                                      style={{ cursor: 'pointer' }}
-                                      onClick={() => setConsumptionRadarFocus(subject)}
-                                    />
-                                  );
-                                }}
-                              />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        </div>
-
-                        <div className="mt-[3.2vw]">
-                          {(() => {
-                            if (!consumptionRadarFocus) {
-                              return <div className="text-[3.2vw] font-bold text-white/55">{t('pro.consumption_radar_hint')}</div>;
-                            }
-                            const map = stats.pieData.reduce<Record<string, number>>((acc, x) => {
-                              acc[x.name] = x.value;
-                              return acc;
-                            }, {});
-                            const total = Math.max(0, stats.expense);
-                            const value = map[consumptionRadarFocus] || 0;
-                            const pct = total > 0 ? (value / total) * 100 : 0;
-                            const adviceMap: Record<string, string> = {
-                              '餐饮': t('pro.consumption_radar_advice.food'),
-                              '购物': t('pro.consumption_radar_advice.shopping'),
-                              '娱乐': t('pro.consumption_radar_advice.entertainment'),
-                              '交通': t('pro.consumption_radar_advice.transport'),
-                              '医疗': t('pro.consumption_radar_advice.medical'),
-                              '教育': t('pro.consumption_radar_advice.education'),
-                            };
-                            return (
-                              <div className="flex items-start justify-between gap-[3vw]">
-                                <div className="min-w-0 overflow-hidden">
-                                  <div className="text-[3.6vw] font-black text-[#D4AF37] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                    {t(`categories.${consumptionRadarFocus}`)}
-                                  </div>
-                                  <div className="mt-[1.2vw] text-[3.1vw] font-bold text-white/65 leading-snug">
-                                    {adviceMap[consumptionRadarFocus] || t('pro.consumption_radar_advice.default')}
-                                  </div>
-                                </div>
-                                <div className="flex-shrink-0 text-right">
-                                  <div className="text-[4.8vw] leading-none font-black text-white">{pct.toFixed(1)}%</div>
-                                  <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">{formatMoney(value)}</div>
-                                </div>
+                  <div className="hidden export-only">
+                    <div className="overflow-hidden rounded-[4.6vw] border border-[#D4AF37]/20 bg-black/35 backdrop-blur-2xl">
+                      <div className="p-[5vw] space-y-[4.8vw]">
+                        <div className="grid grid-cols-3 gap-[3vw]">
+                          {[
+                            { key: 'income', label: t('income'), value: stats.income, color: "text-[#00C853]" },
+                            { key: 'expense', label: t('expense'), value: stats.expense, color: "text-[#D4AF37]" },
+                            { key: 'balance', label: t('monthly_balance'), value: stats.balance, color: stats.balance >= 0 ? "text-white" : "text-rose-400" },
+                          ].map((x) => (
+                            <div key={x.key} className="min-w-0 overflow-hidden">
+                              <div className="text-[2.8vw] font-black uppercase tracking-widest text-white/45 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                {x.label}
                               </div>
-                            );
-                          })()}
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.08 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                      onClick={openProUpsell}
-                    >
-                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#D4AF37]" />{t('pro.consumption_radar_title')}</h3>
-                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_consumption_radar')}</p>
-                      <div className="mt-5 flex items-center justify-between">
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
-                        <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                          {t('upgrade_pro')}
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {isProMember ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.08 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                    >
-                      <motion.div
-                        onPointerDown={() => setPressedStatsModule('incomeRadar')}
-                        onPointerUp={() => setPressedStatsModule(null)}
-                        onPointerCancel={() => setPressedStatsModule(null)}
-                        onPointerLeave={() => setPressedStatsModule(null)}
-                        animate={pressedStatsModule === 'incomeRadar' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
-                        transition={pressedStatsModule === 'incomeRadar' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
-                        className="relative"
-                      >
-                        <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
-                          <PieIcon size="1.5em" className="mr-[2.4vw] text-[#00C853] max-w-full h-auto" />
-                          {t('stats.income_radar_title')}
-                        </h3>
-                        <div className="h-52 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart
-                              cx="50%"
-                              cy="50%"
-                              outerRadius="78%"
-                              data={(() => {
-                                const incomeMock = [
-                                  { key: 'salary', value: 85 },
-                                  { key: 'investment', value: 60 },
-                                  { key: 'side_hustle', value: 45 },
-                                  { key: 'bonus', value: 70 },
-                                  { key: 'other_transfer', value: 30 }
-                                ] as const;
-                                return incomeMock.map(i => ({ key: i.key, subject: t(`income_sources.${i.key}`), value: i.value }));
-                              })()}
-                            >
-                              <defs>
-                                <linearGradient id="luxRadarEmerald" x1="0" y1="0" x2="1" y2="1">
-                                  <stop offset="0%" stopColor="#00C853" stopOpacity="0.2" />
-                                  <stop offset="50%" stopColor="#00C853" stopOpacity="0.95" />
-                                  <stop offset="100%" stopColor="#B9FFCF" stopOpacity="0.35" />
-                                </linearGradient>
-                              </defs>
-                              <PolarGrid stroke="rgba(0,200,83,0.22)" />
-                              <PolarAngleAxis
-                                dataKey="subject"
-                                tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(245,245,245,0.7)' }}
-                                tickFormatter={(v) => String(v)}
-                              />
-                              <Radar
-                                name={t('income')}
-                                dataKey="value"
-                                stroke="url(#luxRadarEmerald)"
-                                fill="url(#luxRadarEmerald)"
-                                fillOpacity={0.22}
-                                strokeWidth={3}
-                                isAnimationActive
-                                animationDuration={900}
-                                dot={(props: any) => {
-                                  const key = props?.payload?.key as string | undefined;
-                                  if (!key) return null;
-                                  const on = incomeRadarFocus === key;
-                                  return (
-                                    <circle
-                                      cx={props.cx}
-                                      cy={props.cy}
-                                      r={on ? 6 : 4}
-                                      fill={on ? "#00C853" : "rgba(0,200,83,0.55)"}
-                                      stroke={on ? "#B9FFCF" : "rgba(0,0,0,0)"}
-                                      strokeWidth={on ? 2 : 0}
-                                      style={{ cursor: 'pointer' }}
-                                      onClick={() => setIncomeRadarFocus(key)}
-                                    />
-                                  );
-                                }}
-                              />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        </div>
-
-                        <div className="mt-[3.2vw]">
-                          {(() => {
-                            if (!incomeRadarFocus) {
-                              return <div className="text-[3.2vw] font-bold text-white/55">{t('stats.income_radar_hint')}</div>;
-                            }
-                            const incomeMock = [
-                              { key: 'salary', value: 85 },
-                              { key: 'investment', value: 60 },
-                              { key: 'side_hustle', value: 45 },
-                              { key: 'bonus', value: 70 },
-                              { key: 'other_transfer', value: 30 }
-                            ] as const;
-                            const found = incomeMock.find(i => i.key === incomeRadarFocus);
-                            const value = found?.value ?? 0;
-                            return (
-                              <div className="flex items-start justify-between gap-[3vw]">
-                                <div className="min-w-0 overflow-hidden">
-                                  <div className="text-[3.6vw] font-black text-[#00C853] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                    {t(`income_sources.${incomeRadarFocus}`)}
-                                  </div>
-                                  <div className="mt-[1.2vw] text-[3.1vw] font-bold text-white/65 leading-snug">
-                                    {t(`income_sources_advice.${incomeRadarFocus}`)}
-                                  </div>
-                                </div>
-                                <div className="flex-shrink-0 text-right">
-                                  <div className="text-[4.8vw] leading-none font-black text-white">{value.toFixed(0)}%</div>
-                                  <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">{t('stats.mock')}</div>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      </motion.div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.08 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                      onClick={openProUpsell}
-                    >
-                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#00C853]" />{t('stats.income_radar_title')}</h3>
-                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_income_radar')}</p>
-                      <div className="mt-5 flex items-center justify-between">
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
-                        <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                          {t('upgrade_pro')}
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
-
-                  {isProMember ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.12 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                    >
-                      <motion.div
-                        onPointerDown={() => setPressedStatsModule('savingsInsights')}
-                        onPointerUp={() => setPressedStatsModule(null)}
-                        onPointerCancel={() => setPressedStatsModule(null)}
-                        onPointerLeave={() => setPressedStatsModule(null)}
-                        animate={pressedStatsModule === 'savingsInsights' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
-                        transition={pressedStatsModule === 'savingsInsights' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
-                        className="relative"
-                      >
-                        <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
-                          <Sparkles size="1.5em" className="mr-[2.4vw] text-[#D4AF37] max-w-full h-auto" />
-                          {t('pro.savings_insights_title')}
-                        </h3>
-
-                        {(() => {
-                          const lastMonthExpense = stats.expense - stats.momDiff;
-                          const improvement = lastMonthExpense <= 0 ? 0 : (lastMonthExpense - stats.expense) / lastMonthExpense;
-                          const clamped = clamp(improvement, -1, 1);
-                          const progress = Math.min(1, Math.max(0, clamped));
-                          const optimizationSpace = Math.max(0, stats.momDiff);
-                          const improvedAmount = Math.max(0, lastMonthExpense - stats.expense);
-                          const isBetter = improvement > 0.001;
-                          const isWorse = improvement < -0.001;
-                          const accent = isBetter ? "#D4AF37" : isWorse ? "#FB7185" : "rgba(245,245,245,0.35)";
-                          return (
-                            <div className="flex items-center justify-between gap-[4vw]">
-                              <div className="min-w-0 overflow-hidden">
-                                <div className="text-[3.2vw] font-bold text-white/60">{t('pro.savings_insights_subtitle')}</div>
-                                <div className="mt-[2vw] text-[6.4vw] leading-none font-black text-white whitespace-nowrap overflow-hidden">
-                                  <span className="mr-[1.2vw] text-[#D4AF37] whitespace-nowrap">{displayCurrency.symbol}</span>
-                                  <RollingNumber value={convertCNYToDisplay(isWorse ? optimizationSpace : improvedAmount)} />
-                                </div>
-                                <div className="mt-[1.8vw] text-[3.2vw] font-bold text-white/55 leading-snug">
-                                  {isWorse
-                                    ? t('pro.savings_insights_tip_over', { amount: formatMoney(optimizationSpace) })
-                                    : isBetter
-                                      ? t('pro.savings_insights_tip_good', { amount: formatMoney(improvedAmount) })
-                                      : t('pro.savings_insights_tip_flat')}
-                                </div>
-                              </div>
-
-                              <div className="flex-shrink-0">
-                                <svg width="92" height="92" viewBox="0 0 120 120">
-                                  <defs>
-                                    <linearGradient id="luxSavingsRing" x1="0" y1="0" x2="1" y2="1">
-                                      <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
-                                      <stop offset="55%" stopColor={accent} stopOpacity="1" />
-                                      <stop offset="100%" stopColor="#FFF2C6" stopOpacity={isBetter ? "0.7" : "0"} />
-                                    </linearGradient>
-                                  </defs>
-                                  <circle cx="60" cy="60" r="44" stroke="rgba(255,255,255,0.12)" strokeWidth="10" fill="none" />
-                                  <motion.circle
-                                    cx="60"
-                                    cy="60"
-                                    r="44"
-                                    stroke="url(#luxSavingsRing)"
-                                    strokeWidth="10"
-                                    fill="none"
-                                    strokeLinecap="round"
-                                    style={{ rotate: -90, transformOrigin: "60px 60px" }}
-                                    initial={{ pathLength: 0 }}
-                                    animate={{ pathLength: isBetter ? progress : isWorse ? Math.min(1, Math.abs(clamped)) : 0 }}
-                                    transition={{ duration: 0.9, ease: proUpsellSheetEase }}
-                                  />
-                                </svg>
-                                <div className="mt-2 text-center text-[3.2vw] font-black text-white/75">
-                                  {(Math.abs(improvement) * 100).toFixed(0)}%
-                                </div>
+                              <div className={cn("mt-[1.2vw] text-[4.8vw] leading-none font-black whitespace-nowrap overflow-hidden text-ellipsis", x.color)}>
+                                {formatMoney(x.value)}
                               </div>
                             </div>
-                          );
-                        })()}
-                      </motion.div>
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.12 }}
-                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
-                      onClick={openProUpsell}
-                    >
-                      <h3 className="font-black text-lg mb-3 flex items-center"><Sparkles size={20} className="mr-2 text-[#D4AF37]" />{t('pro.savings_insights_title')}</h3>
-                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_savings_insights')}</p>
-                      <div className="mt-5 flex items-center justify-between">
-                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.insights')}</div>
-                        <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                          {t('upgrade_pro')}
-                        </motion.button>
-                      </div>
-                    </motion.div>
-                  )}
+                          ))}
+                        </div>
 
-                  <div className="flex justify-center pt-4">
-                    <button
-                      onClick={() => requestExport('image')}
-                      className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all font-black", theme.primary, "text-white")}
-                    >
-                      <Share2 size={20} />
-                      <span>{t('export_long_image')}</span>
-                    </button>
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-[#D4AF37]/35 to-transparent" />
+
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <div className="text-[3.6vw] font-black text-white">{t('export_viz.trend_line')}</div>
+                            <div className="text-[2.8vw] font-bold text-white/45 whitespace-nowrap">{getFilterLabel()}</div>
+                          </div>
+                          <div className="mt-[2.8vw] h-[44vw] w-full rounded-[4vw] border border-white/10 bg-black/25 overflow-hidden drop-shadow-[0_0_18px_rgba(212,175,55,0.18)]">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart
+                                data={(() => {
+                                  const start = startOfMonth(currentDate);
+                                  const end = endOfMonth(currentDate);
+                                  const days = eachDayOfInterval({ start, end });
+                                  const map: Record<string, number> = {};
+                                  for (const d of days) map[format(d, 'yyyy-MM-dd')] = 0;
+                                  transactions
+                                    .filter(tx => tx.type === 'expense' && isWithinInterval(parseISO(tx.date), { start, end }))
+                                    .forEach(tx => {
+                                      const k = format(parseISO(tx.date), 'yyyy-MM-dd');
+                                      map[k] = (map[k] || 0) + tx.amount;
+                                    });
+                                  return days.map(d => ({
+                                    day: format(d, 'd'),
+                                    amount: map[format(d, 'yyyy-MM-dd')] || 0,
+                                  }));
+                                })()}
+                                margin={{ left: 10, right: 10, top: 10, bottom: 0 }}
+                              >
+                                <defs>
+                                  <linearGradient id="exportGoldLine" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.35" />
+                                    <stop offset="45%" stopColor="#F9DF91" stopOpacity="0.95" />
+                                    <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.45" />
+                                  </linearGradient>
+                                  <linearGradient id="exportGoldArea" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.30" />
+                                    <stop offset="100%" stopColor="#D4AF37" stopOpacity="0" />
+                                  </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 6" vertical={false} stroke="rgba(255,255,255,0.10)" />
+                                <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 800, fill: 'rgba(245,245,245,0.55)' }} />
+                                <YAxis hide />
+                                <Area type="monotone" dataKey="amount" stroke="url(#exportGoldLine)" strokeWidth={4} fill="url(#exportGoldArea)" isAnimationActive={false} />
+                              </AreaChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </div>
+
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-[#D4AF37]/35 to-transparent" />
+
+                        <div>
+                          <div className="text-[3.6vw] font-black text-white">{t('export_viz.radar')}</div>
+                          <div className="mt-[2.8vw] grid grid-cols-2 gap-[3vw]">
+                            <div className="rounded-[4vw] border border-white/10 bg-black/25 overflow-hidden">
+                              <div className="px-[3.6vw] pt-[3.2vw] text-[2.8vw] font-black text-white/70 whitespace-nowrap overflow-hidden text-ellipsis">{t('pro.consumption_radar_title')}</div>
+                              <div className="h-[40vw] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <RadarChart
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius="78%"
+                                    data={(() => {
+                                      const dims = ['餐饮', '购物', '娱乐', '交通', '医疗', '教育'];
+                                      const map = stats.pieData.reduce<Record<string, number>>((acc, x) => {
+                                        acc[x.name] = x.value;
+                                        return acc;
+                                      }, {});
+                                      const total = Math.max(0, stats.expense);
+                                      return dims.map(subject => {
+                                        const value = map[subject] || 0;
+                                        const pct = total > 0 ? (value / total) * 100 : 0;
+                                        return { subject, pct };
+                                      });
+                                    })()}
+                                  >
+                                    <defs>
+                                      <linearGradient id="exportRadarGold" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.20" />
+                                        <stop offset="45%" stopColor="#D4AF37" stopOpacity="0.95" />
+                                        <stop offset="100%" stopColor="#FFF2C6" stopOpacity="0.35" />
+                                      </linearGradient>
+                                    </defs>
+                                    <PolarGrid stroke="rgba(212,175,55,0.18)" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fontWeight: 900, fill: 'rgba(245,245,245,0.55)' }} tickFormatter={(v) => t(`categories.${v}`)} />
+                                    <Radar dataKey="pct" stroke="url(#exportRadarGold)" fill="url(#exportRadarGold)" fillOpacity={0.18} strokeWidth={3} isAnimationActive={false} />
+                                  </RadarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+
+                            <div className="rounded-[4vw] border border-white/10 bg-black/25 overflow-hidden">
+                              <div className="px-[3.6vw] pt-[3.2vw] text-[2.8vw] font-black text-white/70 whitespace-nowrap overflow-hidden text-ellipsis">{t('stats_ui.income_radar_title')}</div>
+                              <div className="h-[40vw] w-full">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <RadarChart
+                                    cx="50%"
+                                    cy="50%"
+                                    outerRadius="78%"
+                                    data={(() => {
+                                      const incomeMock = [
+                                        { key: 'salary', value: 85 },
+                                        { key: 'investment', value: 60 },
+                                        { key: 'side_hustle', value: 45 },
+                                        { key: 'bonus', value: 70 },
+                                        { key: 'other_transfer', value: 30 }
+                                      ] as const;
+                                      return incomeMock.map(i => ({ subject: t(`income_sources.${i.key}`), value: i.value }));
+                                    })()}
+                                  >
+                                    <defs>
+                                      <linearGradient id="exportRadarGreen" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stopColor="#00C853" stopOpacity="0.20" />
+                                        <stop offset="50%" stopColor="#00C853" stopOpacity="0.95" />
+                                        <stop offset="100%" stopColor="#B9FFCF" stopOpacity="0.35" />
+                                      </linearGradient>
+                                    </defs>
+                                    <PolarGrid stroke="rgba(0,200,83,0.18)" />
+                                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fontWeight: 900, fill: 'rgba(245,245,245,0.55)' }} tickFormatter={(v) => String(v)} />
+                                    <Radar dataKey="value" stroke="url(#exportRadarGreen)" fill="url(#exportRadarGreen)" fillOpacity={0.16} strokeWidth={3} isAnimationActive={false} />
+                                  </RadarChart>
+                                </ResponsiveContainer>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-[#D4AF37]/35 to-transparent" />
+
+                        <div className="grid grid-cols-1 gap-[3vw]">
+                          <div>
+                            <div className="text-[3.6vw] font-black text-white">{t('export_viz.category_donut')}</div>
+                            <div className="mt-[2.8vw] rounded-[4vw] border border-white/10 bg-black/25 overflow-hidden p-[3.6vw]">
+                              <div className="relative w-full h-[52vw]">
+                                <ResponsiveContainer width="100%" height="100%">
+                                  <PieChart>
+                                    <Pie data={stats.pieData.slice(0, 8)} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="90%" paddingAngle={3} isAnimationActive={false}>
+                                      {stats.pieData.slice(0, 8).map((d) => (
+                                        <Cell key={d.name} fill={d.color} />
+                                      ))}
+                                    </Pie>
+                                  </PieChart>
+                                </ResponsiveContainer>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                  <div className="text-[2.8vw] font-black uppercase tracking-widest text-white/45">{t('expense')}</div>
+                                  <div className="mt-[1vw] text-[4.6vw] leading-none font-black text-white whitespace-nowrap">{formatMoney(stats.expense)}</div>
+                                </div>
+                              </div>
+                              <div className="mt-[3vw] grid grid-cols-2 gap-[2.2vw]">
+                                {stats.pieData.slice(0, 6).map((d) => {
+                                  const total = stats.pieData.reduce((s, x) => s + x.value, 0) || 1;
+                                  const pct = (d.value / total) * 100;
+                                  return (
+                                    <div key={d.name} className="flex items-center justify-between min-w-0 overflow-hidden">
+                                      <div className="flex items-center space-x-2 min-w-0 overflow-hidden">
+                                        <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                                        <div className="text-[2.8vw] font-black text-white/75 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                          {t(`categories.${d.name}`)}
+                                        </div>
+                                      </div>
+                                      <div className="text-[2.8vw] font-black text-white/55 flex-shrink-0">{pct.toFixed(0)}%</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div>
+                            <div className="text-[3.6vw] font-black text-white">{t('export_viz.savings_progress')}</div>
+                            {(() => {
+                              const income = Math.max(0, stats.income);
+                              const expense = Math.max(0, stats.expense);
+                              const balance = income - expense;
+                              const rate = income <= 0 ? 0 : clamp(balance / income, -1, 1);
+                              const positive = Math.max(0, rate);
+                              const pct = (positive * 100);
+                              return (
+                                <div className="mt-[2.8vw] rounded-[4vw] border border-white/10 bg-black/25 overflow-hidden p-[3.6vw]">
+                                  <div className="flex items-end justify-between">
+                                    <div className="text-[2.8vw] font-bold text-white/55">{t('monthly_balance')}</div>
+                                    <div className="text-[4.6vw] leading-none font-black text-white whitespace-nowrap">{(pct).toFixed(0)}%</div>
+                                  </div>
+                                  <div className="mt-[2.6vw] h-[3.4vw] rounded-full overflow-hidden bg-white/10">
+                                    <div className="h-full" style={{ width: `${clamp(pct, 0, 100)}%`, background: "linear-gradient(90deg, rgba(0,200,83,0.95), rgba(212,175,55,0.95))" }} />
+                                  </div>
+                                  <div className="mt-[2.6vw] flex items-center justify-between text-[2.8vw] font-bold text-white/60">
+                                    <div className="whitespace-nowrap">{t('income')}: {formatMoney(income)}</div>
+                                    <div className="whitespace-nowrap">{t('expense')}: {formatMoney(expense)}</div>
+                                    <div className="whitespace-nowrap">{t('monthly_balance')}: {formatMoney(balance)}</div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </div>
+
+                        <div className="h-px w-full bg-gradient-to-r from-transparent via-[#D4AF37]/35 to-transparent" />
+
+                        <div>
+                          <div className="text-[3.6vw] font-black text-white">{t('wealth_milestone.title')}</div>
+                          <div className="mt-[2.8vw] overflow-hidden rounded-[4vw] border border-white/10 bg-black/25 p-[3.6vw]">
+                            <div className="flex items-center justify-between">
+                              <div className="text-[2.8vw] font-bold text-white/55 whitespace-nowrap">{t('wealth_milestone.next_goal')}</div>
+                              <div className="text-[2.8vw] font-black text-[#D4AF37] whitespace-nowrap">{formatMilestoneMoney(vaultNextTarget)}</div>
+                            </div>
+                            <div className="mt-[3vw] w-full aspect-[16/9]">
+                              <svg className="w-full h-full" viewBox="0 0 160 90" preserveAspectRatio="none">
+                                <defs>
+                                  <linearGradient id="exportMilestoneBorder" x1="0" y1="1" x2="1" y2="0">
+                                    <stop offset="0%" stopColor="#D4AF37" stopOpacity="1" />
+                                    <stop offset="100%" stopColor="#F9DF91" stopOpacity="1" />
+                                  </linearGradient>
+                                  <linearGradient id="exportMilestoneFill" x1="0" y1="1" x2="1" y2="0">
+                                    <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.9" />
+                                    <stop offset="60%" stopColor="#F9DF91" stopOpacity="0.55" />
+                                    <stop offset="100%" stopColor="#D4AF37" stopOpacity="0.2" />
+                                  </linearGradient>
+                                  <clipPath id="exportMilestoneClip">
+                                    <polygon points="0,90 160,0 160,90" />
+                                  </clipPath>
+                                </defs>
+                                <polygon points="0,90 160,0 160,90" fill="rgba(20, 20, 20, 0.8)" />
+                                <g clipPath="url(#exportMilestoneClip)">
+                                  <rect x="0" y={90 - 90 * clamp(vaultFillPct, 0, 1)} width="160" height="90" fill="url(#exportMilestoneFill)" />
+                                  <rect x="0" y="0" width="160" height="90" fill="rgba(255,255,255,0.06)" />
+                                </g>
+                                <polygon points="0,90 160,0 160,90" fill="none" stroke="url(#exportMilestoneBorder)" strokeWidth="2" />
+                              </svg>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="pt-[2vw] flex items-end justify-between">
+                          <div className="text-[2.6vw] font-bold text-white/45 whitespace-nowrap">
+                            {format(currentDate, 'yyyy-MM', { locale: dateLocale })}
+                          </div>
+                          <div className="text-[2.6vw] font-black text-[#D4AF37]/75 whitespace-nowrap">
+                            {t('export_viz.watermark')}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="export-hide space-y-6">
+                    {/* Pro Forecast Card */}
+                    {isProMember ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      >
+                        <div className="absolute top-0 right-0 p-4">
+                          <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">{t('pro.analysis_badge')}</div>
+                        </div>
+                        <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
+                        <div className="flex items-end justify-between mb-4">
+                          <div>
+                            <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>{t('pro.forecast_estimated_month_total')}</p>
+                            <p className="text-3xl font-black">{formatMoney(stats.predictedTotal)}</p>
+                          </div>
+                          <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
+                            <p className="text-[10px] font-black uppercase tracking-widest mb-1">{t('pro.over_budget_risk')}</p>
+                            <p className="text-lg font-black">{stats.isOverBudgetRisk ? t('pro.risk_high') : t('pro.risk_low')}</p>
+                          </div>
+                        </div>
+                        <div className={cn("w-full h-2 rounded-full overflow-hidden", isBlackGold ? "bg-white/10" : "bg-gray-100")}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
+                            className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
+                          />
+                        </div>
+                        <p className={cn("mt-4 text-[10px] font-bold leading-relaxed", mutedText)}>
+                          {t('pro.forecast_desc', {
+                            days: differenceInDays(new Date(), startOfMonth(currentDate)) + 1,
+                            amount: formatMoney(stats.predictedTotal),
+                          })}{' '}
+                          {stats.isOverBudgetRisk ? t('pro.forecast_advice_over') : t('pro.forecast_advice_ok')}
+                        </p>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
+                        <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
+                        <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_forecast')}</p>
+                        <div className="mt-5 flex items-center justify-between">
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.lab')}</div>
+                          <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                            {t('pro.unlock_price')}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div className={cn("p-8", surfaceCard())}>
+                      <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
+                      {stats.trendData.some(d => d.amount > 0) ? (
+                        <div className="h-48 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={stats.trendData}>
+                              <defs>
+                                <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={accentHex} stopOpacity={0.3} />
+                                  <stop offset="95%" stopColor={accentHex} stopOpacity={0} />
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkUI ? "#334155" : "#f1f5f9"} />
+                              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
+                              <YAxis hide />
+                              <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                              <Area type="monotone" dataKey="amount" stroke={accentHex} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
+                            </AreaChart>
+                          </ResponsiveContainer>
+                        </div>
+                      ) : (
+                        <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
+                          <Smile size={32} className="mb-2 opacity-20" />
+                          <p className="text-xs font-bold">{t('no_bills')}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {isProMember ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      >
+                        <motion.div
+                          onPointerDown={() => setPressedStatsModule('consumptionRadar')}
+                          onPointerUp={() => setPressedStatsModule(null)}
+                          onPointerCancel={() => setPressedStatsModule(null)}
+                          onPointerLeave={() => setPressedStatsModule(null)}
+                          animate={pressedStatsModule === 'consumptionRadar' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
+                          transition={pressedStatsModule === 'consumptionRadar' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
+                          className="relative"
+                        >
+                          <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
+                            <PieIcon size="1.5em" className="mr-[2.4vw] text-[#D4AF37] max-w-full h-auto" />
+                            {t('pro.consumption_radar_title')}
+                          </h3>
+                          <div className="h-52 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart
+                                cx="50%"
+                                cy="50%"
+                                outerRadius="78%"
+                                data={(() => {
+                                  const dims = ['餐饮', '购物', '娱乐', '交通', '医疗', '教育'];
+                                  const map = stats.pieData.reduce<Record<string, number>>((acc, x) => {
+                                    acc[x.name] = x.value;
+                                    return acc;
+                                  }, {});
+                                  const total = Math.max(0, stats.expense);
+                                  return dims.map(subject => {
+                                    const value = map[subject] || 0;
+                                    const pct = total > 0 ? (value / total) * 100 : 0;
+                                    return { subject, value, pct };
+                                  });
+                                })()}
+                              >
+                                <defs>
+                                  <linearGradient id="luxRadarGold" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
+                                    <stop offset="45%" stopColor="#D4AF37" stopOpacity="0.95" />
+                                    <stop offset="100%" stopColor="#FFF2C6" stopOpacity="0.35" />
+                                  </linearGradient>
+                                </defs>
+                                <PolarGrid stroke="rgba(212,175,55,0.22)" />
+                                <PolarAngleAxis
+                                  dataKey="subject"
+                                  tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(245,245,245,0.7)' }}
+                                  tickFormatter={(v) => t(`categories.${v}`)}
+                                />
+                                <Radar
+                                  name={t('month')}
+                                  dataKey="pct"
+                                  stroke="url(#luxRadarGold)"
+                                  fill="url(#luxRadarGold)"
+                                  fillOpacity={0.22}
+                                  strokeWidth={3}
+                                  isAnimationActive
+                                  animationDuration={900}
+                                  dot={(props: any) => {
+                                    const subject = props?.payload?.subject as string | undefined;
+                                    if (!subject) return null;
+                                    const on = consumptionRadarFocus === subject;
+                                    return (
+                                      <circle
+                                        cx={props.cx}
+                                        cy={props.cy}
+                                        r={on ? 6 : 4}
+                                        fill={on ? "#D4AF37" : "rgba(212,175,55,0.55)"}
+                                        stroke={on ? "#FFF2C6" : "rgba(0,0,0,0)"}
+                                        strokeWidth={on ? 2 : 0}
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => setConsumptionRadarFocus(subject)}
+                                      />
+                                    );
+                                  }}
+                                />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </div>
+
+                          <div className="mt-[3.2vw]">
+                            {(() => {
+                              if (!consumptionRadarFocus) {
+                                return <div className="text-[3.2vw] font-bold text-white/55">{t('pro.consumption_radar_hint')}</div>;
+                              }
+                              const map = stats.pieData.reduce<Record<string, number>>((acc, x) => {
+                                acc[x.name] = x.value;
+                                return acc;
+                              }, {});
+                              const total = Math.max(0, stats.expense);
+                              const value = map[consumptionRadarFocus] || 0;
+                              const pct = total > 0 ? (value / total) * 100 : 0;
+                              const adviceMap: Record<string, string> = {
+                                '餐饮': t('pro.consumption_radar_advice.food'),
+                                '购物': t('pro.consumption_radar_advice.shopping'),
+                                '娱乐': t('pro.consumption_radar_advice.entertainment'),
+                                '交通': t('pro.consumption_radar_advice.transport'),
+                                '医疗': t('pro.consumption_radar_advice.medical'),
+                                '教育': t('pro.consumption_radar_advice.education'),
+                              };
+                              return (
+                                <div className="flex items-start justify-between gap-[3vw]">
+                                  <div className="min-w-0 overflow-hidden">
+                                    <div className="text-[3.6vw] font-black text-[#D4AF37] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                      {t(`categories.${consumptionRadarFocus}`)}
+                                    </div>
+                                    <div className="mt-[1.2vw] text-[3.1vw] font-bold text-white/65 leading-snug">
+                                      {adviceMap[consumptionRadarFocus] || t('pro.consumption_radar_advice.default')}
+                                    </div>
+                                  </div>
+                                  <div className="flex-shrink-0 text-right">
+                                    <div className="text-[4.8vw] leading-none font-black text-white">{pct.toFixed(1)}%</div>
+                                    <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">{formatMoney(value)}</div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                        onClick={openProUpsell}
+                      >
+                        <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#D4AF37]" />{t('pro.consumption_radar_title')}</h3>
+                        <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_consumption_radar')}</p>
+                        <div className="mt-5 flex items-center justify-between">
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
+                          <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                            {t('upgrade_pro')}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {isProMember ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      >
+                        <motion.div
+                          onPointerDown={() => setPressedStatsModule('incomeRadar')}
+                          onPointerUp={() => setPressedStatsModule(null)}
+                          onPointerCancel={() => setPressedStatsModule(null)}
+                          onPointerLeave={() => setPressedStatsModule(null)}
+                          animate={pressedStatsModule === 'incomeRadar' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
+                          transition={pressedStatsModule === 'incomeRadar' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
+                          className="relative"
+                        >
+                          <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
+                            <PieIcon size="1.5em" className="mr-[2.4vw] text-[#00C853] max-w-full h-auto" />
+                            {t('stats_ui.income_radar_title')}
+                          </h3>
+                          <div className="h-52 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart
+                                cx="50%"
+                                cy="50%"
+                                outerRadius="78%"
+                                data={(() => {
+                                  const incomeMock = [
+                                    { key: 'salary', value: 85 },
+                                    { key: 'investment', value: 60 },
+                                    { key: 'side_hustle', value: 45 },
+                                    { key: 'bonus', value: 70 },
+                                    { key: 'other_transfer', value: 30 }
+                                  ] as const;
+                                  return incomeMock.map(i => ({ key: i.key, subject: t(`income_sources.${i.key}`), value: i.value }));
+                                })()}
+                              >
+                                <defs>
+                                  <linearGradient id="luxRadarEmerald" x1="0" y1="0" x2="1" y2="1">
+                                    <stop offset="0%" stopColor="#00C853" stopOpacity="0.2" />
+                                    <stop offset="50%" stopColor="#00C853" stopOpacity="0.95" />
+                                    <stop offset="100%" stopColor="#B9FFCF" stopOpacity="0.35" />
+                                  </linearGradient>
+                                </defs>
+                                <PolarGrid stroke="rgba(0,200,83,0.22)" />
+                                <PolarAngleAxis
+                                  dataKey="subject"
+                                  tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(245,245,245,0.7)' }}
+                                  tickFormatter={(v) => String(v)}
+                                />
+                                <Radar
+                                  name={t('income')}
+                                  dataKey="value"
+                                  stroke="url(#luxRadarEmerald)"
+                                  fill="url(#luxRadarEmerald)"
+                                  fillOpacity={0.22}
+                                  strokeWidth={3}
+                                  isAnimationActive
+                                  animationDuration={900}
+                                  dot={(props: any) => {
+                                    const key = props?.payload?.key as string | undefined;
+                                    if (!key) return null;
+                                    const on = incomeRadarFocus === key;
+                                    return (
+                                      <circle
+                                        cx={props.cx}
+                                        cy={props.cy}
+                                        r={on ? 6 : 4}
+                                        fill={on ? "#00C853" : "rgba(0,200,83,0.55)"}
+                                        stroke={on ? "#B9FFCF" : "rgba(0,0,0,0)"}
+                                        strokeWidth={on ? 2 : 0}
+                                        style={{ cursor: 'pointer' }}
+                                        onClick={() => setIncomeRadarFocus(key)}
+                                      />
+                                    );
+                                  }}
+                                />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </div>
+
+                          <div className="mt-[3.2vw]">
+                            {(() => {
+                              if (!incomeRadarFocus) {
+                                return <div className="text-[3.2vw] font-bold text-white/55">{t('stats_ui.income_radar_hint')}</div>;
+                              }
+                              const incomeMock = [
+                                { key: 'salary', value: 85 },
+                                { key: 'investment', value: 60 },
+                                { key: 'side_hustle', value: 45 },
+                                { key: 'bonus', value: 70 },
+                                { key: 'other_transfer', value: 30 }
+                              ] as const;
+                              const found = incomeMock.find(i => i.key === incomeRadarFocus);
+                              const value = found?.value ?? 0;
+                              return (
+                                <div className="flex items-start justify-between gap-[3vw]">
+                                  <div className="min-w-0 overflow-hidden">
+                                    <div className="text-[3.6vw] font-black text-[#00C853] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                      {t(`income_sources.${incomeRadarFocus}`)}
+                                    </div>
+                                    <div className="mt-[1.2vw] text-[3.1vw] font-bold text-white/65 leading-snug">
+                                      {t(`income_sources_advice.${incomeRadarFocus}`)}
+                                    </div>
+                                  </div>
+                                  <div className="flex-shrink-0 text-right">
+                                    <div className="text-[4.8vw] leading-none font-black text-white">{value.toFixed(0)}%</div>
+                                    <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">{t('stats_ui.mock')}</div>
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </motion.div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.08 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                        onClick={openProUpsell}
+                      >
+                        <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#00C853]" />{t('stats_ui.income_radar_title')}</h3>
+                        <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_income_radar')}</p>
+                        <div className="mt-5 flex items-center justify-between">
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
+                          <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                            {t('upgrade_pro')}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {isProMember ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.12 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      >
+                        <motion.div
+                          onPointerDown={() => setPressedStatsModule('savingsInsights')}
+                          onPointerUp={() => setPressedStatsModule(null)}
+                          onPointerCancel={() => setPressedStatsModule(null)}
+                          onPointerLeave={() => setPressedStatsModule(null)}
+                          animate={pressedStatsModule === 'savingsInsights' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
+                          transition={pressedStatsModule === 'savingsInsights' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
+                          className="relative"
+                        >
+                          <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
+                            <Sparkles size="1.5em" className="mr-[2.4vw] text-[#D4AF37] max-w-full h-auto" />
+                            {t('pro.savings_insights_title')}
+                          </h3>
+
+                          {(() => {
+                            const lastMonthExpense = stats.expense - stats.momDiff;
+                            const improvement = lastMonthExpense <= 0 ? 0 : (lastMonthExpense - stats.expense) / lastMonthExpense;
+                            const clamped = clamp(improvement, -1, 1);
+                            const progress = Math.min(1, Math.max(0, clamped));
+                            const optimizationSpace = Math.max(0, stats.momDiff);
+                            const improvedAmount = Math.max(0, lastMonthExpense - stats.expense);
+                            const isBetter = improvement > 0.001;
+                            const isWorse = improvement < -0.001;
+                            const accent = isBetter ? "#D4AF37" : isWorse ? "#FB7185" : "rgba(245,245,245,0.35)";
+                            return (
+                              <div className="flex items-center justify-between gap-[4vw]">
+                                <div className="min-w-0 overflow-hidden">
+                                  <div className="text-[3.2vw] font-bold text-white/60">{t('pro.savings_insights_subtitle')}</div>
+                                  <div className="mt-[2vw] text-[6.4vw] leading-none font-black text-white whitespace-nowrap overflow-hidden">
+                                    <span className="mr-[1.2vw] text-[#D4AF37] whitespace-nowrap">{displayCurrency.symbol}</span>
+                                    <RollingNumber value={convertCNYToDisplay(isWorse ? optimizationSpace : improvedAmount)} />
+                                  </div>
+                                  <div className="mt-[1.8vw] text-[3.2vw] font-bold text-white/55 leading-snug">
+                                    {isWorse
+                                      ? t('pro.savings_insights_tip_over', { amount: formatMoney(optimizationSpace) })
+                                      : isBetter
+                                        ? t('pro.savings_insights_tip_good', { amount: formatMoney(improvedAmount) })
+                                        : t('pro.savings_insights_tip_flat')}
+                                  </div>
+                                </div>
+
+                                <div className="flex-shrink-0">
+                                  <svg width="92" height="92" viewBox="0 0 120 120">
+                                    <defs>
+                                      <linearGradient id="luxSavingsRing" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
+                                        <stop offset="55%" stopColor={accent} stopOpacity="1" />
+                                        <stop offset="100%" stopColor="#FFF2C6" stopOpacity={isBetter ? "0.7" : "0"} />
+                                      </linearGradient>
+                                    </defs>
+                                    <circle cx="60" cy="60" r="44" stroke="rgba(255,255,255,0.12)" strokeWidth="10" fill="none" />
+                                    <motion.circle
+                                      cx="60"
+                                      cy="60"
+                                      r="44"
+                                      stroke="url(#luxSavingsRing)"
+                                      strokeWidth="10"
+                                      fill="none"
+                                      strokeLinecap="round"
+                                      style={{ rotate: -90, transformOrigin: "60px 60px" }}
+                                      initial={{ pathLength: 0 }}
+                                      animate={{ pathLength: isBetter ? progress : isWorse ? Math.min(1, Math.abs(clamped)) : 0 }}
+                                      transition={{ duration: 0.9, ease: proUpsellSheetEase }}
+                                    />
+                                  </svg>
+                                  <div className="mt-2 text-center text-[3.2vw] font-black text-white/75">
+                                    {(Math.abs(improvement) * 100).toFixed(0)}%
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </motion.div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.12 }}
+                        className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                        onClick={openProUpsell}
+                      >
+                        <h3 className="font-black text-lg mb-3 flex items-center"><Sparkles size={20} className="mr-2 text-[#D4AF37]" />{t('pro.savings_insights_title')}</h3>
+                        <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_savings_insights')}</p>
+                        <div className="mt-5 flex items-center justify-between">
+                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.insights')}</div>
+                          <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                            {t('upgrade_pro')}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <div className="flex justify-center pt-4">
+                      <button
+                        onClick={() => requestExport('image')}
+                        className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all font-black", theme.primary, "text-white")}
+                      >
+                        <Share2 size={20} />
+                        <span>{t('export_long_image')}</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
