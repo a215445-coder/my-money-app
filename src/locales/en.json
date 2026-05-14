@@ -1,0 +1,55 @@
+{
+  "ok": "OK",
+  "date_formats": {
+    "filter": {
+      "today": "MMM dd",
+      "week": "MMM dd",
+      "year": "yyyy",
+      "month": "MMM yyyy"
+    },
+    "transactions_group": "MMM dd EEEE",
+    "activity_time": "MMM dd HH:mm",
+    "mm_dd_dot": "MM.dd"
+  },
+  "wealth_milestone": {
+    "title": "Wealth Milestone",
+    "next_goal": "Next Goal",
+    "badge": "Milestone",
+    "sheet_title": "Wealth Level Guide",
+    "sheet_desc": "Nodes on the hypotenuse indicate stage progress; the golden waterline reflects your current asset ratio. Tap the triangle anytime to view details and the next goal.",
+    "level": {
+      "initial_accumulation": "Initial Accumulation",
+      "steady_growth": "Steady Growth",
+      "well_off_life": "Well-off Life",
+      "financial_freedom": "Financial Freedom"
+    },
+    "level_desc": {
+      "initial_accumulation": "Build the habit: make cashflow visible and consistent.",
+      "steady_growth": "Set budget boundaries and reduce impulse spending.",
+      "well_off_life": "Stabilize structure and start long-term allocation with risk awareness.",
+      "financial_freedom": "Goal-driven allocation with compounding and sustainability in mind."
+    }
+  },
+  "stats": {
+    "income_radar_title": "Income Radar",
+    "income_radar_hint": "Tap a vertex to see guidance for this income source.",
+    "mock": "Mock"
+  },
+  "pro": {
+    "unlock_income_radar": "Lifetime unlock: income source radar for structure and suggestions."
+  },
+  "income_sources": {
+    "salary": "Salary Income",
+    "investment": "Investment Returns",
+    "side_hustle": "Side Hustle",
+    "bonus": "Bonus & Benefits",
+    "other_transfer": "Other Transfers"
+  },
+  "income_sources_advice": {
+    "salary": "Prioritize stability: improve core skills and negotiation leverage.",
+    "investment": "Control volatility: diversify and track long-term return vs drawdown.",
+    "side_hustle": "Build scalable income streams with repeatable processes.",
+    "bonus": "Treat bonuses as volatile: allocate more to savings or one-off goals.",
+    "other_transfer": "Label the source to avoid distorting cashflow stats."
+  }
+}

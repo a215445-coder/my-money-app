@@ -2338,14 +2338,14 @@ export default function App() {
 
   const getFilterLabel = () => {
     switch (filterType) {
-      case 'today': return format(currentDate, i18n.language === 'zh-CN' ? 'MM月dd日' : 'MMM dd', { locale: dateLocale });
+      case 'today': return format(currentDate, t('date_formats.filter.today'), { locale: dateLocale });
       case 'week': {
         const start = startOfWeek(currentDate, { weekStartsOn: 1 });
         const end = endOfWeek(currentDate, { weekStartsOn: 1 });
-        return `${format(start, i18n.language === 'zh-CN' ? 'MM.dd' : 'MMM dd', { locale: dateLocale })} - ${format(end, i18n.language === 'zh-CN' ? 'MM.dd' : 'MMM dd', { locale: dateLocale })}`;
+        return `${format(start, t('date_formats.filter.week'), { locale: dateLocale })} - ${format(end, t('date_formats.filter.week'), { locale: dateLocale })}`;
       }
-      case 'year': return format(currentDate, i18n.language === 'zh-CN' ? 'yyyy年' : 'yyyy', { locale: dateLocale });
-      case 'month': default: return format(currentDate, i18n.language === 'zh-CN' ? 'yyyy年MM月' : 'MMM yyyy', { locale: dateLocale });
+      case 'year': return format(currentDate, t('date_formats.filter.year'), { locale: dateLocale });
+      case 'month': default: return format(currentDate, t('date_formats.filter.month'), { locale: dateLocale });
     }
   };
 
@@ -2661,7 +2661,7 @@ export default function App() {
                                   >
                                     <div className="flex items-center justify-between">
                                       <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_expense')}</div>
-                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd', { locale: dateLocale })}</div>
+                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), t('date_formats.mm_dd_dot'), { locale: dateLocale })}</div>
                                     </div>
                                     <div className="mt-3 text-2xl font-black tracking-tight">{formatMoney(homeToday.expense)}</div>
                                     <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.search_link_hint')}</div>
@@ -3049,7 +3049,7 @@ export default function App() {
                         return acc;
                       }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
                         <div key={date}>
-                          <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), i18n.language === 'zh-CN' ? 'MM月dd日 EEEE' : 'MMM dd EEEE', { locale: dateLocale })}</p>
+                          <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), t('date_formats.transactions_group'), { locale: dateLocale })}</p>
                           <div className={cn("overflow-hidden", surfaceCard())}>
                             {items.map((item, idx) => (
                               <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center transition-colors group", idx !== items.length - 1 && "border-b", isBlackGold ? "border-[#2A2A2A]" : isDarkMode ? "border-slate-700" : "border-gray-50")}>
@@ -3483,7 +3483,7 @@ export default function App() {
                       >
                         <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
                           <PieIcon size="1.5em" className="mr-[2.4vw] text-[#00C853] max-w-full h-auto" />
-                          收入雷达
+                          {t('stats.income_radar_title')}
                         </h3>
                         <div className="h-52 w-full">
                           <ResponsiveContainer width="100%" height="100%">
@@ -3493,13 +3493,13 @@ export default function App() {
                               outerRadius="78%"
                               data={(() => {
                                 const incomeMock = [
-                                  { name: '工资收入', value: 85 },
-                                  { name: '理财收益', value: 60 },
-                                  { name: '副业兼职', value: 45 },
-                                  { name: '奖金福利', value: 70 },
-                                  { name: '其他', value: 30 }
-                                ];
-                                return incomeMock.map(i => ({ subject: i.name, value: i.value }));
+                                  { key: 'salary', value: 85 },
+                                  { key: 'investment', value: 60 },
+                                  { key: 'side_hustle', value: 45 },
+                                  { key: 'bonus', value: 70 },
+                                  { key: 'other_transfer', value: 30 }
+                                ] as const;
+                                return incomeMock.map(i => ({ key: i.key, subject: t(`income_sources.${i.key}`), value: i.value }));
                               })()}
                             >
                               <defs>
@@ -3525,9 +3525,9 @@ export default function App() {
                                 isAnimationActive
                                 animationDuration={900}
                                 dot={(props: any) => {
-                                  const subject = props?.payload?.subject as string | undefined;
-                                  if (!subject) return null;
-                                  const on = incomeRadarFocus === subject;
+                                  const key = props?.payload?.key as string | undefined;
+                                  if (!key) return null;
+                                  const on = incomeRadarFocus === key;
                                   return (
                                     <circle
                                       cx={props.cx}
@@ -3537,7 +3537,7 @@ export default function App() {
                                       stroke={on ? "#B9FFCF" : "rgba(0,0,0,0)"}
                                       strokeWidth={on ? 2 : 0}
                                       style={{ cursor: 'pointer' }}
-                                      onClick={() => setIncomeRadarFocus(subject)}
+                                      onClick={() => setIncomeRadarFocus(key)}
                                     />
                                   );
                                 }}
@@ -3549,37 +3549,30 @@ export default function App() {
                         <div className="mt-[3.2vw]">
                           {(() => {
                             if (!incomeRadarFocus) {
-                              return <div className="text-[3.2vw] font-bold text-white/55">点击雷达图任一顶点，查看该收入来源建议。</div>;
+                              return <div className="text-[3.2vw] font-bold text-white/55">{t('stats.income_radar_hint')}</div>;
                             }
                             const incomeMock = [
-                              { name: '工资收入', value: 85 },
-                              { name: '理财收益', value: 60 },
-                              { name: '副业兼职', value: 45 },
-                              { name: '奖金福利', value: 70 },
-                              { name: '其他', value: 30 }
-                            ];
-                            const found = incomeMock.find(i => i.name === incomeRadarFocus);
+                              { key: 'salary', value: 85 },
+                              { key: 'investment', value: 60 },
+                              { key: 'side_hustle', value: 45 },
+                              { key: 'bonus', value: 70 },
+                              { key: 'other_transfer', value: 30 }
+                            ] as const;
+                            const found = incomeMock.find(i => i.key === incomeRadarFocus);
                             const value = found?.value ?? 0;
-                            const adviceMap: Record<string, string> = {
-                              '工资收入': '保持稳定现金流：优先提升主业技能与谈薪空间。',
-                              '理财收益': '建议控制波动：分散配置并关注长期年化与回撤。',
-                              '副业兼职': '副业适合做增量：优先选择可复制、可复利的方向。',
-                              '奖金福利': '奖金波动较大：建议将其更多用于储蓄或一次性目标。',
-                              '其他': '其他转入建议标注来源：避免现金流统计失真。',
-                            };
                             return (
                               <div className="flex items-start justify-between gap-[3vw]">
                                 <div className="min-w-0 overflow-hidden">
                                   <div className="text-[3.6vw] font-black text-[#00C853] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                    {incomeRadarFocus}
+                                    {t(`income_sources.${incomeRadarFocus}`)}
                                   </div>
                                   <div className="mt-[1.2vw] text-[3.1vw] font-bold text-white/65 leading-snug">
-                                    {adviceMap[incomeRadarFocus] || '建议保持收入结构多元，同时优先保证稳定现金流。'}
+                                    {t(`income_sources_advice.${incomeRadarFocus}`)}
                                   </div>
                                 </div>
                                 <div className="flex-shrink-0 text-right">
                                   <div className="text-[4.8vw] leading-none font-black text-white">{value.toFixed(0)}%</div>
-                                  <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">Mock</div>
+                                  <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">{t('stats.mock')}</div>
                                 </div>
                               </div>
                             );
@@ -3595,8 +3588,8 @@ export default function App() {
                       className={cn("p-8 relative overflow-hidden", surfaceCard())}
                       onClick={openProUpsell}
                     >
-                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#00C853]" />收入雷达</h3>
-                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>永久会员解锁：收入来源雷达，查看结构与建议。</p>
+                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#00C853]" />{t('stats.income_radar_title')}</h3>
+                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_income_radar')}</p>
                       <div className="mt-5 flex items-center justify-between">
                         <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
                         <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
@@ -4024,10 +4017,10 @@ export default function App() {
                           ? `RM ${formatMilestoneCurrency(convertCNYToDisplay(vaultNextTarget))}`
                           : formatMilestoneMoney(vaultNextTarget);
                         const marks = [
-                          { f: 0.2, label: '初见' },
-                          { f: 0.4, label: '积累' },
-                          { f: 0.6, label: '小康' },
-                          { f: 0.8, label: '自由' },
+                          { f: 0.2, key: 'initial_accumulation' },
+                          { f: 0.4, key: 'steady_growth' },
+                          { f: 0.6, key: 'well_off_life' },
+                          { f: 0.8, key: 'financial_freedom' },
                         ];
                         const nodes = [0.25, 0.5, 0.75, 1];
                         return (
@@ -4039,10 +4032,10 @@ export default function App() {
                             <div className="p-[4.2vw] rounded-[4.6vw] border border-white/10 bg-[rgba(20,20,20,0.8)] backdrop-blur-[25px] overflow-hidden">
                               <div className="flex items-center justify-between mb-[3.6vw]">
                                 <div className="text-[4.1vw] font-black font-cinzel lux-text-gold-glow tracking-tight whitespace-nowrap">
-                                  Wealth Milestone
+                                  {t('wealth_milestone.title')}
                                 </div>
                                 <div className="text-[3.1vw] font-bold text-white/55 whitespace-nowrap">
-                                  Next: {nextText}
+                                  {t('wealth_milestone.next_goal')}: {nextText}
                                 </div>
                               </div>
 
@@ -4055,7 +4048,7 @@ export default function App() {
                                     transform: "translate(-50%, -120%) translate3d(0,0,0)",
                                   }}
                                 >
-                                  <div className="text-[3.1vw] font-black text-[#D4AF37] whitespace-nowrap">Next: {nextText}</div>
+                                  <div className="text-[3.1vw] font-black text-[#D4AF37] whitespace-nowrap">{t('wealth_milestone.next_goal')}: {nextText}</div>
                                 </div>
 
                                 <svg
@@ -4092,7 +4085,7 @@ export default function App() {
                                   </motion.g>
 
                                   {marks.map((m) => (
-                                    <g key={m.label} opacity="0.72">
+                                    <g key={m.key} opacity="0.72">
                                       <line
                                         x1={160 * m.f}
                                         x2={160 * m.f}
@@ -4102,16 +4095,6 @@ export default function App() {
                                         strokeWidth="1"
                                         strokeDasharray="2 3"
                                       />
-                                      <text
-                                        x={160 * m.f}
-                                        y={88.5}
-                                        textAnchor="middle"
-                                        fill="rgba(245,245,245,0.70)"
-                                        fontSize="6"
-                                        fontWeight="800"
-                                      >
-                                        {m.label}
-                                      </text>
                                     </g>
                                   ))}
 
@@ -4132,6 +4115,16 @@ export default function App() {
 
                                   <polygon points="0,90 160,0 160,90" fill="none" stroke="url(#milestoneBorderGold)" strokeWidth="2" />
                                 </svg>
+                              </div>
+
+                              <div className="mt-[2.6vw] grid grid-cols-4 gap-[2vw]">
+                                {marks.map((m) => (
+                                  <div key={m.key} className="min-w-0 overflow-hidden text-center">
+                                    <div className="text-[2.7vw] font-black text-white/65 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                      {t(`wealth_milestone.level.${m.key}`)}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </button>
@@ -4979,7 +4972,7 @@ export default function App() {
                                     )}
                                   </div>
                                   <div className="text-[10px] font-bold text-[#F5F5F5]/45">
-                                    {format(new Date(a.ts), i18n.language === 'zh-CN' ? 'MM-dd HH:mm' : 'MMM dd HH:mm', { locale: dateLocale })}
+                                    {format(new Date(a.ts), t('date_formats.activity_time'), { locale: dateLocale })}
                                   </div>
                                 </div>
 
@@ -5105,28 +5098,26 @@ export default function App() {
                 >
                   {t('cancel')}
                 </button>
-                <div className="text-sm font-black text-white/90">Wealth Milestone</div>
+                <div className="text-sm font-black text-white/90">{t('wealth_milestone.title')}</div>
                 <div className="w-10" />
               </div>
               <div className="px-6 py-6">
-                <div className="text-[4.2vw] font-black text-white">财富等级说明</div>
-                <div className="mt-2 text-[3.4vw] font-bold text-white/55 leading-relaxed">
-                  斜边上的节点代表阶段进度，金色水位代表当前资产占比；点击三角形可随时查看说明与下一目标。
-                </div>
+                <div className="text-[4.2vw] font-black text-white">{t('wealth_milestone.sheet_title')}</div>
+                <div className="mt-2 text-[3.4vw] font-bold text-white/55 leading-relaxed">{t('wealth_milestone.sheet_desc')}</div>
 
                 <div className="mt-5 space-y-3">
                   {[
-                    { title: '初见', desc: '建立记录习惯，现金流开始可视化。' },
-                    { title: '积累', desc: '形成预算边界，减少冲动消费与漏记。' },
-                    { title: '小康', desc: '收支结构稳定，开始关注长期配置与风险。' },
-                    { title: '自由', desc: '目标导向的资金分配，关注复利与可持续。' },
+                    { key: 'initial_accumulation', descKey: 'initial_accumulation' },
+                    { key: 'steady_growth', descKey: 'steady_growth' },
+                    { key: 'well_off_life', descKey: 'well_off_life' },
+                    { key: 'financial_freedom', descKey: 'financial_freedom' },
                   ].map((x) => (
-                    <div key={x.title} className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                    <div key={x.key} className="p-4 rounded-2xl border border-white/10 bg-white/5">
                       <div className="flex items-center justify-between">
-                        <div className="text-[3.6vw] font-black text-[#D4AF37]">{x.title}</div>
-                        <div className="text-[3.2vw] font-bold text-white/45">Milestone</div>
+                        <div className="text-[3.6vw] font-black text-[#D4AF37]">{t(`wealth_milestone.level.${x.key}`)}</div>
+                        <div className="text-[3.2vw] font-bold text-white/45">{t('wealth_milestone.badge')}</div>
                       </div>
-                      <div className="mt-1 text-[3.2vw] font-bold text-white/60 leading-relaxed">{x.desc}</div>
+                      <div className="mt-1 text-[3.2vw] font-bold text-white/60 leading-relaxed">{t(`wealth_milestone.level_desc.${x.descKey}`)}</div>
                     </div>
                   ))}
                 </div>
@@ -5135,7 +5126,7 @@ export default function App() {
                   onClick={() => setIsWealthMilestoneSheetOpen(false)}
                   className="mt-6 w-full py-4 rounded-2xl font-black text-xs bg-[#D4AF37] text-black shadow-lg active:scale-[0.98] transition-transform"
                 >
-                  知道了
+                  {t('ok')}
                 </button>
               </div>
             </motion.div>

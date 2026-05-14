@@ -1,0 +1,55 @@
+{
+  "ok": "知道了",
+  "date_formats": {
+    "filter": {
+      "today": "MM月dd日",
+      "week": "MM.dd",
+      "year": "yyyy年",
+      "month": "yyyy年MM月"
+    },
+    "transactions_group": "MM月dd日 EEEE",
+    "activity_time": "MM-dd HH:mm",
+    "mm_dd_dot": "MM.dd"
+  },
+  "wealth_milestone": {
+    "title": "财富里程碑",
+    "next_goal": "距离下个目标",
+    "badge": "里程碑",
+    "sheet_title": "财富等级说明",
+    "sheet_desc": "斜边上的节点代表阶段进度，金色水位代表当前资产占比；点击三角形可随时查看说明与下一目标。",
+    "level": {
+      "initial_accumulation": "初见积累",
+      "steady_growth": "稳步积累",
+      "well_off_life": "小康生活",
+      "financial_freedom": "财务自由"
+    },
+    "level_desc": {
+      "initial_accumulation": "建立记录习惯，现金流开始可视化。",
+      "steady_growth": "形成预算边界，减少冲动消费与漏记。",
+      "well_off_life": "收支结构稳定，开始关注长期配置与风险。",
+      "financial_freedom": "目标导向的资金分配，关注复利与可持续。"
+    }
+  },
+  "stats": {
+    "income_radar_title": "收入雷达",
+    "income_radar_hint": "点击雷达图任一顶点，查看该收入来源建议。",
+    "mock": "示例"
+  },
+  "pro": {
+    "unlock_income_radar": "永久会员解锁：收入来源雷达，查看结构与建议。"
+  },
+  "income_sources": {
+    "salary": "工资收入",
+    "investment": "投资收益",
+    "side_hustle": "兼职副业",
+    "bonus": "奖金福利",
+    "other_transfer": "其他转入"
+  },
+  "income_sources_advice": {
+    "salary": "保持稳定现金流：优先提升主业技能与谈薪空间。",
+    "investment": "建议控制波动：分散配置并关注长期年化与回撤。",
+    "side_hustle": "副业适合做增量：优先选择可复制、可复利的方向。",
+    "bonus": "奖金波动较大：建议将其更多用于储蓄或一次性目标。",
+    "other_transfer": "建议标注来源：避免现金流统计失真。"
+  }
+}
