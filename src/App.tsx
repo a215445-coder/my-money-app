@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Plus,
   PlusCircle,
-  Calendar as CalendarIcon,
   X,
   Minus,
   Trash2,
@@ -37,6 +36,7 @@ import {
   Calculator,
   GripVertical,
   Users,
+  Vault,
 } from 'lucide-react';
 import {
   format,
@@ -608,7 +608,7 @@ const DEFAULT_ACCOUNTS: Account[] = [
 
 type FilterType = 'today' | 'week' | 'month' | 'year';
 
-type HomeWidgetId = 'todayBoard' | 'weekTrend' | 'topCategories' | 'miniCalendar' | 'summary' | 'budgetProgress';
+type HomeWidgetId = 'todayBoard' | 'weekTrend' | 'topCategories' | 'summary' | 'budgetProgress';
 type HomeWidgetConfig = { order: HomeWidgetId[]; enabled: Record<HomeWidgetId, boolean> };
 
 const HOME_WIDGETS_STORAGE_KEY = 'home_widgets_v1';
@@ -617,18 +617,16 @@ const HOME_WIDGET_META: Record<HomeWidgetId, { titleKey: string; descKey: string
   todayBoard: { titleKey: 'home_widgets.today_board', descKey: 'home_widget_meta.today_board_desc' },
   weekTrend: { titleKey: 'home_widgets.week_trend', descKey: 'home_widget_meta.week_trend_desc' },
   topCategories: { titleKey: 'home_widgets.top_categories', descKey: 'home_widget_meta.top_categories_desc' },
-  miniCalendar: { titleKey: 'home_widgets.mini_calendar', descKey: 'home_widget_meta.mini_calendar_desc' },
   summary: { titleKey: 'home_widget_meta.summary_title', descKey: 'home_widget_meta.summary_desc' },
   budgetProgress: { titleKey: 'home_widget_meta.budget_progress_title', descKey: 'home_widget_meta.budget_progress_desc' },
 };
 
 const DEFAULT_HOME_WIDGET_CONFIG: HomeWidgetConfig = {
-  order: ['todayBoard', 'weekTrend', 'topCategories', 'summary', 'budgetProgress', 'miniCalendar'],
+  order: ['todayBoard', 'weekTrend', 'topCategories', 'summary', 'budgetProgress'],
   enabled: {
     todayBoard: true,
     weekTrend: true,
     topCategories: true,
-    miniCalendar: false,
     summary: true,
     budgetProgress: true,
   },
@@ -714,11 +712,10 @@ export default function App() {
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [discoveryTool, setDiscoveryTool] = useState<null | 'categories' | 'exchange' | 'calculator' | 'groupSaving'>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'calendar' | 'discovery' | 'assets'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'chart' | 'vault' | 'discovery' | 'assets'>('list');
   const [filterType, setFilterType] = useState<FilterType>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCalendarDate, setSelectedCalendarDate] = useState(new Date());
   const [isHomeEditMode, setIsHomeEditMode] = useState(false);
   const [isWidgetCenterOpen, setIsWidgetCenterOpen] = useState(false);
   const [homeWidgetConfig, setHomeWidgetConfig] = useState<HomeWidgetConfig>(() => {
@@ -734,6 +731,7 @@ export default function App() {
   const homeLongPressTimeoutRef = useRef<number | null>(null);
   const homeLongPressStartRef = useRef<{ x: number; y: number } | null>(null);
   const homeLongPressFiredRef = useRef(false);
+  const backupFileInputRef = useRef<HTMLInputElement>(null);
 
   const [localUserId] = useState(() => {
     const existing = localStorage.getItem('local_user_id');
@@ -928,6 +926,127 @@ export default function App() {
       .trim();
 
     return { amount, category, note: note || t('voice.default_note') };
+  };
+
+  const buildBackupKV = () => {
+    const exactKeys = new Set<string>([
+      'transactions',
+      'accounts',
+      'monthly_budget',
+      'app_lang',
+      'pro_member',
+      'export_count',
+      'onboarding_done',
+      'auth_done',
+      'privacy_lock_enabled',
+      'privacy_pin',
+      'exchange_rates',
+      'last_rate_update',
+      'last_used_currency',
+      'local_user_id',
+      'local_user_name',
+      HOME_WIDGETS_STORAGE_KEY,
+      GROUP_SAVING_STORAGE_KEY,
+      GROUP_SAVING_POOL_KEY,
+    ]);
+
+    const kv: Record<string, string | null> = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (exactKeys.has(key) || key.startsWith('group_saving_activities_')) {
+        kv[key] = localStorage.getItem(key);
+      }
+    }
+
+    kv.transactions = JSON.stringify(transactions);
+    kv.accounts = JSON.stringify(accounts);
+    kv.monthly_budget = String(budget);
+    kv.app_lang = i18n.language;
+    kv.pro_member = String(isProMember);
+    kv.export_count = String(exportCount);
+    kv.onboarding_done = String(hasOnboarded);
+    kv.auth_done = String(isAuthed);
+    kv.local_user_id = localUserId;
+    kv.local_user_name = localUserName;
+
+    return kv;
+  };
+
+  const exportBackup = () => {
+    const payload = {
+      schema: 1 as const,
+      exportedAt: new Date().toISOString(),
+      kv: buildBackupKV(),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `my-money-backup-${format(new Date(), 'yyyyMMdd-HHmm')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const restoreBackupKV = (kv: Record<string, string | null>) => {
+    const keysToClear: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      const isKnownExact = [
+        'transactions',
+        'accounts',
+        'monthly_budget',
+        'app_lang',
+        'pro_member',
+        'export_count',
+        'onboarding_done',
+        'auth_done',
+        'privacy_lock_enabled',
+        'privacy_pin',
+        'exchange_rates',
+        'last_rate_update',
+        'last_used_currency',
+        'local_user_id',
+        'local_user_name',
+        HOME_WIDGETS_STORAGE_KEY,
+        GROUP_SAVING_STORAGE_KEY,
+        GROUP_SAVING_POOL_KEY,
+      ].includes(key);
+      if (isKnownExact || key.startsWith('group_saving_activities_')) keysToClear.push(key);
+    }
+    keysToClear.forEach(k => localStorage.removeItem(k));
+
+    Object.entries(kv).forEach(([key, value]) => {
+      if (value === null || value === undefined) return;
+      localStorage.setItem(key, typeof value === 'string' ? value : String(value));
+    });
+    alert(t('backup_import_success'));
+    window.location.reload();
+  };
+
+  const triggerBackupImport = () => {
+    const ok = confirm(t('backup_confirm_replace'));
+    if (!ok) return;
+    if (backupFileInputRef.current) backupFileInputRef.current.value = '';
+    backupFileInputRef.current?.click();
+  };
+
+  const handleBackupFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const kv = parsed?.schema === 1 && parsed?.kv && typeof parsed.kv === 'object' ? (parsed.kv as Record<string, string | null>) : null;
+      if (!kv) {
+        alert(t('backup_invalid_file'));
+        return;
+      }
+      restoreBackupKV(kv);
+    } catch {
+      alert(t('backup_invalid_file'));
+    }
   };
 
   const exportAsImage = async () => {
@@ -1682,6 +1801,13 @@ export default function App() {
         cn(theme.appBg, theme.appText)
       )}
     >
+      <input
+        ref={backupFileInputRef}
+        type="file"
+        accept="application/json"
+        className="hidden"
+        onChange={handleBackupFileChange}
+      />
       {/* Decorative background blobs */}
       <>
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#D4AF37]/10 rounded-full blur-[140px] pointer-events-none" />
@@ -1740,7 +1866,7 @@ export default function App() {
           {[
             { id: 'list', label: t('bill_detail'), icon: <History size={20} /> },
             { id: 'chart', label: t('stats'), icon: <PieIcon size={20} /> },
-            { id: 'calendar', label: t('calendar'), icon: <CalendarIcon size={20} /> },
+            { id: 'vault', label: t('vault'), icon: <Vault size={20} /> },
             { id: 'discovery', label: t('discovery'), icon: <Compass size={20} /> },
             { id: 'settings', label: t('settings'), icon: <Settings size={20} /> },
           ].map((item) => (
@@ -1750,7 +1876,7 @@ export default function App() {
               setIsMenuOpen(false);
             }} className={cn(
               "w-full flex items-center space-x-4 p-4 rounded-2xl font-bold transition-all",
-              activeTab === item.id ? cn(theme.primary, "text-white", "shadow-lg") : "hover:bg-white/5"
+              activeTab === item.id ? cn("bg-white/5 border border-white/10", theme.text, theme.shadow) : "hover:bg-white/5 text-white/80"
             )}>
               {item.icon}
               <span>{item.label}</span>
@@ -1785,865 +1911,586 @@ export default function App() {
           </button>
         </header>
 
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, scale: 0.98, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.98, y: -10 }}
-            transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
-          >
-            {activeTab === 'list' && (
-              <div className="space-y-8">
-                {isHomeEditMode && (
-                  <motion.div
-                    className="fixed inset-0 z-[80] bg-black/25 backdrop-blur-sm"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-                    onClick={() => setIsHomeEditMode(false)}
-                  />
-                )}
+        <div className="relative overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+            >
+              {activeTab === 'list' && (
+                <div className="space-y-8">
+                  {isHomeEditMode && (
+                    <motion.div
+                      className="fixed inset-0 z-[80] bg-black/25 backdrop-blur-sm"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
+                      onClick={() => setIsHomeEditMode(false)}
+                    />
+                  )}
 
-                <div className="relative z-[90] space-y-4">
-                  <div className="flex items-center justify-between px-1">
-                    <div>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.section_title')}</div>
-                      <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
-                        {isHomeEditMode ? t('home_widgets.hint_edit') : t('home_widgets.hint_view')}
+                  <div className="relative z-[90] space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                      <div>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.section_title')}</div>
+                        <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
+                          {isHomeEditMode ? t('home_widgets.hint_edit') : t('home_widgets.hint_view')}
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <motion.button
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setIsWidgetCenterOpen(true)}
+                          className={cn(
+                            "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center space-x-1.5",
+                            isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
+                          )}
+                        >
+                          <PlusCircle size={14} />
+                          <span>{t('home_widgets.add')}</span>
+                        </motion.button>
+                        <motion.button
+                          whileTap={{ scale: 0.96 }}
+                          onClick={() => setIsHomeEditMode(v => !v)}
+                          className={cn(
+                            "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                            isHomeEditMode ? "bg-rose-500 border-rose-500 text-white" : (isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700")
+                          )}
+                        >
+                          {isHomeEditMode ? t('home_widgets.done') : t('home_widgets.edit')}
+                        </motion.button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <motion.button
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => setIsWidgetCenterOpen(true)}
-                        className={cn(
-                          "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center space-x-1.5",
-                          isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
-                        )}
-                      >
-                        <PlusCircle size={14} />
-                        <span>{t('home_widgets.add')}</span>
-                      </motion.button>
-                      <motion.button
-                        whileTap={{ scale: 0.96 }}
-                        onClick={() => setIsHomeEditMode(v => !v)}
-                        className={cn(
-                          "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                          isHomeEditMode ? "bg-rose-500 border-rose-500 text-white" : (isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700")
-                        )}
-                      >
-                        {isHomeEditMode ? t('home_widgets.done') : t('home_widgets.edit')}
-                      </motion.button>
-                    </div>
-                  </div>
 
-                  <Reorder.Group axis="y" values={enabledHomeWidgetOrder} onReorder={handleHomeWidgetsReorder} className="space-y-4">
-                    {enabledHomeWidgetOrder.map((wid) => (
-                      <Reorder.Item
-                        key={wid}
-                        value={wid}
-                        as="div"
-                        layout
-                        dragListener={isHomeEditMode}
-                        whileDrag={{ scale: 1.02 }}
-                        transition={{ type: "spring", damping: 22, stiffness: 260 }}
-                        onPointerDown={beginHomeLongPress}
-                        onPointerMove={moveHomeLongPress}
-                        onPointerUp={(e) => {
-                          if (homeLongPressFiredRef.current) { e.preventDefault(); e.stopPropagation(); }
-                          endHomeLongPress();
-                        }}
-                        onPointerCancel={clearHomeLongPress}
-                        className="relative"
-                      >
-                        <motion.div
-                          animate={isHomeEditMode ? { rotate: [-0.6, 0.6, -0.6] } : { rotate: 0 }}
-                          transition={isHomeEditMode ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18 }}
+                    <Reorder.Group axis="y" values={enabledHomeWidgetOrder} onReorder={handleHomeWidgetsReorder} className="space-y-4">
+                      {enabledHomeWidgetOrder.map((wid) => (
+                        <Reorder.Item
+                          key={wid}
+                          value={wid}
+                          as="div"
+                          layout
+                          dragListener={isHomeEditMode}
+                          whileDrag={{ scale: 1.02 }}
+                          transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                          onPointerDown={beginHomeLongPress}
+                          onPointerMove={moveHomeLongPress}
+                          onPointerUp={(e) => {
+                            if (homeLongPressFiredRef.current) { e.preventDefault(); e.stopPropagation(); }
+                            endHomeLongPress();
+                          }}
+                          onPointerCancel={clearHomeLongPress}
                           className="relative"
                         >
-                          {isHomeEditMode && (
-                            <>
-                              <motion.button
-                                whileTap={{ scale: 0.9 }}
-                                onClick={(e) => { e.stopPropagation(); setHomeWidgetEnabled(wid, false); }}
-                                className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-rose-500 border-4 border-white/90 shadow-xl flex items-center justify-center z-10"
-                                aria-label="remove"
-                              >
-                                <Minus size={16} className="text-white" strokeWidth={4} />
-                              </motion.button>
-                              <div className={cn("absolute -top-2 -left-2 w-9 h-9 rounded-full border-4 shadow-xl flex items-center justify-center z-10", isDarkUI ? "bg-slate-900/80 border-slate-900" : "bg-white/80 border-white")}>
-                                <GripVertical size={16} className={cn(isDarkUI ? "text-white/70" : "text-gray-700")} />
-                              </div>
-                            </>
-                          )}
-
-                          {wid === 'todayBoard' && (
-                            <div className="space-y-4">
-                              <div className="flex items-center justify-between px-1">
-                                <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_board')}</div>
-                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
-                                    {moduleQuery ? t('home_widgets.filtered', { query: searchQuery }) : t('home_widgets.swipe_hint')}
-                                  </div>
+                          <motion.div
+                            animate={isHomeEditMode ? { rotate: [-0.6, 0.6, -0.6] } : { rotate: 0 }}
+                            transition={isHomeEditMode ? { duration: 0.22, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18 }}
+                            className="relative"
+                          >
+                            {isHomeEditMode && (
+                              <>
+                                <motion.button
+                                  whileTap={{ scale: 0.9 }}
+                                  onClick={(e) => { e.stopPropagation(); setHomeWidgetEnabled(wid, false); }}
+                                  className="absolute -top-2 -right-2 w-9 h-9 rounded-full bg-rose-500 border-4 border-white/90 shadow-xl flex items-center justify-center z-10"
+                                  aria-label="remove"
+                                >
+                                  <Minus size={16} className="text-white" strokeWidth={4} />
+                                </motion.button>
+                                <div className={cn("absolute -top-2 -left-2 w-9 h-9 rounded-full border-4 shadow-xl flex items-center justify-center z-10", isDarkUI ? "bg-slate-900/80 border-slate-900" : "bg-white/80 border-white")}>
+                                  <GripVertical size={16} className={cn(isDarkUI ? "text-white/70" : "text-gray-700")} />
                                 </div>
-                                {moduleQuery && (
-                                  <motion.button
-                                    whileTap={{ scale: 0.96 }}
-                                    onClick={(e) => { e.stopPropagation(); setSearchQuery(''); }}
-                                    className={cn(
-                                      "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                                      isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
-                                    )}
-                                  >
-                                    {t('home_widgets.clear_filter')}
-                                  </motion.button>
-                                )}
-                              </div>
+                              </>
+                            )}
 
-                              <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
-                                <motion.div
-                                  layout
-                                  className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_expense')}</div>
-                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd', { locale: dateLocale })}</div>
-                                  </div>
-                                  <div className="mt-3 text-2xl font-black tracking-tight">¥{formatCurrency(homeToday.expense)}</div>
-                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.search_link_hint')}</div>
-                                </motion.div>
-
-                                <motion.div
-                                  layout
-                                  className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
-                                >
-                                  <div className="flex items-center justify-between">
-                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.month_remaining_budget')}</div>
-                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{Math.max(0, 100 - homeMonth.usedPct).toFixed(0)}%</div>
-                                  </div>
-                                  <div className="mt-3 flex items-end justify-between">
-                                    <div className="text-lg font-black">¥{formatCurrency(homeMonth.remaining)}</div>
-                                    <div className={cn("text-[10px] font-bold", mutedText)}>{t('home_widgets.used_prefix')} ¥{formatCurrency(homeMonth.expense)}</div>
-                                  </div>
-                                  <div className={cn("mt-4 h-3 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
-                                    <motion.div
-                                      initial={{ width: 0 }}
-                                      animate={{ width: `${Math.min(homeMonth.usedPct, 100)}%` }}
-                                      transition={{ duration: 1.2, ease: "easeOut" }}
-                                      className={cn("h-full", homeMonth.usedPct > 90 ? "bg-rose-500" : theme.primary)}
-                                    />
-                                  </div>
-                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.progress_hint')}</div>
-                                </motion.div>
-
-                                <motion.div
-                                  layout
-                                  className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
-                                >
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_count')}</div>
-                                  <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} {t('home_widgets.count_unit')}</div>
-                                  <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.category_hot_hint')}</div>
-                                </motion.div>
-                              </div>
-                            </div>
-                          )}
-
-                          {wid === 'weekTrend' && (
-                            <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                              <div className="flex items-center justify-between mb-4">
-                                <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_trend')}</div>
-                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{t('home_widgets.week_trend_desc')}</div>
-                                </div>
-                                <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>7D</div>
-                              </div>
-
-                              {(() => {
-                                const w = 320;
-                                const h = 72;
-                                const max = Math.max(...homeWeekSeries.map(d => d.amount), 1);
-                                const step = homeWeekSeries.length > 1 ? w / (homeWeekSeries.length - 1) : w;
-                                const points = homeWeekSeries.map((d, i) => {
-                                  const x = i * step;
-                                  const y = h - (d.amount / max) * (h - 10) - 5;
-                                  return { x, y };
-                                });
-                                const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
-                                return (
+                            {wid === 'todayBoard' && (
+                              <div className="space-y-4">
+                                <div className="flex items-center justify-between px-1">
                                   <div>
-                                    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[80px]">
-                                      <defs>
-                                        <linearGradient id={`weekLineFill-${wid}`} x1="0" y1="0" x2="0" y2="1">
-                                          <stop offset="0%" stopColor={accentHex} stopOpacity={0.25} />
-                                          <stop offset="100%" stopColor={accentHex} stopOpacity={0} />
-                                        </linearGradient>
-                                      </defs>
-                                      <motion.path
-                                        d={d}
-                                        fill="none"
-                                        stroke={accentHex}
-                                        strokeWidth="4"
-                                        strokeLinecap="round"
-                                        initial={{ pathLength: 0, opacity: 0.0 }}
-                                        animate={{ pathLength: 1, opacity: 1 }}
-                                        transition={{ duration: 0.9, ease: "easeOut" }}
-                                      />
-                                      <motion.path
-                                        d={`${d} L ${w} ${h} L 0 ${h} Z`}
-                                        fill={`url(#weekLineFill-${wid})`}
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        transition={{ duration: 0.7, ease: "easeOut", delay: 0.12 }}
-                                      />
-                                    </svg>
-                                    <div className="mt-3 flex items-center justify-between">
-                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_total')}</div>
-                                      <div className="text-sm font-black">¥{formatCurrency(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_board')}</div>
+                                    <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>
+                                      {moduleQuery ? t('home_widgets.filtered', { query: searchQuery }) : t('home_widgets.swipe_hint')}
                                     </div>
                                   </div>
-                                );
-                              })()}
-                            </div>
-                          )}
-
-                          {wid === 'topCategories' && (
-                            <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                              <div className="flex items-center justify-between mb-4">
-                                <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.top_categories')}</div>
-                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{t('home_widgets.top_categories_desc')}</div>
-                                </div>
-                                <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>TOP3</div>
-                              </div>
-
-                              {homeMonth.topCategories.length === 0 ? (
-                                <div className={cn("p-6 rounded-2xl border-2 border-dashed text-center", isDarkUI ? "border-slate-700 text-white/50" : "border-gray-100 text-gray-400")}>
-                                  <div className="text-xs font-bold">{t('home_widgets.month_no_expense')}</div>
-                                </div>
-                              ) : (
-                                <div className="space-y-3">
-                                  {homeMonth.topCategories.map((c, idx) => (
-                                    <button
-                                      key={c.name}
-                                      type="button"
-                                      onClick={(e) => { e.stopPropagation(); setSearchQuery(c.name); setFilterType('month'); }}
+                                  {moduleQuery && (
+                                    <motion.button
+                                      whileTap={{ scale: 0.96 }}
+                                      onClick={(e) => { e.stopPropagation(); setSearchQuery(''); }}
                                       className={cn(
-                                        "w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.99]",
-                                        isDarkUI ? "bg-slate-800/40 border-slate-700 hover:bg-slate-800/55" : "bg-white/60 border-white/70 hover:bg-white/80"
+                                        "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                                        isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
                                       )}
                                     >
-                                      <div className="flex items-center justify-between">
-                                        <div className="flex items-center space-x-2">
-                                          <div className="w-6 h-6 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${c.color}22`, color: c.color }}>
-                                            <span className="text-sm">{c.icon}</span>
-                                          </div>
-                                          <div className="text-sm font-black">{t(`categories.${c.name}`)}</div>
-                                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{c.pct.toFixed(0)}%</div>
-                                        </div>
-                                        <div className={cn("text-[10px] font-black", mutedText)}>¥{formatCurrency(c.value)}</div>
-                                      </div>
-                                      <div className={cn("mt-3 h-2 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
-                                        <motion.div
-                                          initial={{ width: 0 }}
-                                          animate={{ width: `${clamp(c.pct, 0, 100)}%` }}
-                                          transition={{ duration: 0.9, ease: "easeOut", delay: 0.06 + idx * 0.04 }}
-                                          className="h-full"
-                                          style={{ backgroundColor: c.color }}
-                                        />
-                                      </div>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                              <div className={cn("mt-4 text-[10px] font-bold", mutedText)}>{t('home_widgets.top_categories_click_hint')}</div>
-                            </div>
-                          )}
-
-                          {wid === 'miniCalendar' && (
-                            <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                              <div className="flex items-center justify-between mb-4">
-                                <div>
-                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.mini_calendar')}</div>
-                                  <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{format(new Date(), i18n.language === 'zh-CN' ? 'yyyy年MM月' : 'MMM yyyy', { locale: dateLocale })}</div>
-                                </div>
-                                <motion.button
-                                  whileTap={{ scale: 0.96 }}
-                                  onClick={(e) => { e.stopPropagation(); setActiveTab('calendar'); }}
-                                  className={cn(
-                                    "px-3 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                                    isDarkUI ? "bg-slate-800/60 border-slate-700 text-white/70" : "bg-white/60 border-white/70 text-gray-700"
+                                      {t('home_widgets.clear_filter')}
+                                    </motion.button>
                                   )}
-                                >
-                                  {t('open')}
-                                </motion.button>
-                              </div>
-
-                              {(() => {
-                                const base = new Date();
-                                const start = startOfMonth(base);
-                                const end = endOfMonth(base);
-                                const days = eachDayOfInterval({ start, end });
-                                const first = (start.getDay() + 6) % 7;
-                                const blanks = Array.from({ length: first });
-                                const hasTx = (d: Date) => transactions.some(t => isSameDay(parseISO(t.date), d) && matchesModuleQuery(t));
-                                return (
-                                  <div className="grid grid-cols-7 gap-1">
-                                    {(t('home_widgets.weekdays_short', { returnObjects: true }) as string[]).map(x => (
-                                      <div key={x} className={cn("text-center text-[8px] font-black pb-1", mutedText)}>{x}</div>
-                                    ))}
-                                    {blanks.map((_, i) => <div key={`b-${i}`} />)}
-                                    {days.map(d => {
-                                      const active = isSameDay(d, selectedCalendarDate);
-                                      return (
-                                        <button
-                                          key={d.toISOString()}
-                                          type="button"
-                                          onClick={(e) => { e.stopPropagation(); setSelectedCalendarDate(d); setCurrentDate(d); setActiveTab('calendar'); }}
-                                          className={cn(
-                                            "aspect-square rounded-lg flex flex-col items-center justify-center relative transition-all",
-                                            active ? cn(theme.primary, "text-white") : "bg-white/5 hover:bg-white/10"
-                                          )}
-                                        >
-                                          <span className="text-[10px] font-black">{format(d, 'd')}</span>
-                                          {hasTx(d) && (
-                                            <span className={cn("absolute bottom-1 w-1.5 h-1.5 rounded-full", active ? "bg-white" : "bg-emerald-400")} />
-                                          )}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              })()}
-                            </div>
-                          )}
-
-                          {wid === 'summary' && (
-                            <div
-                              className={cn(
-                                "p-10 rounded-[4rem] shadow-2xl relative overflow-hidden group border border-white/20",
-                                theme.primary,
-                                "text-white"
-                              )}
-                            >
-                              <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
-                              <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
-                              <motion.div
-                                aria-hidden
-                                className="absolute inset-0 opacity-50"
-                                style={{
-                                  backgroundImage: "linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.10) 22%, rgba(255,255,255,0.18) 28%, transparent 40%)",
-                                  transform: 'translateX(-35%)',
-                                }}
-                                animate={{ transform: ['translateX(-35%)', 'translateX(35%)'] }}
-                                transition={{ duration: 2.6, ease: 'linear', repeat: Infinity }}
-                              />
-
-                              <div className="flex justify-between items-start mb-12 relative z-10">
-                                <div>
-                                  <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", "text-white/60")}>{t('total_assets')}</p>
-                                  <div className="text-5xl font-black tracking-tighter drop-shadow-lg flex items-end">
-                                    <span className="mr-1">¥</span>
-                                    <RollingNumber value={totalAssets} />
-                                  </div>
                                 </div>
-                                <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
-                                  <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                                  <span>{i18n.language}</span>
-                                </div>
-                              </div>
 
-                              <div className="grid grid-cols-2 gap-10 relative z-10">
-                                <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
-                                      <TrendingDown size={12} className="text-red-200" />
-                                    </div>
-                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", "text-white/60")}>{t('expense')}</span>
-                                  </div>
-                                  <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
-                                </div>
-                                <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
-                                  <div className="flex items-center space-x-2 mb-2">
-                                    <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
-                                      <TrendingUp size={12} className="text-green-200" />
-                                    </div>
-                                    <span className={cn("text-[10px] font-black uppercase tracking-widest", "text-white/60")}>{t('income')}</span>
-                                  </div>
-                                  <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-
-                          {wid === 'budgetProgress' && (
-                            <div
-                              className={cn(
-                                "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
-                                surfaceCard("rounded-[3rem]")
-                              )}
-                            >
-                              <div className="flex justify-between items-center mb-6">
-                                <div className="flex items-center space-x-3">
-                                  <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                                    <PieIcon size={20} className="text-white" />
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
-                                    <p className="text-lg font-black">¥{formatCurrency(budget)}</p>
-                                  </div>
-                                </div>
-                                <div className="text-right">
-                                  <p className="text-[10px] font-black text-gray-400 uppercase mb-1">{t('budget_remaining')}</p>
-                                  <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : "text-[#D4AF37]")}>
-                                    ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
-                                  </p>
-                                </div>
-                              </div>
-
-                              <div className="w-full h-4 bg-gray-100/50 rounded-full overflow-hidden mb-6 p-1">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
-                                  transition={{ duration: 1.5, ease: "easeOut" }}
-                                  className={cn(
-                                    "h-full rounded-full transition-all relative overflow-hidden",
-                                    stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : "lux-gold"
-                                  )}
-                                >
-                                  <div className="absolute inset-0 bg-white/20 animate-pulse" />
-                                </motion.div>
-                              </div>
-
-                              <div className="flex justify-between items-center px-1">
-                                <div className="flex items-center space-x-2">
-                                  <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
-                                    {t('home_widgets.used_prefix')} {stats.budgetUsage.toFixed(1)}%
-                                  </div>
-                                </div>
-                                <div className="flex items-center space-x-1.5 text-gray-500">
-                                  <Calculator size={14} />
-                                  <span className="text-[10px] font-black uppercase tracking-tight">{t('daily_available', { amount: stats.dailyBudget.toFixed(0) })}</span>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </motion.div>
-                      </Reorder.Item>
-                    ))}
-                  </Reorder.Group>
-                </div>
-
-                <AnimatePresence>
-                  {isWidgetCenterOpen && (
-                    <div className="fixed inset-0 z-[160] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-md" onClick={() => setIsWidgetCenterOpen(false)}>
-                      <motion.div
-                        initial={{ y: "100%", opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: "100%", opacity: 0 }}
-                        transition={{ type: "spring", damping: 25, stiffness: 240 }}
-                        onClick={(e) => e.stopPropagation()}
-                        className={cn(
-                          "w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl border",
-                          isDarkUI ? "bg-slate-900/95 border-slate-700 text-white" : "bg-white/95 border-gray-100 text-gray-900"
-                        )}
-                      >
-                        <div className="flex items-center justify-between mb-6">
-                          <div>
-                            <h3 className="text-lg font-black">{t('widget_center')}</h3>
-                            <p className={cn("text-[10px] font-bold mt-1", mutedText)}>{t('widget_center_desc')}</p>
-                          </div>
-                          <button onClick={() => setIsWidgetCenterOpen(false)} className={cn("p-2 rounded-full", isDarkUI ? "bg-slate-800" : "bg-gray-100")}>
-                            <X size={18} />
-                          </button>
-                        </div>
-
-                        <div className="space-y-3">
-                          {DEFAULT_HOME_WIDGET_CONFIG.order.map((id) => {
-                            const on = homeWidgetConfig.enabled[id];
-                            return (
-                              <button
-                                key={id}
-                                type="button"
-                                onClick={() => setHomeWidgetEnabled(id, !on)}
-                                className={cn(
-                                  "w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-[0.99]",
-                                  isDarkUI ? "bg-slate-800/60 border-slate-700 hover:bg-slate-800/75" : "bg-white/70 border-gray-100 hover:bg-white"
-                                )}
-                              >
-                                <div>
-                                  <div className="text-sm font-black">{t(HOME_WIDGET_META[id].titleKey)}</div>
-                                  <div className={cn("text-[10px] font-bold mt-1", mutedText)}>{t(HOME_WIDGET_META[id].descKey)}</div>
-                                </div>
-                                <div className={cn(
-                                  "w-12 h-7 rounded-full relative transition-colors",
-                                  on ? theme.primary : (isDarkUI ? "bg-slate-700" : "bg-gray-200")
-                                )}>
+                                <div className="flex space-x-4 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
                                   <motion.div
                                     layout
-                                    className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm"
-                                    style={{ left: on ? 26 : 4 }}
-                                    transition={{ type: "spring", damping: 22, stiffness: 260 }}
-                                  />
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
+                                    className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_expense')}</div>
+                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd', { locale: dateLocale })}</div>
+                                    </div>
+                                    <div className="mt-3 text-2xl font-black tracking-tight">¥{formatCurrency(homeToday.expense)}</div>
+                                    <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.search_link_hint')}</div>
+                                  </motion.div>
 
-                        <div className="mt-6 flex items-center justify-between">
-                          <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>
-                            {t('enabled_count', {
-                              enabled: DEFAULT_HOME_WIDGET_CONFIG.order.filter(id => homeWidgetConfig.enabled[id]).length,
-                              total: DEFAULT_HOME_WIDGET_CONFIG.order.length
+                                  <motion.div
+                                    layout
+                                    className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.month_remaining_budget')}</div>
+                                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{Math.max(0, 100 - homeMonth.usedPct).toFixed(0)}%</div>
+                                    </div>
+                                    <div className="mt-3 flex items-end justify-between">
+                                      <div className="text-lg font-black">¥{formatCurrency(homeMonth.remaining)}</div>
+                                      <div className={cn("text-[10px] font-bold", mutedText)}>{t('home_widgets.used_prefix')} ¥{formatCurrency(homeMonth.expense)}</div>
+                                    </div>
+                                    <div className={cn("mt-4 h-3 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+                                      <motion.div
+                                        initial={{ width: 0 }}
+                                        animate={{ width: `${Math.min(homeMonth.usedPct, 100)}%` }}
+                                        transition={{ duration: 1.2, ease: "easeOut" }}
+                                        className={cn("h-full", homeMonth.usedPct > 90 ? "bg-rose-500" : theme.primary)}
+                                      />
+                                    </div>
+                                    <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.progress_hint')}</div>
+                                  </motion.div>
+
+                                  <motion.div
+                                    layout
+                                    className={cn("min-w-[240px] snap-start p-5 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                                  >
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_count')}</div>
+                                    <div className="mt-3 text-2xl font-black tracking-tight">{homeToday.count} {t('home_widgets.count_unit')}</div>
+                                    <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.category_hot_hint')}</div>
+                                  </motion.div>
+                                </div>
+                              </div>
+                            )}
+
+                            {wid === 'weekTrend' && (
+                              <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_trend')}</div>
+                                    <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{t('home_widgets.week_trend_desc')}</div>
+                                  </div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>7D</div>
+                                </div>
+
+                                {(() => {
+                                  const w = 320;
+                                  const h = 72;
+                                  const max = Math.max(...homeWeekSeries.map(d => d.amount), 1);
+                                  const step = homeWeekSeries.length > 1 ? w / (homeWeekSeries.length - 1) : w;
+                                  const points = homeWeekSeries.map((d, i) => {
+                                    const x = i * step;
+                                    const y = h - (d.amount / max) * (h - 10) - 5;
+                                    return { x, y };
+                                  });
+                                  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(2)} ${p.y.toFixed(2)}`).join(' ');
+                                  return (
+                                    <div>
+                                      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-[80px]">
+                                        <defs>
+                                          <linearGradient id={`weekLineFill-${wid}`} x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stopColor={accentHex} stopOpacity={0.25} />
+                                            <stop offset="100%" stopColor={accentHex} stopOpacity={0} />
+                                          </linearGradient>
+                                        </defs>
+                                        <motion.path
+                                          d={d}
+                                          fill="none"
+                                          stroke={accentHex}
+                                          strokeWidth="4"
+                                          strokeLinecap="round"
+                                          initial={{ pathLength: 0, opacity: 0.0 }}
+                                          animate={{ pathLength: 1, opacity: 1 }}
+                                          transition={{ duration: 0.9, ease: "easeOut" }}
+                                        />
+                                        <motion.path
+                                          d={`${d} L ${w} ${h} L 0 ${h} Z`}
+                                          fill={`url(#weekLineFill-${wid})`}
+                                          initial={{ opacity: 0 }}
+                                          animate={{ opacity: 1 }}
+                                          transition={{ duration: 0.7, ease: "easeOut", delay: 0.12 }}
+                                        />
+                                      </svg>
+                                      <div className="mt-3 flex items-center justify-between">
+                                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_total')}</div>
+                                        <div className="text-sm font-black">¥{formatCurrency(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+                              </div>
+                            )}
+
+                            {wid === 'topCategories' && (
+                              <div className={cn("p-6 rounded-[2.5rem] shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                                <div className="flex items-center justify-between mb-4">
+                                  <div>
+                                    <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.top_categories')}</div>
+                                    <div className={cn("text-xs font-black mt-1", isDarkUI ? "text-white/80" : "text-gray-800")}>{t('home_widgets.top_categories_desc')}</div>
+                                  </div>
+                                  <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>TOP3</div>
+                                </div>
+
+                                {homeMonth.topCategories.length === 0 ? (
+                                  <div className={cn("p-6 rounded-2xl border-2 border-dashed text-center", isDarkUI ? "border-slate-700 text-white/50" : "border-gray-100 text-gray-400")}>
+                                    <div className="text-xs font-bold">{t('home_widgets.month_no_expense')}</div>
+                                  </div>
+                                ) : (
+                                  <div className="space-y-3">
+                                    {homeMonth.topCategories.map((c, idx) => (
+                                      <button
+                                        key={c.name}
+                                        type="button"
+                                        onClick={(e) => { e.stopPropagation(); setSearchQuery(c.name); setFilterType('month'); }}
+                                        className={cn(
+                                          "w-full text-left p-4 rounded-2xl border transition-all active:scale-[0.99]",
+                                          isDarkUI ? "bg-slate-800/40 border-slate-700 hover:bg-slate-800/55" : "bg-white/60 border-white/70 hover:bg-white/80"
+                                        )}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center space-x-2">
+                                            <div className="w-6 h-6 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${c.color}22`, color: c.color }}>
+                                              <span className="text-sm">{c.icon}</span>
+                                            </div>
+                                            <div className="text-sm font-black">{t(`categories.${c.name}`)}</div>
+                                            <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{c.pct.toFixed(0)}%</div>
+                                          </div>
+                                          <div className={cn("text-[10px] font-black", mutedText)}>¥{formatCurrency(c.value)}</div>
+                                        </div>
+                                        <div className={cn("mt-3 h-2 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
+                                          <motion.div
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${clamp(c.pct, 0, 100)}%` }}
+                                            transition={{ duration: 0.9, ease: "easeOut", delay: 0.06 + idx * 0.04 }}
+                                            className="h-full"
+                                            style={{ backgroundColor: c.color }}
+                                          />
+                                        </div>
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                                <div className={cn("mt-4 text-[10px] font-bold", mutedText)}>{t('home_widgets.top_categories_click_hint')}</div>
+                              </div>
+                            )}
+
+                            {wid === 'summary' && (
+                              <div
+                                className={cn(
+                                  "p-10 rounded-[4rem] shadow-2xl relative overflow-hidden group border border-white/20",
+                                  theme.primary,
+                                  "text-white"
+                                )}
+                              >
+                                <div className="absolute top-0 right-0 w-48 h-48 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl transition-all group-hover:scale-125" />
+                                <div className="absolute bottom-0 left-0 w-32 h-32 bg-black/10 rounded-full -ml-16 -mb-16 blur-2xl" />
+                                <motion.div
+                                  aria-hidden
+                                  className="absolute inset-0 opacity-50"
+                                  style={{
+                                    backgroundImage: "linear-gradient(120deg, transparent 0%, rgba(255,255,255,0.10) 22%, rgba(255,255,255,0.18) 28%, transparent 40%)",
+                                    transform: 'translateX(-35%)',
+                                  }}
+                                  animate={{ transform: ['translateX(-35%)', 'translateX(35%)'] }}
+                                  transition={{ duration: 2.6, ease: 'linear', repeat: Infinity }}
+                                />
+
+                                <div className="flex justify-between items-start mb-12 relative z-10">
+                                  <div>
+                                    <p className={cn("text-[10px] font-black uppercase tracking-[0.2em] mb-3", "text-white/60")}>{t('total_assets')}</p>
+                                    <div className="text-5xl font-black tracking-tighter drop-shadow-lg flex items-end">
+                                      <span className="mr-1">¥</span>
+                                      <RollingNumber value={totalAssets} />
+                                    </div>
+                                  </div>
+                                  <div className="bg-white/10 backdrop-blur-xl border border-white/20 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center space-x-2">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                                    <span>{i18n.language}</span>
+                                  </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-10 relative z-10">
+                                  <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <div className="w-6 h-6 bg-red-400/20 rounded-lg flex items-center justify-center">
+                                        <TrendingDown size={12} className="text-red-200" />
+                                      </div>
+                                      <span className={cn("text-[10px] font-black uppercase tracking-widest", "text-white/60")}>{t('expense')}</span>
+                                    </div>
+                                    <p className="text-2xl font-black">¥{formatCurrency(stats.expense)}</p>
+                                  </div>
+                                  <div className="bg-white/10 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/10 transition-transform hover:scale-105">
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <div className="w-6 h-6 bg-green-400/20 rounded-lg flex items-center justify-center">
+                                        <TrendingUp size={12} className="text-green-200" />
+                                      </div>
+                                      <span className={cn("text-[10px] font-black uppercase tracking-widest", "text-white/60")}>{t('income')}</span>
+                                    </div>
+                                    <p className="text-2xl font-black">¥{formatCurrency(stats.income)}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {wid === 'budgetProgress' && (
+                              <div
+                                className={cn(
+                                  "rounded-[3rem] p-8 shadow-xl border backdrop-blur-xl transition-all",
+                                  surfaceCard("rounded-[3rem]")
+                                )}
+                              >
+                                <div className="flex justify-between items-center mb-6">
+                                  <div className="flex items-center space-x-3">
+                                    <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
+                                      <PieIcon size={20} className="text-white" />
+                                    </div>
+                                    <div>
+                                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('monthly_budget')}</span>
+                                      <p className="text-lg font-black">¥{formatCurrency(budget)}</p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[10px] font-black text-gray-400 uppercase mb-1">{t('budget_remaining')}</p>
+                                    <p className={cn("text-lg font-black", stats.budgetUsage > 90 ? "text-red-500" : "text-[#D4AF37]")}>
+                                      ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                <div className="w-full h-4 bg-gray-100/50 rounded-full overflow-hidden mb-6 p-1">
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
+                                    transition={{ duration: 1.5, ease: "easeOut" }}
+                                    className={cn(
+                                      "h-full rounded-full transition-all relative overflow-hidden",
+                                      stats.budgetUsage > 90 ? "bg-gradient-to-r from-red-500 to-rose-400" : "lux-gold"
+                                    )}
+                                  >
+                                    <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                                  </motion.div>
+                                </div>
+
+                                <div className="flex justify-between items-center px-1">
+                                  <div className="flex items-center space-x-2">
+                                    <div className={cn("px-2 py-1 rounded-md text-[8px] font-black uppercase", stats.budgetUsage > 90 ? "bg-red-100 text-red-500" : "bg-indigo-100 text-indigo-500")}>
+                                      {t('home_widgets.used_prefix')} {stats.budgetUsage.toFixed(1)}%
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center space-x-1.5 text-gray-500">
+                                    <Calculator size={14} />
+                                    <span className="text-[10px] font-black uppercase tracking-tight">{t('daily_available', { amount: stats.dailyBudget.toFixed(0) })}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </motion.div>
+                        </Reorder.Item>
+                      ))}
+                    </Reorder.Group>
+                  </div>
+
+                  <AnimatePresence>
+                    {isWidgetCenterOpen && (
+                      <div className="fixed inset-0 z-[160] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/60 backdrop-blur-md" onClick={() => setIsWidgetCenterOpen(false)}>
+                        <motion.div
+                          initial={{ y: "100%", opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          exit={{ y: "100%", opacity: 0 }}
+                          transition={{ type: "spring", damping: 25, stiffness: 240 }}
+                          onClick={(e) => e.stopPropagation()}
+                          className={cn(
+                            "w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl border",
+                            isDarkUI ? "bg-slate-900/95 border-slate-700 text-white" : "bg-white/95 border-gray-100 text-gray-900"
+                          )}
+                        >
+                          <div className="flex items-center justify-between mb-6">
+                            <div>
+                              <h3 className="text-lg font-black">{t('widget_center')}</h3>
+                              <p className={cn("text-[10px] font-bold mt-1", mutedText)}>{t('widget_center_desc')}</p>
+                            </div>
+                            <button onClick={() => setIsWidgetCenterOpen(false)} className={cn("p-2 rounded-full", isDarkUI ? "bg-slate-800" : "bg-gray-100")}>
+                              <X size={18} />
+                            </button>
+                          </div>
+
+                          <div className="space-y-3">
+                            {DEFAULT_HOME_WIDGET_CONFIG.order.map((id) => {
+                              const on = homeWidgetConfig.enabled[id];
+                              return (
+                                <button
+                                  key={id}
+                                  type="button"
+                                  onClick={() => setHomeWidgetEnabled(id, !on)}
+                                  className={cn(
+                                    "w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-[0.99]",
+                                    isDarkUI ? "bg-slate-800/60 border-slate-700 hover:bg-slate-800/75" : "bg-white/70 border-gray-100 hover:bg-white"
+                                  )}
+                                >
+                                  <div>
+                                    <div className="text-sm font-black">{t(HOME_WIDGET_META[id].titleKey)}</div>
+                                    <div className={cn("text-[10px] font-bold mt-1", mutedText)}>{t(HOME_WIDGET_META[id].descKey)}</div>
+                                  </div>
+                                  <div className={cn(
+                                    "w-12 h-7 rounded-full relative transition-colors",
+                                    on ? theme.primary : (isDarkUI ? "bg-slate-700" : "bg-gray-200")
+                                  )}>
+                                    <motion.div
+                                      layout
+                                      className="absolute top-1 w-5 h-5 bg-white rounded-full shadow-sm"
+                                      style={{ left: on ? 26 : 4 }}
+                                      transition={{ type: "spring", damping: 22, stiffness: 260 }}
+                                    />
+                                  </div>
+                                </button>
+                              );
                             })}
                           </div>
-                          <motion.button
-                            whileTap={{ scale: 0.96 }}
-                            onClick={() => setIsWidgetCenterOpen(false)}
-                            className={cn("px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest", theme.primary, "text-white")}
-                          >
-                            {t('home_widgets.done')}
-                          </motion.button>
+
+                          <div className="mt-6 flex items-center justify-between">
+                            <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>
+                              {t('enabled_count', {
+                                enabled: DEFAULT_HOME_WIDGET_CONFIG.order.filter(id => homeWidgetConfig.enabled[id]).length,
+                                total: DEFAULT_HOME_WIDGET_CONFIG.order.length
+                              })}
+                            </div>
+                            <motion.button
+                              whileTap={{ scale: 0.96 }}
+                              onClick={() => setIsWidgetCenterOpen(false)}
+                              className={cn("px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest", theme.primary, "text-white")}
+                            >
+                              {t('home_widgets.done')}
+                            </motion.button>
+                          </div>
+                        </motion.div>
+                      </div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Transactions List */}
+                  {stats.filtered.length === 0 ? (
+                    <div className="py-20 text-center space-y-4">
+                      <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <History className="text-gray-300" size={32} />
+                      </div>
+                      <p className="text-gray-400 font-bold italic">{t('no_bills')}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {Object.entries(stats.filtered.reduce((acc, t) => {
+                        const date = t.date.split('T')[0];
+                        if (!acc[date]) acc[date] = [];
+                        acc[date].push(t);
+                        return acc;
+                      }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
+                        <div key={date}>
+                          <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), i18n.language === 'zh-CN' ? 'MM月dd日 EEEE' : 'MMM dd EEEE', { locale: dateLocale })}</p>
+                          <div className={cn("rounded-[2.5rem] shadow-sm overflow-hidden", surfaceCard())}>
+                            {items.map((item, idx) => (
+                              <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center transition-colors group", idx !== items.length - 1 && "border-b", isBlackGold ? "border-[#2A2A2A]" : isDarkMode ? "border-slate-700" : "border-gray-50")}>
+                                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm mr-4", CATEGORIES.find(c => c.label === item.category)?.color)}>
+                                  {CATEGORIES.find(c => c.label === item.category)?.icon}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-bold text-sm">{t(`categories.${item.category}`)}</span>
+                                    <span className={cn("text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase", chipNeutral)}>{t(`accounts.${accounts.find(a => a.id === item.accountId)?.name}`)}</span>
+                                    {item.mood && (
+                                      <span className="text-[10px] ml-1 opacity-80">
+                                        {item.mood === 'happy' ? '😊' : item.mood === 'neutral' ? '😐' : '😭'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {item.note && <p className={cn("text-[10px] mt-1 line-clamp-1", mutedText)}>{item.note}</p>}
+                                  <div className="flex flex-wrap gap-1 mt-1 items-center">
+                                    {item.tags?.map(tag => <span key={tag} className="text-[8px] text-indigo-400 font-bold">#{tag}</span>)}
+                                    {item.hasImage && <Camera size={10} className="text-gray-300 ml-1" />}
+                                    {item.currency && item.currency !== 'CNY' && (
+                                      <div className={cn("flex items-center space-x-1 ml-1 px-1.5 py-0.5 rounded-md", isBlackGold ? "bg-white/10" : "bg-blue-50")}>
+                                        <Globe size={8} className={cn(isBlackGold ? "text-[#D4AF37]" : "text-blue-400")} />
+                                        <span className={cn("text-[8px] font-black", isBlackGold ? "text-[#D4AF37]" : "text-blue-400")}>{CURRENCIES.find(c => c.code === item.currency)?.flag} {item.originalAmount?.toFixed(2)}</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center space-x-3">
+                                  <motion.div
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={(e) => toggleCurrency(item.id, e)}
+                                    className="text-right cursor-pointer"
+                                  >
+                                    <div className={cn("font-black text-sm", item.type === 'expense' ? "text-red-500" : "text-green-500")}>
+                                      {item.type === 'expense' ? '-' : '+'}
+                                      {showOriginalCurrency[item.id] && item.currency && item.currency !== 'CNY'
+                                        ? `${CURRENCIES.find(c => c.code === item.currency)?.symbol}${item.originalAmount?.toFixed(2)}`
+                                        : `¥${formatCurrency(item.amount)}`
+                                      }
+                                    </div>
+                                    {item.currency && item.currency !== 'CNY' && (
+                                      <p className={cn("text-[8px] font-bold mt-0.5", mutedText)}>
+                                        {showOriginalCurrency[item.id] ? `≈ ¥${formatCurrency(item.amount)}` : `${CURRENCIES.find(c => c.code === item.currency)?.flag} ${item.originalAmount?.toFixed(2)}`}
+                                      </p>
+                                    )}
+                                  </motion.div>
+                                  <button onClick={(e) => deleteTransaction(item.id, e)} className={cn("p-2 transition-opacity opacity-0 group-hover:opacity-100", isBlackGold ? "text-white/40 hover:text-[#D4AF37]" : "text-gray-200 hover:text-red-400")}><Trash2 size={14} /></button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      </motion.div>
+                      ))}
                     </div>
                   )}
-                </AnimatePresence>
-
-                {/* Transactions List */}
-                {stats.filtered.length === 0 ? (
-                  <div className="py-20 text-center space-y-4">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <History className="text-gray-300" size={32} />
-                    </div>
-                    <p className="text-gray-400 font-bold italic">{t('no_bills')}</p>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {Object.entries(stats.filtered.reduce((acc, t) => {
-                      const date = t.date.split('T')[0];
-                      if (!acc[date]) acc[date] = [];
-                      acc[date].push(t);
-                      return acc;
-                    }, {} as Record<string, Transaction[]>)).sort((a, b) => b[0].localeCompare(a[0])).map(([date, items]) => (
-                      <div key={date}>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-4 ml-1", mutedText)}>{format(parseISO(date), i18n.language === 'zh-CN' ? 'MM月dd日 EEEE' : 'MMM dd EEEE', { locale: dateLocale })}</p>
-                        <div className={cn("rounded-[2.5rem] shadow-sm overflow-hidden", surfaceCard())}>
-                          {items.map((item, idx) => (
-                            <div key={item.id} onClick={() => { setEditingTransaction(item); setIsModalOpen(true); }} className={cn("p-5 flex items-center transition-colors group", idx !== items.length - 1 && "border-b", isBlackGold ? "border-[#2A2A2A]" : isDarkMode ? "border-slate-700" : "border-gray-50")}>
-                              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shadow-sm mr-4", CATEGORIES.find(c => c.label === item.category)?.color)}>
-                                {CATEGORIES.find(c => c.label === item.category)?.icon}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center space-x-2">
-                                  <span className="font-bold text-sm">{t(`categories.${item.category}`)}</span>
-                                  <span className={cn("text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase", chipNeutral)}>{t(`accounts.${accounts.find(a => a.id === item.accountId)?.name}`)}</span>
-                                  {item.mood && (
-                                    <span className="text-[10px] ml-1 opacity-80">
-                                      {item.mood === 'happy' ? '😊' : item.mood === 'neutral' ? '😐' : '😭'}
-                                    </span>
-                                  )}
-                                </div>
-                                {item.note && <p className={cn("text-[10px] mt-1 line-clamp-1", mutedText)}>{item.note}</p>}
-                                <div className="flex flex-wrap gap-1 mt-1 items-center">
-                                  {item.tags?.map(tag => <span key={tag} className="text-[8px] text-indigo-400 font-bold">#{tag}</span>)}
-                                  {item.hasImage && <Camera size={10} className="text-gray-300 ml-1" />}
-                                  {item.currency && item.currency !== 'CNY' && (
-                                    <div className={cn("flex items-center space-x-1 ml-1 px-1.5 py-0.5 rounded-md", isBlackGold ? "bg-white/10" : "bg-blue-50")}>
-                                      <Globe size={8} className={cn(isBlackGold ? "text-[#D4AF37]" : "text-blue-400")} />
-                                      <span className={cn("text-[8px] font-black", isBlackGold ? "text-[#D4AF37]" : "text-blue-400")}>{CURRENCIES.find(c => c.code === item.currency)?.flag} {item.originalAmount?.toFixed(2)}</span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-3">
-                                <motion.div
-                                  whileTap={{ scale: 0.9 }}
-                                  onClick={(e) => toggleCurrency(item.id, e)}
-                                  className="text-right cursor-pointer"
-                                >
-                                  <div className={cn("font-black text-sm", item.type === 'expense' ? "text-red-500" : "text-green-500")}>
-                                    {item.type === 'expense' ? '-' : '+'}
-                                    {showOriginalCurrency[item.id] && item.currency && item.currency !== 'CNY'
-                                      ? `${CURRENCIES.find(c => c.code === item.currency)?.symbol}${item.originalAmount?.toFixed(2)}`
-                                      : `¥${formatCurrency(item.amount)}`
-                                    }
-                                  </div>
-                                  {item.currency && item.currency !== 'CNY' && (
-                                    <p className={cn("text-[8px] font-bold mt-0.5", mutedText)}>
-                                      {showOriginalCurrency[item.id] ? `≈ ¥${formatCurrency(item.amount)}` : `${CURRENCIES.find(c => c.code === item.currency)?.flag} ${item.originalAmount?.toFixed(2)}`}
-                                    </p>
-                                  )}
-                                </motion.div>
-                                <button onClick={(e) => deleteTransaction(item.id, e)} className={cn("p-2 transition-opacity opacity-0 group-hover:opacity-100", isBlackGold ? "text-white/40 hover:text-[#D4AF37]" : "text-gray-200 hover:text-red-400")}><Trash2 size={14} /></button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'assets' && (
-              <div className="space-y-6 pb-10 p-4">
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => setActiveTab('discovery')}
-                    className={cn("p-2 rounded-2xl active:scale-95 transition-all", surfaceCard("rounded-2xl"))}
-                  >
-                    <ChevronLeft size={18} className={cn(isDarkUI ? "text-white" : "text-gray-900")} />
-                  </button>
-                  <div className="text-center">
-                    <p className={cn("text-sm font-black", isDarkUI ? "text-white" : "text-gray-900")}>{t('assets_dashboard.title')}</p>
-                    <p className={cn("text-[10px] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</p>
-                  </div>
-                  <div className="w-10" />
                 </div>
+              )}
 
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                  <div className="flex items-end justify-between mb-6">
-                    <div>
-                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.current_total_assets')}</p>
-                      <p className="text-3xl font-black">¥{formatCurrency(totalAssets)}</p>
+              {activeTab === 'assets' && (
+                <div className="space-y-6 pb-10 p-4">
+                  <div className="flex items-center justify-between">
+                    <button
+                      onClick={() => setActiveTab('discovery')}
+                      className={cn("p-2 rounded-2xl active:scale-95 transition-all", surfaceCard("rounded-2xl"))}
+                    >
+                      <ChevronLeft size={18} className={cn(isDarkUI ? "text-white" : "text-gray-900")} />
+                    </button>
+                    <div className="text-center">
+                      <p className={cn("text-sm font-black", isDarkUI ? "text-white" : "text-gray-900")}>{t('assets_dashboard.title')}</p>
+                      <p className={cn("text-[10px] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</p>
                     </div>
-                    <div className="text-right">
-                      <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
-                      <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
-                    </div>
+                    <div className="w-10" />
                   </div>
-                  <div className="h-44 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={assetDashboard.netWorthSeries}>
-                        <defs>
-                          <linearGradient id="assetsLine" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor={accentHex} stopOpacity={0.25} />
-                            <stop offset="95%" stopColor={accentHex} stopOpacity={0} />
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkUI ? "#334155" : "#f1f5f9"} />
-                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
-                        <YAxis hide />
-                        <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                        <Area type="monotone" dataKey="value" stroke={accentHex} fillOpacity={1} fill="url(#assetsLine)" strokeWidth={4} />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                    <h3 className="font-black text-lg mb-4 flex items-center"><PieIcon size={20} className="mr-2 text-emerald-500" />{t('assets_dashboard.liability_vs_net')}</h3>
-                    <div className="h-52 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={assetDashboard.liabilityPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>
-                            {assetDashboard.liabilityPie.map((d) => (
-                              <Cell key={d.name} fill={d.color} />
-                            ))}
-                          </Pie>
-                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.liabilities')}</p>
-                        <p className="text-lg font-black text-rose-500">¥{formatCurrency(assetDashboard.liabilities)}</p>
+                    <div className="flex items-end justify-between mb-6">
+                      <div>
+                        <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.current_total_assets')}</p>
+                        <p className="text-3xl font-black">¥{formatCurrency(totalAssets)}</p>
                       </div>
-                      <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
+                      <div className="text-right">
                         <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
                         <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
                       </div>
                     </div>
-                  </div>
-
-                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                    <h3 className="font-black text-lg mb-4 flex items-center"><Wallet size={20} className="mr-2 text-indigo-500" />{t('assets_dashboard.distribution')}</h3>
-                    <div className="h-52 w-full">
+                    <div className="h-44 w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                          <Pie data={assetDashboard.distributionPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>
-                            {assetDashboard.distributionPie.map((d) => (
-                              <Cell key={d.name} fill={d.color} />
-                            ))}
-                          </Pie>
-                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
-                        </PieChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="mt-4 space-y-2">
-                      {assetDashboard.distributionPie.map(d => {
-                        const total = assetDashboard.distributionPie.reduce((s, x) => s + x.value, 0) || 1;
-                        const pct = (d.value / total) * 100;
-                        return (
-                          <div key={d.name} className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
-                              <span className={cn("text-xs font-bold", isDarkUI ? "text-white/80" : "text-gray-700")}>{d.name}</span>
-                            </div>
-                            <span className={cn("text-xs font-black", mutedText)}>{pct.toFixed(0)}%</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'chart' && (
-              <div id="stats-content" className="space-y-6 pb-10 p-4">
-                {/* Branding for Export */}
-                <div className="hidden show-on-export mb-8">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
-                        <Wallet size={24} className="text-white" />
-                      </div>
-                      <div>
-                        <h1 className="text-2xl font-black tracking-tighter">{t('app_name_pro')}</h1>
-                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('pro.monthly_report', { filter: getFilterLabel() })}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-[10px] font-black text-gray-400 uppercase">{t('pro.only')}</p>
-                      <div className="flex items-center justify-end space-x-1 text-amber-500">
-                        <Star size={10} fill="currentColor" />
-                        <Star size={10} fill="currentColor" />
-                        <Star size={10} fill="currentColor" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                {/* Pro Forecast Card */}
-                {isProMember ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
-                  >
-                    <div className="absolute top-0 right-0 p-4">
-                      <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">{t('pro.analysis_badge')}</div>
-                    </div>
-                    <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-                    <div className="flex items-end justify-between mb-4">
-                      <div>
-                        <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>{t('pro.forecast_estimated_month_total')}</p>
-                        <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
-                      </div>
-                      <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
-                        <p className="text-[10px] font-black uppercase tracking-widest mb-1">{t('pro.over_budget_risk')}</p>
-                        <p className="text-lg font-black">{stats.isOverBudgetRisk ? t('pro.risk_high') : t('pro.risk_low')}</p>
-                      </div>
-                    </div>
-                    <div className={cn("w-full h-2 rounded-full overflow-hidden", isBlackGold ? "bg-white/10" : "bg-gray-100")}>
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
-                        className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
-                      />
-                    </div>
-                    <p className={cn("mt-4 text-[10px] font-bold leading-relaxed", mutedText)}>
-                      {t('pro.forecast_desc', {
-                        days: differenceInDays(new Date(), startOfMonth(currentDate)) + 1,
-                        amount: formatCurrency(stats.predictedTotal),
-                      })}{' '}
-                      {stats.isOverBudgetRisk ? t('pro.forecast_advice_over') : t('pro.forecast_advice_ok')}
-                    </p>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
-                    <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
-                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_forecast')}</p>
-                    <div className="mt-5 flex items-center justify-between">
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.lab')}</div>
-                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                        {t('pro.unlock_price')}
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Radar Comparison Card */}
-                {isProMember ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}
-                  >
-                    <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-                    <div className="h-64 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
-                          <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
-                          <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} tickFormatter={(v) => t(`categories.${v}`)} />
-                          <Radar
-                            name={t('month')}
-                            dataKey="A"
-                            stroke={accentHex}
-                            fill={accentHex}
-                            fillOpacity={0.6}
-                          />
-                          <Radar
-                            name={t('last_month')}
-                            dataKey="B"
-                            stroke="#94a3b8"
-                            fill="#94a3b8"
-                            fillOpacity={0.3}
-                          />
-                          <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                    <div className="flex justify-center space-x-6 mt-4">
-                      <div className="flex items-center space-x-2">
-                        <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
-                        <span className={cn("text-[10px] font-black", mutedText)}>{t('month')}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-gray-300" />
-                        <span className={cn("text-[10px] font-black", mutedText)}>{t('last_month')}</span>
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
-                  >
-                    <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
-                    <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_radar')}</p>
-                    <div className="mt-5 flex items-center justify-between">
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
-                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
-                        {t('pro.unlock_price')}
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                )}
-
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                  <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
-                  {stats.trendData.some(d => d.amount > 0) ? (
-                    <div className="h-48 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={stats.trendData}>
+                        <AreaChart data={assetDashboard.netWorthSeries}>
                           <defs>
-                            <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={accentHex} stopOpacity={0.3} />
+                            <linearGradient id="assetsLine" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor={accentHex} stopOpacity={0.25} />
                               <stop offset="95%" stopColor={accentHex} stopOpacity={0} />
                             </linearGradient>
                           </defs>
@@ -2651,374 +2498,588 @@ export default function App() {
                           <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
                           <YAxis hide />
                           <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                          <Area type="monotone" dataKey="amount" stroke={accentHex} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
+                          <Area type="monotone" dataKey="value" stroke={accentHex} fillOpacity={1} fill="url(#assetsLine)" strokeWidth={4} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </div>
-                  ) : (
-                    <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
-                      <Smile size={32} className="mb-2 opacity-20" />
-                      <p className="text-xs font-bold">{t('no_bills')}</p>
-                    </div>
-                  )}
-                </div>
+                  </div>
 
-                <div className="flex justify-center pt-4">
-                  <button
-                    onClick={() => requestExport('image')}
-                    className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all font-black", theme.primary, "text-white")}
-                  >
-                    <Share2 size={20} />
-                    <span>{t('export_long_image')}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'discovery' && (
-              <div className="space-y-6">
-                {/* User Header */}
-                <div className={cn("rounded-[2.5rem] p-6 shadow-xl overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
-                  <div className="absolute inset-0 backdrop-blur-2xl" />
-                  <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full blur-[90px] opacity-40 bg-gradient-to-br from-indigo-500 to-fuchsia-500" />
-                  <div className="relative flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className={cn("w-14 h-14 rounded-[1.5rem] border backdrop-blur-xl flex items-center justify-center", isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : "bg-white/30 border-white/30")}>
-                        <User size={24} className={cn(isBlackGold ? "text-[#D4AF37]" : (isDarkMode ? "text-white" : "text-gray-800"))} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                      <h3 className="font-black text-lg mb-4 flex items-center"><PieIcon size={20} className="mr-2 text-emerald-500" />{t('assets_dashboard.liability_vs_net')}</h3>
+                      <div className="h-52 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={assetDashboard.liabilityPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>
+                              {assetDashboard.liabilityPie.map((d) => (
+                                <Cell key={d.name} fill={d.color} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
                       </div>
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>{t('user_title')}</p>
-                          {isProMember && (
-                            <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200">
-                              <Star size={10} fill="currentColor" />
-                              <span className="text-[8px] font-black uppercase tracking-widest">PRO</span>
+                      <div className="mt-4 grid grid-cols-2 gap-3">
+                        <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
+                          <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.liabilities')}</p>
+                          <p className="text-lg font-black text-rose-500">¥{formatCurrency(assetDashboard.liabilities)}</p>
+                        </div>
+                        <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
+                          <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
+                          <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                      <h3 className="font-black text-lg mb-4 flex items-center"><Wallet size={20} className="mr-2 text-indigo-500" />{t('assets_dashboard.distribution')}</h3>
+                      <div className="h-52 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={assetDashboard.distributionPie} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>
+                              {assetDashboard.distributionPie.map((d) => (
+                                <Cell key={d.name} fill={d.color} />
+                              ))}
+                            </Pie>
+                            <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="mt-4 space-y-2">
+                        {assetDashboard.distributionPie.map(d => {
+                          const total = assetDashboard.distributionPie.reduce((s, x) => s + x.value, 0) || 1;
+                          const pct = (d.value / total) * 100;
+                          return (
+                            <div key={d.name} className="flex items-center justify-between">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                                <span className={cn("text-xs font-bold", isDarkUI ? "text-white/80" : "text-gray-700")}>{d.name}</span>
+                              </div>
+                              <span className={cn("text-xs font-black", mutedText)}>{pct.toFixed(0)}%</span>
                             </div>
-                          )}
-                        </div>
-                        <p className={cn("text-[10px] font-bold mt-1", mutedText)}>
-                          {t(`greeting.${timeContext}`)}{i18n.language === 'zh-CN' ? '，' : ', '}{t('greeting.welcome_back')}
-                        </p>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      {!isProMember && (
-                        <motion.button
-                          whileTap={{ scale: 0.96 }}
-                          onClick={() => setIsProPaywallOpen(true)}
-                          className={cn(
-                            "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                            "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
-                          )}
-                        >
-                          {t('upgrade_pro')}
-                        </motion.button>
-                      )}
                     </div>
                   </div>
                 </div>
+              )}
 
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setDiscoveryTool('groupSaving')}
-                  className={cn(
-                    "w-full rounded-[2.5rem] p-6 border shadow-sm overflow-hidden relative text-left",
-                    "lux-carbon border-[#2A2A2A] text-[#F5F5F5]"
-                  )}
-                >
-                  <div className="absolute inset-0 backdrop-blur-2xl" />
-                  <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full blur-[110px] opacity-35 bg-[#D4AF37]/25" />
-                  <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full blur-[120px] opacity-25 bg-[#D4AF37]/20" />
-                  <div className="relative flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className={cn("w-12 h-12 rounded-[1.5rem] border flex items-center justify-center shadow-sm", isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : "bg-white/30 border-white/30 text-white")}>
-                        <Users size={20} />
+              {activeTab === 'chart' && (
+                <div id="stats-content" className="space-y-6 pb-10 p-4">
+                  {/* Branding for Export */}
+                  <div className="hidden show-on-export mb-8">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg", theme.primary)}>
+                          <Wallet size={24} className="text-white" />
+                        </div>
+                        <div>
+                          <h1 className="text-2xl font-black tracking-tighter">{t('app_name_pro')}</h1>
+                          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('pro.monthly_report', { filter: getFilterLabel() })}</p>
+                        </div>
                       </div>
-                      <div>
-                        <div className="text-sm font-black">{t('group_card_title')}</div>
-                        <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">
-                          {groupSaving ? t('group_card_joined', { name: groupSaving.name, code: groupSaving.code }) : t('group_saving_subtitle')}
+                      <div className="text-right">
+                        <p className="text-[10px] font-black text-gray-400 uppercase">{t('pro.only')}</p>
+                        <div className="flex items-center justify-end space-x-1 text-amber-500">
+                          <Star size={10} fill="currentColor" />
+                          <Star size={10} fill="currentColor" />
+                          <Star size={10} fill="currentColor" />
                         </div>
                       </div>
                     </div>
-                    <div className={cn(
-                      "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center space-x-2",
-                      groupSaving
-                        ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
-                        : "lux-gold border-[#D4AF37] text-black shadow-lg"
-                    )}>
-                      <Users size={14} />
-                      <span>{groupSaving ? t('enter') : t('start_now')}</span>
-                    </div>
                   </div>
-                </motion.button>
-
-                {/* Quick Tools Grid */}
-                <div className={cn("rounded-[2.5rem] p-6 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
-                  <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-sm font-black">{t('common_tools')}</h3>
-                    <span className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('toolkit_tag')}</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { key: 'assets', label: t('assets'), Icon: LineIcon, onClick: () => setActiveTab('assets') },
-                      { key: 'groupSaving', label: t('group_saving_title'), Icon: Users, onClick: () => setDiscoveryTool('groupSaving') },
-                      { key: 'budget', label: t('settings'), Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
-                      { key: 'export', label: t('export'), Icon: Share2, onClick: () => requestExport('image') },
-                      { key: 'categories', label: t('categories_manage'), Icon: Hash, onClick: () => setDiscoveryTool('categories') },
-                      { key: 'fx', label: t('exchange'), Icon: ArrowRightLeft, onClick: () => setDiscoveryTool('exchange') },
-                      { key: 'calc', label: t('calculator'), Icon: Calculator, onClick: () => setDiscoveryTool('calculator') },
-                    ].map(item => (
-                      <motion.button
-                        key={item.key}
-                        whileTap={{ scale: 0.96 }}
-                        onClick={item.onClick}
-                        className={cn(
-                          "p-4 rounded-[1.75rem] border flex flex-col items-center justify-center space-y-2 transition-all",
-                          "lux-carbon border-[#2A2A2A]"
-                        )}
-                      >
-                        <div className={cn(
-                          "w-10 h-10 rounded-2xl flex items-center justify-center border",
-                          "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
-                        )}>
-                          <item.Icon size={18} />
-                        </div>
-                        <span className={cn("text-[10px] font-black", isBlackGold ? "text-[#F5F5F5]" : isDarkMode ? "text-white/80" : "text-gray-700")}>{item.label}</span>
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Pro Perks */}
-                <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
-                  <div className="flex items-center justify-between mb-5">
-                    <h3 className="text-sm font-black">{t('pro.perks_title')}</h3>
-                    <motion.button
-                      whileTap={{ scale: 0.96 }}
-                      onClick={() => setIsProPaywallOpen(true)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
-                        isProMember
-                          ? (isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-600")
-                          : "bg-amber-500 text-black border-amber-400 shadow-lg"
-                      )}
+                  {/* Pro Forecast Card */}
+                  {isProMember ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
                     >
-                      {isProMember ? t('pro.unlocked') : t('pro.lifetime')}
-                    </motion.button>
-                  </div>
-
-                  <div className={cn("space-y-3", !isProMember && "opacity-60")}>
-                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                      <div className="flex items-center space-x-3">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", "lux-carbon border-[#2A2A2A]")}>
-                          <Sparkles size={18} className="text-[#D4AF37]" />
-                        </div>
+                      <div className="absolute top-0 right-0 p-4">
+                        <div className="bg-amber-100 text-amber-600 text-[8px] font-black px-2 py-1 rounded-full uppercase tracking-tighter">{t('pro.analysis_badge')}</div>
+                      </div>
+                      <h3 className="font-black text-lg mb-6 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
+                      <div className="flex items-end justify-between mb-4">
                         <div>
-                          <p className="text-xs font-black">{t('pro.perk_skin.label')}</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_skin.desc')}</p>
+                          <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>{t('pro.forecast_estimated_month_total')}</p>
+                          <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
+                        </div>
+                        <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
+                          <p className="text-[10px] font-black uppercase tracking-widest mb-1">{t('pro.over_budget_risk')}</p>
+                          <p className="text-lg font-black">{stats.isOverBudgetRisk ? t('pro.risk_high') : t('pro.risk_low')}</p>
                         </div>
                       </div>
-                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
-                    </div>
-
-                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                      <div className="flex items-center space-x-3">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
-                          <Share2 size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black">{t('pro.perk_export.label')}</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_export.desc')}</p>
-                        </div>
-                      </div>
-                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
-                    </div>
-
-                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                      <div className="flex items-center space-x-3">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
-                          <Sparkles size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black">{t('pro.perk_lab.label')}</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_lab.desc')}</p>
-                        </div>
-                      </div>
-                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
-                    </div>
-
-                    <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                      <div className="flex items-center space-x-3">
-                        <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
-                          <Star size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black">{t('pro.perk_badge.label')}</p>
-                          <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_badge.desc')}</p>
-                        </div>
-                      </div>
-                      {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
-                    </div>
-                  </div>
-
-                  <div className="mt-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('theme')}</span>
-                      <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('locked')}</span>
-                    </div>
-                    <div className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border text-center shadow-lg", theme.primary)}>
-                      {t('black_gold')}
-                    </div>
-                  </div>
-
-                  <div className="mt-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('export_section')}</span>
-                      {!isProMember && (
-                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('remaining_times', { count: remainingFreeExports })}</span>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('image')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
-                        {t('export_image')}
-                      </motion.button>
-                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('csv')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
-                        {t('export_excel')}
-                      </motion.button>
-                      <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('pdf')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
-                        {t('export_pdf')}
-                      </motion.button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Finance Management Card */}
-                <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="font-black text-sm">{t('finance_management')}</h3>
-                    <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>
-                      {t('finance_health')}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 items-center">
-                    <div>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('finance_health')}</div>
-                      <div className="flex items-end space-x-2">
-                        <div className={cn("text-4xl font-black", stats.budgetUsage > 90 ? "text-rose-500" : theme.text)}>
-                          {Math.max(0, Math.min(100, Math.round(100 - stats.budgetUsage)))}
-                        </div>
-                        <div className={cn("text-xs font-black mb-1", isDarkMode ? "text-white/50" : "text-gray-400")}>/ 100</div>
-                      </div>
-                      <div className="mt-4 w-full h-2 rounded-full overflow-hidden bg-gray-100/60 dark:bg-slate-700/60">
-                        <div
-                          className={cn("h-full rounded-full", stats.budgetUsage > 90 ? "bg-rose-500" : theme.primary)}
-                          style={{ width: `${Math.max(0, Math.min(100, 100 - stats.budgetUsage))}%` }}
+                      <div className={cn("w-full h-2 rounded-full overflow-hidden", isBlackGold ? "bg-white/10" : "bg-gray-100")}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.min((stats.predictedTotal / budget) * 100, 100)}%` }}
+                          className={cn("h-full", stats.isOverBudgetRisk ? "bg-red-500" : theme.primary)}
                         />
                       </div>
-                    </div>
-                    <div className={cn("rounded-[2rem] p-4 border", isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                      <div className={cn("text-[10px] font-black uppercase tracking-widest mb-3", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('last7_expense')}</div>
-                      <div className="flex items-end justify-between h-14">
-                        {stats.trendData.map((d, idx) => (
-                          <div key={d.date + idx} className="flex-1 flex justify-center">
-                            <div
-                              className={cn("w-2 rounded-full", idx === stats.trendData.length - 1 ? theme.primary : (isDarkMode ? "bg-white/20" : "bg-gray-300/70"))}
-                              style={{ height: `${Math.min(56, Math.max(6, d.amount / 20))}px` }}
+                      <p className={cn("mt-4 text-[10px] font-bold leading-relaxed", mutedText)}>
+                        {t('pro.forecast_desc', {
+                          days: differenceInDays(new Date(), startOfMonth(currentDate)) + 1,
+                          amount: formatCurrency(stats.predictedTotal),
+                        })}{' '}
+                        {stats.isOverBudgetRisk ? t('pro.forecast_advice_over') : t('pro.forecast_advice_ok')}
+                      </p>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-black/5 to-transparent pointer-events-none" />
+                      <h3 className="font-black text-lg mb-3 flex items-center"><TrendingUp size={20} className="mr-2 text-amber-500" />{t('spending_forecast')}</h3>
+                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_forecast')}</p>
+                      <div className="mt-5 flex items-center justify-between">
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.lab')}</div>
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                          {t('pro.unlock_price')}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Radar Comparison Card */}
+                  {isProMember ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}
+                    >
+                      <h3 className="font-black text-lg mb-6 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
+                      <div className="h-64 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <RadarChart cx="50%" cy="50%" outerRadius="80%" data={stats.radarData}>
+                            <PolarGrid stroke={isDarkMode ? "#334155" : "#f1f5f9"} />
+                            <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} tickFormatter={(v) => t(`categories.${v}`)} />
+                            <Radar
+                              name={t('month')}
+                              dataKey="A"
+                              stroke={accentHex}
+                              fill={accentHex}
+                              fillOpacity={0.6}
                             />
+                            <Radar
+                              name={t('last_month')}
+                              dataKey="B"
+                              stroke="#94a3b8"
+                              fill="#94a3b8"
+                              fillOpacity={0.3}
+                            />
+                            <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000' }} />
+                          </RadarChart>
+                        </ResponsiveContainer>
+                      </div>
+                      <div className="flex justify-center space-x-6 mt-4">
+                        <div className="flex items-center space-x-2">
+                          <div className={cn("w-3 h-3 rounded-full", theme.primary)} />
+                          <span className={cn("text-[10px] font-black", mutedText)}>{t('month')}</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 rounded-full bg-gray-300" />
+                          <span className={cn("text-[10px] font-black", mutedText)}>{t('last_month')}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                      className={cn("rounded-[2.5rem] p-8 shadow-sm relative overflow-hidden", surfaceCard("rounded-[2.5rem]"))}
+                    >
+                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-indigo-500" />{t('spending_radar')}</h3>
+                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_radar')}</p>
+                      <div className="mt-5 flex items-center justify-between">
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={() => setIsProPaywallOpen(true)} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                          {t('pro.unlock_price')}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                    <h3 className="font-black text-lg mb-6 flex items-center"><LineIcon size={20} className="mr-2 text-blue-500" />{t('trend_title')}</h3>
+                    {stats.trendData.some(d => d.amount > 0) ? (
+                      <div className="h-48 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={stats.trendData}>
+                            <defs>
+                              <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={accentHex} stopOpacity={0.3} />
+                                <stop offset="95%" stopColor={accentHex} stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={isDarkUI ? "#334155" : "#f1f5f9"} />
+                            <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8' }} dy={10} />
+                            <YAxis hide />
+                            <RechartsTooltip contentStyle={{ borderRadius: '1rem', border: 'none', backgroundColor: isDarkUI ? '#1e293b' : '#fff', color: isDarkUI ? '#fff' : '#000', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                            <Area type="monotone" dataKey="amount" stroke={accentHex} fillOpacity={1} fill="url(#colorAmount)" strokeWidth={4} />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    ) : (
+                      <div className={cn("h-48 flex flex-col items-center justify-center text-gray-300 rounded-2xl border-2 border-dashed", isDarkMode ? "bg-slate-900 border-slate-700" : "bg-gray-50 border-gray-100")}>
+                        <Smile size={32} className="mb-2 opacity-20" />
+                        <p className="text-xs font-bold">{t('no_bills')}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={() => requestExport('image')}
+                      className={cn("px-8 py-4 rounded-full flex items-center space-x-3 shadow-xl active:scale-95 transition-all font-black", theme.primary, "text-white")}
+                    >
+                      <Share2 size={20} />
+                      <span>{t('export_long_image')}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'discovery' && (
+                <div className="space-y-6">
+                  {/* User Header */}
+                  <div className={cn("rounded-[2.5rem] p-6 shadow-xl overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                    <div className="absolute inset-0 backdrop-blur-2xl" />
+                    <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full blur-[90px] opacity-40 bg-gradient-to-br from-indigo-500 to-fuchsia-500" />
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={cn("w-14 h-14 rounded-[1.5rem] border backdrop-blur-xl flex items-center justify-center", isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : "bg-white/30 border-white/30")}>
+                          <User size={24} className={cn(isBlackGold ? "text-[#D4AF37]" : (isDarkMode ? "text-white" : "text-gray-800"))} />
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <p className={cn("text-sm font-black", isDarkMode ? "text-white" : "text-gray-900")}>{t('user_title')}</p>
+                            {isProMember && (
+                              <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-600 border border-amber-200">
+                                <Star size={10} fill="currentColor" />
+                                <span className="text-[8px] font-black uppercase tracking-widest">PRO</span>
+                              </div>
+                            )}
                           </div>
-                        ))}
+                          <p className={cn("text-[10px] font-bold mt-1", mutedText)}>
+                            {t(`greeting.${timeContext}`)}{i18n.language === 'zh-CN' ? '，' : ', '}{t('greeting.welcome_back')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {!isProMember && (
+                          <motion.button
+                            whileTap={{ scale: 0.96 }}
+                            onClick={() => setIsProPaywallOpen(true)}
+                            className={cn(
+                              "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                              "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
+                            )}
+                          >
+                            {t('upgrade_pro')}
+                          </motion.button>
+                        )}
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Tips Marquee */}
-                <div className={cn(
-                  "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden",
-                  isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
-                )}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      <Smile size={18} className={cn(isDarkMode ? "text-white/60" : "text-gray-700")} />
-                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('saving_tips')}</span>
-                    </div>
-                    <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>“{wealthTip}”</span>
-                  </div>
-                  <div className="relative overflow-hidden">
-                    <motion.div
-                      animate={{ x: ['0%', '-50%'] }}
-                      transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
-                      className={cn("whitespace-nowrap text-sm font-black", isDarkMode ? "text-white/70" : "text-gray-700")}
-                    >
-                      <span>{wealthMarquee}</span>
-                      <span className="mx-6 opacity-60">·</span>
-                      <span>{wealthMarquee}</span>
-                    </motion.div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'calendar' && (
-              <div className="space-y-6">
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-gray-50 text-gray-900")}>
-                  <h3 className="font-black text-lg mb-8 flex items-center"><CalendarIcon size={20} className="mr-2 text-orange-500" />{t('calendar')}</h3>
-                  <div className="grid grid-cols-7 gap-2">
-                    {(t('home_widgets.weekdays_short', { returnObjects: true }) as string[]).map(d => <div key={d} className="text-center text-[10px] font-bold text-gray-300 pb-4">{d}</div>)}
-                    {eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }).map(day => {
-                      const dayData = transactions.filter(t => isSameDay(parseISO(t.date), day));
-                      const dayExpense = dayData.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
-                      return (
-                        <div key={day.toString()} onClick={() => setSelectedCalendarDate(day)} className={cn("aspect-square flex flex-col items-center justify-center rounded-xl transition-all relative cursor-pointer", isSameDay(day, selectedCalendarDate) ? cn(theme.primary, "text-white") : (isDarkMode ? "hover:bg-slate-700" : "hover:bg-gray-50"))}>
-                          <span className="text-xs font-black">{format(day, 'd')}</span>
-                          {dayExpense > 0 && (
-                            <span className={cn(
-                              "text-[6px] font-black absolute bottom-1",
-                              isSameDay(day, selectedCalendarDate) ? "text-white/80" : "text-red-400"
-                            )}>
-                              -{Math.floor(dayExpense)}
-                            </span>
-                          )}
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setDiscoveryTool('groupSaving')}
+                    className={cn(
+                      "w-full rounded-[2.5rem] p-6 border shadow-sm overflow-hidden relative text-left",
+                      "lux-carbon border-[#2A2A2A] text-[#F5F5F5]"
+                    )}
+                  >
+                    <div className="absolute inset-0 backdrop-blur-2xl" />
+                    <div className="absolute -top-16 -right-16 w-56 h-56 rounded-full blur-[110px] opacity-35 bg-[#D4AF37]/25" />
+                    <div className="absolute -bottom-16 -left-16 w-56 h-56 rounded-full blur-[120px] opacity-25 bg-[#D4AF37]/20" />
+                    <div className="relative flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className={cn("w-12 h-12 rounded-[1.5rem] border flex items-center justify-center shadow-sm", isBlackGold ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]" : "bg-white/30 border-white/30 text-white")}>
+                          <Users size={20} />
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Daily Summary Card */}
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-                  <h3 className="font-black text-sm text-gray-400 mb-6 uppercase tracking-widest">{t('calendar_balance', { date: format(selectedCalendarDate, i18n.language === 'zh-CN' ? 'MM月dd日' : 'MMM dd', { locale: dateLocale }) })}</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 rounded-2xl bg-red-50/50 dark:bg-red-900/10 border border-red-100/50 dark:border-red-900/20">
-                      <p className="text-[10px] font-black text-red-400 uppercase mb-1">{t('expense')}</p>
-                      <p className="text-xl font-black text-red-500">¥{formatCurrency(transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate) && t.type === 'expense').reduce((sum, t) => sum + t.amount, 0))}</p>
+                        <div>
+                          <div className="text-sm font-black">{t('group_card_title')}</div>
+                          <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">
+                            {groupSaving ? t('group_card_joined', { name: groupSaving.name, code: groupSaving.code }) : t('group_saving_subtitle')}
+                          </div>
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border flex items-center space-x-2",
+                        groupSaving
+                          ? "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
+                          : "lux-gold border-[#D4AF37] text-black shadow-lg"
+                      )}>
+                        <Users size={14} />
+                        <span>{groupSaving ? t('enter') : t('start_now')}</span>
+                      </div>
                     </div>
-                    <div className="p-4 rounded-2xl bg-green-50/50 dark:bg-green-900/10 border border-green-100/50 dark:border-green-900/20">
-                      <p className="text-[10px] font-black text-green-400 uppercase mb-1">{t('income')}</p>
-                      <p className="text-xl font-black text-green-500">¥{formatCurrency(transactions.filter(t => isSameDay(parseISO(t.date), selectedCalendarDate) && t.type === 'income').reduce((sum, t) => sum + t.amount, 0))}</p>
+                  </motion.button>
+
+                  {/* Quick Tools Grid */}
+                  <div className={cn("rounded-[2.5rem] p-6 shadow-sm", surfaceCard("rounded-[2.5rem]"))}>
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="text-sm font-black">{t('common_tools')}</h3>
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('toolkit_tag')}</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { key: 'assets', label: t('assets'), Icon: LineIcon, onClick: () => setActiveTab('assets') },
+                        { key: 'groupSaving', label: t('group_saving_title'), Icon: Users, onClick: () => setDiscoveryTool('groupSaving') },
+                        { key: 'budget', label: t('settings'), Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
+                        { key: 'export', label: t('export'), Icon: Share2, onClick: () => requestExport('image') },
+                        { key: 'categories', label: t('categories_manage'), Icon: Hash, onClick: () => setDiscoveryTool('categories') },
+                        { key: 'fx', label: t('exchange'), Icon: ArrowRightLeft, onClick: () => setDiscoveryTool('exchange') },
+                        { key: 'calc', label: t('calculator'), Icon: Calculator, onClick: () => setDiscoveryTool('calculator') },
+                      ].map(item => (
+                        <motion.button
+                          key={item.key}
+                          whileTap={{ scale: 0.96 }}
+                          onClick={item.onClick}
+                          className={cn(
+                            "p-4 rounded-[1.75rem] border flex flex-col items-center justify-center space-y-2 transition-all",
+                            "lux-carbon border-[#2A2A2A]"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-10 h-10 rounded-2xl flex items-center justify-center border",
+                            "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]"
+                          )}>
+                            <item.Icon size={18} />
+                          </div>
+                          <span className={cn("text-[10px] font-black", isBlackGold ? "text-[#F5F5F5]" : isDarkMode ? "text-white/80" : "text-gray-700")}>{item.label}</span>
+                        </motion.button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Pro Perks */}
+                  <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                    <div className="flex items-center justify-between mb-5">
+                      <h3 className="text-sm font-black">{t('pro.perks_title')}</h3>
+                      <motion.button
+                        whileTap={{ scale: 0.96 }}
+                        onClick={() => setIsProPaywallOpen(true)}
+                        className={cn(
+                          "px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border",
+                          isProMember
+                            ? (isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/70" : "bg-gray-50 border-gray-100 text-gray-600")
+                            : "bg-amber-500 text-black border-amber-400 shadow-lg"
+                        )}
+                      >
+                        {isProMember ? t('pro.unlocked') : t('pro.lifetime')}
+                      </motion.button>
+                    </div>
+
+                    <div className={cn("space-y-3", !isProMember && "opacity-60")}>
+                      <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="flex items-center space-x-3">
+                          <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", "lux-carbon border-[#2A2A2A]")}>
+                            <Sparkles size={18} className="text-[#D4AF37]" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black">{t('pro.perk_skin.label')}</p>
+                            <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_skin.desc')}</p>
+                          </div>
+                        </div>
+                        {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                      </div>
+
+                      <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="flex items-center space-x-3">
+                          <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                            <Share2 size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black">{t('pro.perk_export.label')}</p>
+                            <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_export.desc')}</p>
+                          </div>
+                        </div>
+                        {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                      </div>
+
+                      <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="flex items-center space-x-3">
+                          <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                            <Sparkles size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black">{t('pro.perk_lab.label')}</p>
+                            <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_lab.desc')}</p>
+                          </div>
+                        </div>
+                        {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                      </div>
+
+                      <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className="flex items-center space-x-3">
+                          <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                            <Star size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                          </div>
+                          <div>
+                            <p className="text-xs font-black">{t('pro.perk_badge.label')}</p>
+                            <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_badge.desc')}</p>
+                          </div>
+                        </div>
+                        {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('theme')}</span>
+                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('locked')}</span>
+                      </div>
+                      <div className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border text-center shadow-lg", theme.primary)}>
+                        {t('black_gold')}
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('export_section')}</span>
+                        {!isProMember && (
+                          <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('remaining_times', { count: remainingFreeExports })}</span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-3">
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('image')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
+                          {t('export_image')}
+                        </motion.button>
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('csv')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
+                          {t('export_excel')}
+                        </motion.button>
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={() => requestExport('pdf')} className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border", isDarkMode ? "bg-slate-700/60 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-700")}>
+                          {t('export_pdf')}
+                        </motion.button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Finance Management Card */}
+                  <div className={cn("rounded-[2.5rem] p-6 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="font-black text-sm">{t('finance_management')}</h3>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/40" : "text-gray-400")}>
+                        {t('finance_health')}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 items-center">
+                      <div>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest mb-2", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('finance_health')}</div>
+                        <div className="flex items-end space-x-2">
+                          <div className={cn("text-4xl font-black", stats.budgetUsage > 90 ? "text-rose-500" : theme.text)}>
+                            {Math.max(0, Math.min(100, Math.round(100 - stats.budgetUsage)))}
+                          </div>
+                          <div className={cn("text-xs font-black mb-1", isDarkMode ? "text-white/50" : "text-gray-400")}>/ 100</div>
+                        </div>
+                        <div className="mt-4 w-full h-2 rounded-full overflow-hidden bg-gray-100/60 dark:bg-slate-700/60">
+                          <div
+                            className={cn("h-full rounded-full", stats.budgetUsage > 90 ? "bg-rose-500" : theme.primary)}
+                            style={{ width: `${Math.max(0, Math.min(100, 100 - stats.budgetUsage))}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className={cn("rounded-[2rem] p-4 border", isDarkMode ? "bg-slate-700/50 border-slate-600" : "bg-gray-50 border-gray-100")}>
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest mb-3", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('last7_expense')}</div>
+                        <div className="flex items-end justify-between h-14">
+                          {stats.trendData.map((d, idx) => (
+                            <div key={d.date + idx} className="flex-1 flex justify-center">
+                              <div
+                                className={cn("w-2 rounded-full", idx === stats.trendData.length - 1 ? theme.primary : (isDarkMode ? "bg-white/20" : "bg-gray-300/70"))}
+                                style={{ height: `${Math.min(56, Math.max(6, d.amount / 20))}px` }}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tips Marquee */}
+                  <div className={cn(
+                    "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden",
+                    isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
+                  )}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-2">
+                        <Smile size={18} className={cn(isDarkMode ? "text-white/60" : "text-gray-700")} />
+                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('saving_tips')}</span>
+                      </div>
+                      <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>“{wealthTip}”</span>
+                    </div>
+                    <div className="relative overflow-hidden">
+                      <motion.div
+                        animate={{ x: ['0%', '-50%'] }}
+                        transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+                        className={cn("whitespace-nowrap text-sm font-black", isDarkMode ? "text-white/70" : "text-gray-700")}
+                      >
+                        <span>{wealthMarquee}</span>
+                        <span className="mx-6 opacity-60">·</span>
+                        <span>{wealthMarquee}</span>
+                      </motion.div>
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* Month Progress */}
-                <div className={cn("rounded-[2.5rem] p-8 shadow-sm border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50")}>
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t('month_progress')}</span>
-                    <span className="text-[10px] font-black">{stats.budgetUsage.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(stats.budgetUsage, 100)}%` }}
-                      className={cn("h-full", stats.budgetUsage > 90 ? "bg-red-500" : theme.primary)}
-                    />
+              {activeTab === 'vault' && (
+                <div className="space-y-6 pb-10">
+                  <div className={cn("rounded-[2.5rem] p-8 shadow-sm overflow-hidden relative", surfaceCard("rounded-[2.5rem]"))}>
+                    <div className="absolute -top-20 -right-20 w-64 h-64 rounded-full blur-[120px] opacity-35 bg-[#D4AF37]/25" />
+                    <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full blur-[140px] opacity-20 bg-white/10" />
+
+                    <div className="relative flex items-center justify-between">
+                      <h3 className="font-black text-lg flex items-center">
+                        <Vault size={20} className={cn("mr-2", isDarkMode ? "text-[#D4AF37]" : "text-amber-500")} />
+                        {t('vault')}
+                      </h3>
+                      <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('total_assets')}</div>
+                    </div>
+
+                    <div className="relative mt-8 flex items-center justify-between">
+                      <div>
+                        <div className="text-3xl font-black tracking-tight">¥{formatCurrency(totalAssets)}</div>
+                        <div className={cn("mt-2 text-[10px] font-bold", mutedText)}>{t('assets_dashboard.subtitle')}</div>
+                      </div>
+                      <div className={cn("px-4 py-2 rounded-2xl border text-[10px] font-black uppercase tracking-widest", "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]")}>
+                        {t('black_gold')}
+                      </div>
+                    </div>
+
+                    <div className="relative mt-10 flex justify-center">
+                      <motion.div
+                        initial={{ y: "-100%", opacity: 0, rotate: -6, scale: 0.98 }}
+                        animate={{ y: 0, opacity: 1, rotate: 0, scale: 1 }}
+                        transition={{ type: "spring", stiffness: 260, damping: 22 }}
+                        className="relative w-56 h-56"
+                      >
+                        <div className="absolute inset-0 rounded-[3.2rem] bg-white/5 border border-white/10 backdrop-blur-2xl shadow-[0_26px_90px_rgba(0,0,0,0.35)]" />
+                        <div className="absolute left-1/2 -translate-x-1/2 top-6 w-40 h-12 rounded-[2rem] bg-white/5 border border-[#D4AF37]/25" />
+                        <div className="absolute left-1/2 -translate-x-1/2 top-16 w-44 h-32 rounded-[2.8rem] bg-black/25 border border-white/10 overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-b from-[#D4AF37]/18 via-transparent to-transparent" />
+                          <div className="absolute -top-10 -right-10 w-44 h-44 rounded-full blur-[70px] bg-[#D4AF37]/30" />
+                        </div>
+                        <div className="absolute left-1/2 -translate-x-1/2 bottom-8 w-48 h-16 rounded-[2.8rem] bg-white/5 border border-white/10" />
+                        <motion.div
+                          animate={{ opacity: [0.25, 0.55, 0.25], x: [-8, 8, -8] }}
+                          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute inset-0 rounded-[3.2rem] bg-gradient-to-r from-transparent via-white/10 to-transparent"
+                        />
+                      </motion.div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+              )}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </main>
 
       {/* Voice Recognition Modal */}
@@ -3342,6 +3403,30 @@ export default function App() {
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                       </div>
                     </div>
+                    <button onClick={exportBackup} className="w-full p-5 flex items-center justify-between hover:bg-black/5 active:scale-[0.98] transition-all border-b border-black/5">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-emerald-100 text-emerald-500 rounded-lg flex items-center justify-center">
+                          <Share2 size={18} />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-sm font-bold">{t('backup_export')}</div>
+                          <div className={cn("text-[10px] font-bold", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('backup_export_desc')}</div>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className={cn(isDarkMode ? "text-white/30" : "text-black/20")} />
+                    </button>
+                    <button onClick={triggerBackupImport} className="w-full p-5 flex items-center justify-between hover:bg-black/5 active:scale-[0.98] transition-all">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-8 h-8 bg-sky-100 text-sky-500 rounded-lg flex items-center justify-center">
+                          <Cloud size={18} />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-sm font-bold">{t('backup_import')}</div>
+                          <div className={cn("text-[10px] font-bold", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('backup_import_desc')}</div>
+                        </div>
+                      </div>
+                      <ChevronRight size={18} className={cn(isDarkMode ? "text-white/30" : "text-black/20")} />
+                    </button>
                   </div>
                 </section>
 
@@ -3886,7 +3971,7 @@ export default function App() {
             { id: 'list', icon: <History size={22} />, label: t('bill_detail') },
             { id: 'chart', icon: <PieIcon size={22} />, label: t('stats') },
             { id: 'plus', icon: null, label: '' }, // Placeholder for the big plus
-            { id: 'calendar', icon: <CalendarIcon size={22} />, label: t('calendar') },
+            { id: 'vault', icon: <Vault size={22} />, label: t('vault') },
             { id: 'discovery', icon: <Compass size={22} />, label: t('discovery') },
           ].map((tab) => {
             if (tab.id === 'plus') {
