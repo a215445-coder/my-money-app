@@ -5207,6 +5207,46 @@ function TransactionForm({
 
   const selectedAccount = useMemo(() => accounts.find(a => a.id === accountId) || accounts[0], [accounts, accountId]);
 
+  const AccountBrandIcon = ({ account, size = '1.5em' }: { account: Account; size?: number | string }) => {
+    if (account.name === 'wechat') {
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="WeChat"
+          className="max-w-full h-auto text-[#07C160]"
+          fill="currentColor"
+        >
+          <path d="M23.541 12.748c-.609-1.38-1.758-2.476-3.092-3.151-2.354-1.192-5.281-1.185-7.629.03-1.631.837-2.993 2.337-3.379 4.162-.318 1.344-.033 2.791.68 3.961 1.061 1.762 2.979 2.887 4.971 3.248 1.443.293 2.936.119 4.338-.285.842.326 1.592.854 2.408 1.246-.211-.707-.436-1.406-.676-2.102.916-.65 1.746-1.461 2.244-2.479.744-1.415.789-3.171.135-4.63zm-9.924-9.466c-2.495-1.404-5.602-1.615-8.286-.645-1.764.635-3.36 1.815-4.346 3.42-.895 1.45-1.23 3.258-.799 4.917.433 1.84 1.711 3.383 3.262 4.413-.3.85-.585 1.699-.855 2.555.975-.51 1.95-1.043 2.926-1.561 1.17.375 2.415.559 3.66.518-.33-.943-.405-1.965-.255-2.951.225-1.371.975-2.625 1.994-3.554 1.726-1.615 4.171-2.296 6.496-2.131-.436-2.135-1.936-3.939-3.824-4.98h.027zm1.733 9.989c-.209.652-1.156.848-1.615.352-.506-.459-.309-1.418.355-1.623.734-.31 1.582.537 1.26 1.271zm4.795.092c-.256.586-1.141.723-1.576.27-.209-.191-.27-.479-.344-.73.104-.458.42-.933.93-.955.705-.098 1.336.773.975 1.416h.015zM12.99 6.909c.008.961-1.275 1.561-1.995.909-.747-.535-.535-1.837.342-2.106.785-.315 1.713.344 1.651 1.185l.002.012zm-6.059.244c-.172.835-1.291 1.238-1.946.678-.759-.535-.546-1.861.345-2.131.873-.336 1.865.55 1.601 1.453z" />
+        </svg>
+      );
+    }
+    if (account.name === 'alipay') {
+      return (
+        <svg
+          width={size}
+          height={size}
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+          role="img"
+          aria-label="Alipay"
+          className="max-w-full h-auto text-[#1677FF]"
+          fill="currentColor"
+        >
+          <path d="M18.408 16.79c-2.173-.95-3.72-1.646-4.64-2.086-1.4 1.696-2.872 2.72-5.08 2.72S5 16.064 5.176 14.392c.12-1.096.872-2.888 4.128-2.576 1.72.16 2.504.48 3.912.944.36-.664.664-1.4.888-2.176H7.88v-.616h3.072V8.864H7.2v-.68h3.752V6.592s.032-.248.312-.248H12.8v1.848h4v.68h-4v1.104h3.264a12.41 12.41 0 0 1-1.32 3.32c.51.182 2.097.676 4.76 1.483a8 8 0 1 0-1.096 2.012zM12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-3.568-5.632c1.44 0 2.824-.872 3.96-2.352-1.608-.776-2.944-1.16-4.44-1.16-1.304 0-1.984.8-2.104 1.416-.12.616.248 2.096 2.584 2.096z" />
+        </svg>
+      );
+    }
+    return (
+      <span className="text-xl leading-none">
+        {account.icon}
+      </span>
+    );
+  };
+
   const WheelColumn = ({
     items,
     selected,
@@ -5559,7 +5599,14 @@ function TransactionForm({
               isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black"
             )}
           >
-            {selectedAccount?.icon} {t(`accounts.${selectedAccount?.name}`)}
+            <span className="inline-flex items-center space-x-2 min-w-0 max-w-full overflow-hidden">
+              <span className="flex-shrink-0">
+                <AccountBrandIcon account={selectedAccount} />
+              </span>
+              <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                {t(`accounts.${selectedAccount?.name}`)}
+              </span>
+            </span>
           </button>
         </div>
       </div>
@@ -5786,8 +5833,8 @@ function TransactionForm({
                 )}
               >
                 <div className="flex items-center space-x-3">
-                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-xl", on ? "bg-[#D4AF37]/15 text-[#D4AF37]" : "bg-white/10 text-white")}>
-                    {acc.icon}
+                  <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center", (acc.name === 'wechat' || acc.name === 'alipay') ? "bg-transparent" : (on ? "bg-[#D4AF37]/15 text-[#D4AF37]" : "bg-white/10 text-white"))}>
+                    <AccountBrandIcon account={acc} size={24} />
                   </div>
                   <div className="min-w-0 overflow-hidden">
                     <div className={cn("text-sm font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap", on ? "text-[#D4AF37]" : "text-white")}>
