@@ -12,7 +12,7 @@ export interface Account {
   icon: string;
 }
 
-export type CurrencyCode = 'CNY' | 'USD' | 'EUR' | 'JPY' | 'KRW' | 'THB' | 'HKD';
+export type CurrencyCode = 'CNY' | 'USD' | 'EUR' | 'JPY' | 'KRW' | 'THB' | 'HKD' | 'MYR';
 
 export interface Currency {
   code: CurrencyCode;

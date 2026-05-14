@@ -5,6 +5,7 @@ import {
   X,
   Minus,
   Trash2,
+  Check,
   PieChart as PieIcon,
   TrendingUp,
   TrendingDown,
@@ -570,6 +571,7 @@ const CURRENCIES: Currency[] = [
   { code: 'KRW', name: 'KRW', flag: '🇰🇷', symbol: '₩' },
   { code: 'THB', name: 'THB', flag: '🇹🇭', symbol: '฿' },
   { code: 'HKD', name: 'HKD', flag: '🇭🇰', symbol: '$' },
+  { code: 'MYR', name: 'MYR', flag: '🇲🇾', symbol: 'RM' },
 ];
 
 const BLACK_GOLD_THEME = {
@@ -940,6 +942,15 @@ export default function App() {
     const saved = localStorage.getItem('exchange_rates');
     return saved ? JSON.parse(saved) : { USD: 7.25, EUR: 7.85, JPY: 0.046, KRW: 0.0053, THB: 0.19, HKD: 0.93, CNY: 1 };
   });
+  const DISPLAY_CURRENCY_KEY = 'display_currency_v1';
+  const [displayCurrencyCode, setDisplayCurrencyCode] = useState<CurrencyCode>(() => {
+    const saved = localStorage.getItem(DISPLAY_CURRENCY_KEY) as CurrencyCode | null;
+    if (saved) return saved;
+    return (localStorage.getItem('last_used_currency') as CurrencyCode) || 'CNY';
+  });
+  useEffect(() => {
+    localStorage.setItem(DISPLAY_CURRENCY_KEY, displayCurrencyCode);
+  }, [displayCurrencyCode]);
 
   useEffect(() => {
     const fetchRates = async () => {
@@ -2158,6 +2169,15 @@ export default function App() {
   const formatMilestoneCurrency = (v: number) => Math.round(v).toLocaleString(i18n.language === 'en-US' ? 'en-US' : 'zh-CN', { maximumFractionDigits: 0 });
   const dateLocale = i18n.language === 'zh-CN' ? zhCN : enUS;
 
+  const displayCurrency = useMemo(() => CURRENCIES.find(c => c.code === displayCurrencyCode) || CURRENCIES[0], [displayCurrencyCode]);
+  const convertCNYToDisplay = (v: number) => {
+    if (displayCurrencyCode === 'CNY') return v;
+    const rate = rates[displayCurrencyCode] || 1;
+    return v / rate;
+  };
+  const formatMoney = (amountCNY: number) => `${displayCurrency.symbol}${formatCurrency(convertCNYToDisplay(amountCNY))}`;
+  const formatMilestoneMoney = (amountCNY: number) => `${displayCurrency.symbol}${formatMilestoneCurrency(convertCNYToDisplay(amountCNY))}`;
+
   const RollingNumber = ({ value }: { value: number }) => {
     const prevRef = useRef(value);
     const direction = value >= prevRef.current ? 1 : -1;
@@ -2635,7 +2655,7 @@ export default function App() {
                                       <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.today_expense')}</div>
                                       <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{format(new Date(), 'MM.dd', { locale: dateLocale })}</div>
                                     </div>
-                                    <div className="mt-3 text-2xl font-black tracking-tight">¥{formatCurrency(homeToday.expense)}</div>
+                                    <div className="mt-3 text-2xl font-black tracking-tight">{formatMoney(homeToday.expense)}</div>
                                     <div className={cn("mt-3 text-[10px] font-bold", mutedText)}>{t('home_widgets.search_link_hint')}</div>
                                   </motion.div>
 
@@ -2648,8 +2668,8 @@ export default function App() {
                                       <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{Math.max(0, 100 - homeMonth.usedPct).toFixed(0)}%</div>
                                     </div>
                                     <div className="mt-3 flex items-end justify-between">
-                                      <div className="text-lg font-black">¥{formatCurrency(homeMonth.remaining)}</div>
-                                      <div className={cn("text-[10px] font-bold", mutedText)}>{t('home_widgets.used_prefix')} ¥{formatCurrency(homeMonth.expense)}</div>
+                                      <div className="text-lg font-black">{formatMoney(homeMonth.remaining)}</div>
+                                      <div className={cn("text-[10px] font-bold", mutedText)}>{t('home_widgets.used_prefix')} {formatMoney(homeMonth.expense)}</div>
                                     </div>
                                     <div className={cn("mt-4 h-3 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
                                       <motion.div
@@ -2724,7 +2744,7 @@ export default function App() {
                                       </svg>
                                       <div className="mt-3 flex items-center justify-between">
                                         <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('home_widgets.week_total')}</div>
-                                        <div className="text-sm font-black">¥{formatCurrency(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
+                                        <div className="text-sm font-black">{formatMoney(homeWeekSeries.reduce((s, x) => s + x.amount, 0))}</div>
                                       </div>
                                     </div>
                                   );
@@ -2766,7 +2786,7 @@ export default function App() {
                                             <div className="text-sm font-black">{t(`categories.${c.name}`)}</div>
                                             <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{c.pct.toFixed(0)}%</div>
                                           </div>
-                                          <div className={cn("text-[10px] font-black", mutedText)}>¥{formatCurrency(c.value)}</div>
+                                          <div className={cn("text-[10px] font-black", mutedText)}>{formatMoney(c.value)}</div>
                                         </div>
                                         <div className={cn("mt-3 h-2 rounded-full overflow-hidden", isDarkUI ? "bg-white/10" : "bg-black/5")}>
                                           <motion.div
@@ -2809,9 +2829,9 @@ export default function App() {
                                   <div className="min-w-0 flex-1 overflow-hidden">
                                     <p className={cn("text-[3.5vw] font-black uppercase tracking-[0.2em] mb-[2.5vw]", "text-white/60", "max-w-full overflow-hidden text-ellipsis whitespace-nowrap")}>{t('total_assets')}</p>
                                     <div className="text-[8vw] leading-none font-black tracking-tighter drop-shadow-[0_1vw_2vw_rgba(0,0,0,0.35)] flex items-end min-w-0 overflow-hidden">
-                                      <span className="mr-[1.2vw] flex-shrink-0">¥</span>
+                                      <span className="mr-[1.2vw] flex-shrink-0 whitespace-nowrap">{displayCurrency.symbol}</span>
                                       <div className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
-                                        <RollingNumber value={totalAssets} />
+                                        <RollingNumber value={convertCNYToDisplay(totalAssets)} />
                                       </div>
                                     </div>
                                   </div>
@@ -2829,7 +2849,7 @@ export default function App() {
                                       </div>
                                       <span className={cn("text-[3.2vw] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('expense')}</span>
                                     </div>
-                                    <p className="text-[5vw] font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">¥{formatCurrency(stats.expense)}</p>
+                                    <p className="text-[5vw] font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{formatMoney(stats.expense)}</p>
                                   </div>
                                   <div className="bg-white/10 backdrop-blur-[2vw] p-[4vw] rounded-[7vw] border-[0.35vw] border-white/10 transition-transform hover:scale-105 overflow-hidden">
                                     <div className="flex items-center space-x-[2vw] mb-[2vw] min-w-0 overflow-hidden">
@@ -2838,7 +2858,7 @@ export default function App() {
                                       </div>
                                       <span className={cn("text-[3.2vw] font-black uppercase tracking-widest", "text-white/60", "min-w-0 overflow-hidden text-ellipsis whitespace-nowrap flex-shrink")}>{t('income')}</span>
                                     </div>
-                                    <p className="text-[5vw] font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">¥{formatCurrency(stats.income)}</p>
+                                    <p className="text-[5vw] font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{formatMoney(stats.income)}</p>
                                   </div>
                                 </div>
                               </div>
@@ -2875,7 +2895,7 @@ export default function App() {
                                       <div aria-hidden className="w-[7vw] h-[7vw] flex-shrink-0" />
                                       <div className="min-w-0 overflow-hidden flex-shrink">
                                         <p className="text-[4.5vw] leading-none font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                          ¥{formatCurrency(budget)}
+                                          {formatMoney(budget)}
                                         </p>
                                       </div>
                                     </div>
@@ -2885,7 +2905,7 @@ export default function App() {
                                         stats.budgetUsage > 90 ? "text-red-500" : "text-[#D4AF37]"
                                       )}
                                     >
-                                      ¥{formatCurrency(Math.max(budget - stats.expense, 0))}
+                                      {formatMoney(Math.max(budget - stats.expense, 0))}
                                     </p>
                                   </div>
                                 </div>
@@ -2915,7 +2935,7 @@ export default function App() {
                                       <Calculator size="1em" className="max-w-full h-auto" />
                                     </span>
                                     <span className="text-[3.2vw] leading-none font-black uppercase tracking-tight max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
-                                      {t('daily_available', { amount: stats.dailyBudget.toFixed(0) })}
+                                      {t('daily_available', { amount: formatMoney(stats.dailyBudget) })}
                                     </span>
                                   </div>
                                 </div>
@@ -3060,12 +3080,12 @@ export default function App() {
                                       {item.type === 'expense' ? '-' : '+'}
                                       {showOriginalCurrency[item.id] && item.currency && item.currency !== 'CNY'
                                         ? `${CURRENCIES.find(c => c.code === item.currency)?.symbol}${item.originalAmount?.toFixed(2)}`
-                                        : `¥${formatCurrency(item.amount)}`
+                                        : formatMoney(item.amount)
                                       }
                                     </div>
                                     {item.currency && item.currency !== 'CNY' && (
                                       <p className={cn("text-[8px] font-bold mt-0.5", mutedText)}>
-                                        {showOriginalCurrency[item.id] ? `≈ ¥${formatCurrency(item.amount)}` : `${CURRENCIES.find(c => c.code === item.currency)?.flag} ${item.originalAmount?.toFixed(2)}`}
+                                        {showOriginalCurrency[item.id] ? `≈ ${formatMoney(item.amount)}` : `${CURRENCIES.find(c => c.code === item.currency)?.flag} ${item.originalAmount?.toFixed(2)}`}
                                       </p>
                                     )}
                                   </motion.div>
@@ -3101,11 +3121,11 @@ export default function App() {
                     <div className="flex items-end justify-between mb-6">
                       <div>
                         <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.current_total_assets')}</p>
-                        <p className="text-3xl font-black">¥{formatCurrency(totalAssets)}</p>
+                        <p className="text-3xl font-black">{formatMoney(totalAssets)}</p>
                       </div>
                       <div className="text-right">
                         <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
-                        <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
+                        <p className={cn("text-lg font-black", theme.text)}>{formatMoney(assetDashboard.netAssets)}</p>
                       </div>
                     </div>
                     <div className="h-44 w-full">
@@ -3145,11 +3165,11 @@ export default function App() {
                       <div className="mt-4 grid grid-cols-2 gap-3">
                         <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
                           <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.liabilities')}</p>
-                          <p className="text-lg font-black text-rose-500">¥{formatCurrency(assetDashboard.liabilities)}</p>
+                          <p className="text-lg font-black text-rose-500">{formatMoney(assetDashboard.liabilities)}</p>
                         </div>
                         <div className={cn("p-4 rounded-2xl", surfaceCard("rounded-2xl"))}>
                           <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
-                          <p className={cn("text-lg font-black", theme.text)}>¥{formatCurrency(assetDashboard.netAssets)}</p>
+                          <p className={cn("text-lg font-black", theme.text)}>{formatMoney(assetDashboard.netAssets)}</p>
                         </div>
                       </div>
                     </div>
@@ -3226,7 +3246,7 @@ export default function App() {
                       <div className="flex items-end justify-between mb-4">
                         <div>
                           <p className={cn("text-[10px] font-black uppercase tracking-widest mb-1", mutedText)}>{t('pro.forecast_estimated_month_total')}</p>
-                          <p className="text-3xl font-black">¥{formatCurrency(stats.predictedTotal)}</p>
+                          <p className="text-3xl font-black">{formatMoney(stats.predictedTotal)}</p>
                         </div>
                         <div className={cn("text-right", stats.isOverBudgetRisk ? "text-red-500" : "text-green-500")}>
                           <p className="text-[10px] font-black uppercase tracking-widest mb-1">{t('pro.over_budget_risk')}</p>
@@ -3243,7 +3263,7 @@ export default function App() {
                       <p className={cn("mt-4 text-[10px] font-bold leading-relaxed", mutedText)}>
                         {t('pro.forecast_desc', {
                           days: differenceInDays(new Date(), startOfMonth(currentDate)) + 1,
-                          amount: formatCurrency(stats.predictedTotal),
+                          amount: formatMoney(stats.predictedTotal),
                         })}{' '}
                         {stats.isOverBudgetRisk ? t('pro.forecast_advice_over') : t('pro.forecast_advice_ok')}
                       </p>
@@ -3682,7 +3702,7 @@ export default function App() {
 
                     <div className="relative mt-[clamp(1rem,3vw,1.5rem)] flex flex-col items-center text-center gap-[clamp(0.75rem,2vw,1rem)] w-full min-w-0 overflow-hidden">
                       <div className="min-w-0 max-w-full overflow-hidden flex-shrink">
-                        <div className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[clamp(1.55rem,8.5cqw,2.25rem)] whitespace-nowrap overflow-hidden" title={`¥${formatCurrency(totalAssets)}`}>¥{formatCurrency(totalAssets)}</div>
+                        <div className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[clamp(1.55rem,8.5cqw,2.25rem)] whitespace-nowrap overflow-hidden" title={formatMoney(totalAssets)}>{formatMoney(totalAssets)}</div>
                         <div className={cn("mt-[clamp(0.25rem,1vw,0.5rem)] text-[clamp(0.55rem,2.2cqw,0.7rem)] font-bold max-w-full overflow-hidden text-ellipsis whitespace-nowrap", mutedText)}>{t('assets_dashboard.subtitle')}</div>
                       </div>
                     </div>
@@ -3822,11 +3842,11 @@ export default function App() {
                                             )}
                                           />
                                           <div className="absolute right-0 -top-[0.85rem] px-2 py-0.5 rounded-full bg-black/25 border border-white/10 backdrop-blur-xl text-[clamp(0.5rem,2.4cqw,0.6rem)] font-black text-[#D4AF37]/80">
-                                            ¥{formatMilestoneCurrency(m)}
+                                            {formatMilestoneMoney(m)}
                                           </div>
                                           {target && (
                                             <div className="absolute right-0 -top-[clamp(2.05rem,5vw,2.55rem)] px-3 py-1 rounded-full bg-black/35 border border-white/10 backdrop-blur-xl text-[clamp(0.5rem,2.4cqw,0.6rem)] font-black text-[#D4AF37]">
-                                              {t('vault_milestone_remaining', { amount: formatMilestoneCurrency(Math.max(0, m - totalAssets)) })}
+                                              {t('vault_milestone_remaining', { amount: formatMilestoneMoney(Math.max(0, m - totalAssets)) })}
                                             </div>
                                           )}
                                         </div>
@@ -4006,7 +4026,7 @@ export default function App() {
                             <p className="text-white/40 text-[10px]">{parseVoiceIntent(voiceText).note}</p>
                           </div>
                         </div>
-                        <p className="text-white font-black text-xl">¥{parseVoiceIntent(voiceText).amount}</p>
+                        <p className="text-white font-black text-xl">{formatMoney(parseVoiceIntent(voiceText).amount)}</p>
                       </div>
                       <button
                         onClick={() => {
@@ -4083,6 +4103,8 @@ export default function App() {
                 onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
                 isDarkMode={isDarkMode}
                 groupSaving={groupSaving}
+                displayCurrencyCode={displayCurrencyCode}
+                onDisplayCurrencyCodeChange={setDisplayCurrencyCode}
               />
             </div>
           </motion.div>
@@ -4146,7 +4168,7 @@ export default function App() {
                           </div>
                         </div>
                         <p className={cn("font-black", t.type === 'expense' ? "text-red-500" : "text-green-500")}>
-                          {t.type === 'expense' ? '-' : '+'}¥{formatCurrency(t.amount)}
+                          {t.type === 'expense' ? '-' : '+'}{formatMoney(t.amount)}
                         </p>
                       </div>
                     ))
@@ -4448,7 +4470,7 @@ export default function App() {
                           </div>
                           <div className="text-right">
                             <div className="text-[10px] font-black uppercase tracking-widest opacity-70">{t('group.used')}</div>
-                            <div className="text-sm font-black">¥{formatCurrency(groupMonthPoolSpent)}</div>
+                            <div className="text-sm font-black">{formatMoney(groupMonthPoolSpent)}</div>
                           </div>
                         </div>
 
@@ -4485,8 +4507,8 @@ export default function App() {
                             <div className="text-[10px] font-bold mt-1 text-[#F5F5F5]/60">{t('group.saved_this_week')}</div>
                           </div>
                           <div className="text-right">
-                            <div className="text-2xl font-black text-[#D4AF37]">¥{formatCurrency(groupWeekSaved)}</div>
-                            <div className="text-[10px] font-bold text-[#F5F5F5]/45">{t('group.week_pool_spent', { amount: formatCurrency(groupWeekPoolSpent) })}</div>
+                            <div className="text-2xl font-black text-[#D4AF37]">{formatMoney(groupWeekSaved)}</div>
+                            <div className="text-[10px] font-bold text-[#F5F5F5]/45">{t('group.week_pool_spent', { amount: formatMoney(groupWeekPoolSpent) })}</div>
                           </div>
                         </div>
                       </div>
@@ -4515,7 +4537,7 @@ export default function App() {
                                       </span>
                                     </div>
                                     <div className="text-[10px] font-bold mt-2 text-[#F5F5F5]/75">
-                                      {t(`categories.${a.category}`)} · {a.type === 'expense' ? '-' : '+'}¥{formatCurrency(a.amount)}
+                                      {t(`categories.${a.category}`)} · {a.type === 'expense' ? '-' : '+'}{formatMoney(a.amount)}
                                       {a.toGroupPool && <span className="ml-2 text-[#D4AF37] font-black">{t('group.pool_tag')}</span>}
                                     </div>
                                     {a.note && (
@@ -4614,7 +4636,7 @@ export default function App() {
                     ].map(item => (
                       <div key={item.label} className={cn("p-4 rounded-2xl flex justify-between items-center", isDarkMode ? "bg-slate-700" : item.bg)}>
                         <span className={cn("text-xs font-bold", isDarkMode ? "text-white/60" : "opacity-60")}>{item.label}</span>
-                        <span className={cn("text-lg font-black", isDarkMode ? "text-white" : item.color)}>¥{formatCurrency(item.amount)}</span>
+                        <span className={cn("text-lg font-black", isDarkMode ? "text-white" : item.color)}>{formatMoney(item.amount)}</span>
                       </div>
                     ))}
                   </div>
@@ -4979,7 +5001,9 @@ function TransactionForm({
   initialData,
   onDelete,
   isDarkMode,
-  groupSaving
+  groupSaving,
+  displayCurrencyCode,
+  onDisplayCurrencyCodeChange
 }: {
   accounts: Account[],
   transactions: Transaction[],
@@ -4988,7 +5012,9 @@ function TransactionForm({
   initialData?: Transaction,
   onDelete?: () => void,
   isDarkMode: boolean,
-  groupSaving?: GroupSavingGroup | null
+  groupSaving?: GroupSavingGroup | null,
+  displayCurrencyCode: CurrencyCode,
+  onDisplayCurrencyCodeChange: React.Dispatch<React.SetStateAction<CurrencyCode>>
 }) {
   const { t, i18n } = useTranslation();
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
@@ -5017,12 +5043,33 @@ function TransactionForm({
   // --- Currency State ---
   const [currencyCode, setCurrencyCode] = useState<CurrencyCode>(() => {
     if (initialData?.currency) return initialData.currency;
+    if (displayCurrencyCode) return displayCurrencyCode;
     return (localStorage.getItem('last_used_currency') as CurrencyCode) || 'CNY';
   });
   const [isCurrencyDrawerOpen, setIsCurrencyDrawerOpen] = useState(false);
   const [isAmountAnimating, setIsAmountAnimating] = useState(false);
 
   const selectedCurrency = CURRENCIES.find(c => c.code === currencyCode)!;
+  const prefersMYR = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const lang = (navigator.language || '').toUpperCase();
+    if (lang.endsWith('-MY') || lang.includes('-MY-') || lang.startsWith('MS')) return true;
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+      if (tz.includes('Kuala_Lumpur')) return true;
+    } catch { }
+    return false;
+  }, []);
+  const currencyOptions = useMemo(() => {
+    const list = [...CURRENCIES];
+    if (!prefersMYR) return list;
+    list.sort((a, b) => {
+      if (a.code === 'MYR' && b.code !== 'MYR') return -1;
+      if (b.code === 'MYR' && a.code !== 'MYR') return 1;
+      return 0;
+    });
+    return list;
+  }, [prefersMYR]);
   const convertedCNY = useMemo(() => {
     const num = Number(amount);
     if (isNaN(num)) return 0;
@@ -5096,6 +5143,8 @@ function TransactionForm({
   const handleCurrencySelect = (code: CurrencyCode) => {
     setIsAmountAnimating(true);
     setCurrencyCode(code);
+    localStorage.setItem('last_used_currency', code);
+    onDisplayCurrencyCodeChange(code);
     setIsCurrencyDrawerOpen(false);
     setTimeout(() => setIsAmountAnimating(false), 500);
   };
@@ -5418,45 +5467,60 @@ function TransactionForm({
         </AnimatePresence>
       </div>
 
-      {/* Currency Drawer */}
-      <AnimatePresence>
-        {isCurrencyDrawerOpen && (
-          <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/40 backdrop-blur-sm" onClick={() => setIsCurrencyDrawerOpen(false)}>
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className={cn(
-                "w-full max-w-md rounded-t-[2.5rem] p-8 pb-12",
-                isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
-              )}
-              onClick={e => e.stopPropagation()}
+      <BottomSheet
+        open={isCurrencyDrawerOpen}
+        onClose={() => setIsCurrencyDrawerOpen(false)}
+        header={
+          <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+            <button
+              type="button"
+              onClick={() => setIsCurrencyDrawerOpen(false)}
+              className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
             >
-              <div className={cn("w-12 h-1.5 rounded-full mx-auto mb-8", isDarkMode ? "bg-slate-700" : "bg-gray-100")} />
-              <h3 className="text-lg font-black mb-6">{t('select_currency')}</h3>
-              <div className="grid grid-cols-1 gap-2 max-h-[50vh] overflow-y-auto no-scrollbar">
-                {CURRENCIES.map(c => (
-                  <button key={c.code} type="button" onClick={() => handleCurrencySelect(c.code)} className={cn("flex items-center justify-between p-4 rounded-2xl transition-all", currencyCode === c.code ? (isDarkMode ? "bg-white text-black" : "bg-black text-white") : (isDarkMode ? "hover:bg-slate-700 text-slate-300" : "hover:bg-gray-50 text-gray-600"))}>
-                    <div className="flex items-center space-x-4">
-                      <span className="text-2xl">{c.flag}</span>
-                      <div className="text-left">
-                        <p className="text-sm font-black">{c.code}</p>
-                        <p className="text-[10px] opacity-60 font-bold">{t(`currencies.${c.code}`)}</p>
-                      </div>
-                    </div>
-                    {currencyCode === c.code ? (
-                      <div className={cn("w-2 h-2 rounded-full", isDarkMode ? "bg-black" : "bg-white")} />
-                    ) : (
-                      <span className="text-xs font-bold opacity-40">1 {c.code} ≈ {rates[c.code]?.toFixed(4)} CNY</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </motion.div>
+              {t('cancel')}
+            </button>
+            <div className="text-sm font-black text-white/90">{t('select_currency')}</div>
+            <button
+              type="button"
+              onClick={() => setIsCurrencyDrawerOpen(false)}
+              className={cn("text-sm font-black opacity-0 pointer-events-none", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+            >
+              {t('confirm')}
+            </button>
           </div>
-        )}
-      </AnimatePresence>
+        }
+      >
+        <div className="grid grid-cols-1 gap-2 max-h-[50vh] overflow-y-auto no-scrollbar">
+          {currencyOptions.map((c) => {
+            const on = currencyCode === c.code;
+            return (
+              <motion.button
+                key={c.code}
+                type="button"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => handleCurrencySelect(c.code)}
+                className={cn(
+                  "flex items-center justify-between p-4 rounded-2xl border transition-colors",
+                  on ? "border-[#D4AF37] bg-white/10" : "border-white/10 bg-white/5 hover:bg-white/10"
+                )}
+              >
+                <div className="flex items-center space-x-4 min-w-0 overflow-hidden">
+                  <span className="text-2xl flex-shrink-0">{c.flag}</span>
+                  <div className="text-left min-w-0 overflow-hidden">
+                    <p className={cn("text-sm font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap", on ? "text-[#D4AF37]" : "text-white")}>{c.code}</p>
+                    <p className="text-[10px] font-bold text-white/55 max-w-full overflow-hidden text-ellipsis whitespace-nowrap">{t(`currencies.${c.code}`)}</p>
+                  </div>
+                </div>
+                {on ? (
+                  <Check size={18} className="text-[#D4AF37] flex-shrink-0" />
+                ) : (
+                  <span className="text-xs font-bold opacity-40 flex-shrink-0">1 {c.code} ≈ {rates[c.code]?.toFixed(4) || '--'} CNY</span>
+                )}
+              </motion.button>
+            );
+          })}
+        </div>
+      </BottomSheet>
 
       <div className="grid grid-cols-2 gap-4">
         <div>
