@@ -784,6 +784,9 @@ export default function App() {
   const [voiceText, setVoiceText] = useState('');
   const [isProMember, setIsProMember] = useState(() => localStorage.getItem('pro_member') === 'true');
   const [isProPaywallOpen, setIsProPaywallOpen] = useState(false);
+  const [isProUpsellOpen, setIsProUpsellOpen] = useState(false);
+  const [pressedStatsModule, setPressedStatsModule] = useState<string | null>(null);
+  const [consumptionRadarFocus, setConsumptionRadarFocus] = useState<string | null>(null);
   const [exportCount, setExportCount] = useState(() => Number(localStorage.getItem('export_count') || '0'));
   const [timeContext, setTimeContext] = useState<'morning' | 'afternoon' | 'evening'>(() => {
     const hour = new Date().getHours();
@@ -2178,6 +2181,9 @@ export default function App() {
   const formatMoney = (amountCNY: number) => `${displayCurrency.symbol}${formatCurrency(convertCNYToDisplay(amountCNY))}`;
   const formatMilestoneMoney = (amountCNY: number) => `${displayCurrency.symbol}${formatMilestoneCurrency(convertCNYToDisplay(amountCNY))}`;
 
+  const proUpsellSheetEase: [number, number, number, number] = [0.32, 0.72, 0, 1];
+  const openProUpsell = () => setIsProUpsellOpen(true);
+
   const RollingNumber = ({ value }: { value: number }) => {
     const prevRef = useRef(value);
     const direction = value >= prevRef.current ? 1 : -1;
@@ -3375,6 +3381,249 @@ export default function App() {
                     )}
                   </div>
 
+                  {isProMember ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.08 }}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                    >
+                      <motion.div
+                        onPointerDown={() => setPressedStatsModule('consumptionRadar')}
+                        onPointerUp={() => setPressedStatsModule(null)}
+                        onPointerCancel={() => setPressedStatsModule(null)}
+                        onPointerLeave={() => setPressedStatsModule(null)}
+                        animate={pressedStatsModule === 'consumptionRadar' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
+                        transition={pressedStatsModule === 'consumptionRadar' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
+                        className="relative"
+                      >
+                        <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
+                          <PieIcon size="1.5em" className="mr-[2.4vw] text-[#D4AF37] max-w-full h-auto" />
+                          {t('pro.consumption_radar_title')}
+                        </h3>
+                        <div className="h-52 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart
+                              cx="50%"
+                              cy="50%"
+                              outerRadius="78%"
+                              data={(() => {
+                                const dims = ['餐饮', '购物', '娱乐', '交通', '医疗', '教育'];
+                                const map = stats.pieData.reduce<Record<string, number>>((acc, x) => {
+                                  acc[x.name] = x.value;
+                                  return acc;
+                                }, {});
+                                const total = Math.max(0, stats.expense);
+                                return dims.map(subject => {
+                                  const value = map[subject] || 0;
+                                  const pct = total > 0 ? (value / total) * 100 : 0;
+                                  return { subject, value, pct };
+                                });
+                              })()}
+                            >
+                              <defs>
+                                <linearGradient id="luxRadarGold" x1="0" y1="0" x2="1" y2="1">
+                                  <stop offset="0%" stopColor="#D4AF37" stopOpacity="0.2" />
+                                  <stop offset="45%" stopColor="#D4AF37" stopOpacity="0.95" />
+                                  <stop offset="100%" stopColor="#FFF2C6" stopOpacity="0.35" />
+                                </linearGradient>
+                              </defs>
+                              <PolarGrid stroke="rgba(212,175,55,0.22)" />
+                              <PolarAngleAxis
+                                dataKey="subject"
+                                tick={{ fontSize: 10, fontWeight: 900, fill: 'rgba(245,245,245,0.7)' }}
+                                tickFormatter={(v) => t(`categories.${v}`)}
+                              />
+                              <Radar
+                                name={t('month')}
+                                dataKey="pct"
+                                stroke="url(#luxRadarGold)"
+                                fill="url(#luxRadarGold)"
+                                fillOpacity={0.22}
+                                strokeWidth={3}
+                                isAnimationActive
+                                animationDuration={900}
+                                dot={(props: any) => {
+                                  const subject = props?.payload?.subject as string | undefined;
+                                  if (!subject) return null;
+                                  const on = consumptionRadarFocus === subject;
+                                  return (
+                                    <circle
+                                      cx={props.cx}
+                                      cy={props.cy}
+                                      r={on ? 6 : 4}
+                                      fill={on ? "#D4AF37" : "rgba(212,175,55,0.55)"}
+                                      stroke={on ? "#FFF2C6" : "rgba(0,0,0,0)"}
+                                      strokeWidth={on ? 2 : 0}
+                                      style={{ cursor: 'pointer' }}
+                                      onClick={() => setConsumptionRadarFocus(subject)}
+                                    />
+                                  );
+                                }}
+                              />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+
+                        <div className="mt-[3.2vw]">
+                          {(() => {
+                            if (!consumptionRadarFocus) {
+                              return <div className="text-[3.2vw] font-bold text-white/55">{t('pro.consumption_radar_hint')}</div>;
+                            }
+                            const map = stats.pieData.reduce<Record<string, number>>((acc, x) => {
+                              acc[x.name] = x.value;
+                              return acc;
+                            }, {});
+                            const total = Math.max(0, stats.expense);
+                            const value = map[consumptionRadarFocus] || 0;
+                            const pct = total > 0 ? (value / total) * 100 : 0;
+                            const adviceMap: Record<string, string> = {
+                              '餐饮': t('pro.consumption_radar_advice.food'),
+                              '购物': t('pro.consumption_radar_advice.shopping'),
+                              '娱乐': t('pro.consumption_radar_advice.entertainment'),
+                              '交通': t('pro.consumption_radar_advice.transport'),
+                              '医疗': t('pro.consumption_radar_advice.medical'),
+                              '教育': t('pro.consumption_radar_advice.education'),
+                            };
+                            return (
+                              <div className="flex items-start justify-between gap-[3vw]">
+                                <div className="min-w-0 overflow-hidden">
+                                  <div className="text-[3.6vw] font-black text-[#D4AF37] max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                                    {t(`categories.${consumptionRadarFocus}`)}
+                                  </div>
+                                  <div className="mt-[1.2vw] text-[3.1vw] font-bold text-white/65 leading-snug">
+                                    {adviceMap[consumptionRadarFocus] || t('pro.consumption_radar_advice.default')}
+                                  </div>
+                                </div>
+                                <div className="flex-shrink-0 text-right">
+                                  <div className="text-[4.8vw] leading-none font-black text-white">{pct.toFixed(1)}%</div>
+                                  <div className="mt-[1.2vw] text-[3.2vw] font-bold text-white/55 whitespace-nowrap">{formatMoney(value)}</div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.08 }}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      onClick={openProUpsell}
+                    >
+                      <h3 className="font-black text-lg mb-3 flex items-center"><PieIcon size={20} className="mr-2 text-[#D4AF37]" />{t('pro.consumption_radar_title')}</h3>
+                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_consumption_radar')}</p>
+                      <div className="mt-5 flex items-center justify-between">
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.visualization')}</div>
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                          {t('upgrade_pro')}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {isProMember ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.12 }}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                    >
+                      <motion.div
+                        onPointerDown={() => setPressedStatsModule('savingsInsights')}
+                        onPointerUp={() => setPressedStatsModule(null)}
+                        onPointerCancel={() => setPressedStatsModule(null)}
+                        onPointerLeave={() => setPressedStatsModule(null)}
+                        animate={pressedStatsModule === 'savingsInsights' ? { scale: [1, 0.985, 1] } : { scale: 1 }}
+                        transition={pressedStatsModule === 'savingsInsights' ? { duration: 1.1, repeat: Infinity, ease: "easeInOut" } : { duration: 0.18, ease: proUpsellSheetEase }}
+                        className="relative"
+                      >
+                        <h3 className="font-black font-cinzel lux-text-gold-glow tracking-tight text-[4.6vw] mb-[3.2vw] flex items-center">
+                          <Sparkles size="1.5em" className="mr-[2.4vw] text-[#D4AF37] max-w-full h-auto" />
+                          {t('pro.savings_insights_title')}
+                        </h3>
+
+                        {(() => {
+                          const lastMonthExpense = stats.expense - stats.momDiff;
+                          const improvement = lastMonthExpense <= 0 ? 0 : (lastMonthExpense - stats.expense) / lastMonthExpense;
+                          const clamped = clamp(improvement, -1, 1);
+                          const progress = Math.min(1, Math.max(0, clamped));
+                          const optimizationSpace = Math.max(0, stats.momDiff);
+                          const improvedAmount = Math.max(0, lastMonthExpense - stats.expense);
+                          const isBetter = improvement > 0.001;
+                          const isWorse = improvement < -0.001;
+                          const accent = isBetter ? "#D4AF37" : isWorse ? "#FB7185" : "rgba(245,245,245,0.35)";
+                          return (
+                            <div className="flex items-center justify-between gap-[4vw]">
+                              <div className="min-w-0 overflow-hidden">
+                                <div className="text-[3.2vw] font-bold text-white/60">{t('pro.savings_insights_subtitle')}</div>
+                                <div className="mt-[2vw] text-[6.4vw] leading-none font-black text-white whitespace-nowrap overflow-hidden">
+                                  <span className="mr-[1.2vw] text-[#D4AF37] whitespace-nowrap">{displayCurrency.symbol}</span>
+                                  <RollingNumber value={convertCNYToDisplay(isWorse ? optimizationSpace : improvedAmount)} />
+                                </div>
+                                <div className="mt-[1.8vw] text-[3.2vw] font-bold text-white/55 leading-snug">
+                                  {isWorse
+                                    ? t('pro.savings_insights_tip_over', { amount: formatMoney(optimizationSpace) })
+                                    : isBetter
+                                      ? t('pro.savings_insights_tip_good', { amount: formatMoney(improvedAmount) })
+                                      : t('pro.savings_insights_tip_flat')}
+                                </div>
+                              </div>
+
+                              <div className="flex-shrink-0">
+                                <svg width="92" height="92" viewBox="0 0 120 120">
+                                  <defs>
+                                    <linearGradient id="luxSavingsRing" x1="0" y1="0" x2="1" y2="1">
+                                      <stop offset="0%" stopColor={accent} stopOpacity="0.35" />
+                                      <stop offset="55%" stopColor={accent} stopOpacity="1" />
+                                      <stop offset="100%" stopColor="#FFF2C6" stopOpacity={isBetter ? "0.7" : "0"} />
+                                    </linearGradient>
+                                  </defs>
+                                  <circle cx="60" cy="60" r="44" stroke="rgba(255,255,255,0.12)" strokeWidth="10" fill="none" />
+                                  <motion.circle
+                                    cx="60"
+                                    cy="60"
+                                    r="44"
+                                    stroke="url(#luxSavingsRing)"
+                                    strokeWidth="10"
+                                    fill="none"
+                                    strokeLinecap="round"
+                                    style={{ rotate: -90, transformOrigin: "60px 60px" }}
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: isBetter ? progress : isWorse ? Math.min(1, Math.abs(clamped)) : 0 }}
+                                    transition={{ duration: 0.9, ease: proUpsellSheetEase }}
+                                  />
+                                </svg>
+                                <div className="mt-2 text-center text-[3.2vw] font-black text-white/75">
+                                  {(Math.abs(improvement) * 100).toFixed(0)}%
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </motion.div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.12 }}
+                      className={cn("p-8 relative overflow-hidden", surfaceCard())}
+                      onClick={openProUpsell}
+                    >
+                      <h3 className="font-black text-lg mb-3 flex items-center"><Sparkles size={20} className="mr-2 text-[#D4AF37]" />{t('pro.savings_insights_title')}</h3>
+                      <p className={cn("text-sm font-bold leading-relaxed", mutedText)}>{t('pro.unlock_savings_insights')}</p>
+                      <div className="mt-5 flex items-center justify-between">
+                        <div className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('pro.insights')}</div>
+                        <motion.button whileTap={{ scale: 0.96 }} onClick={(e) => { e.stopPropagation(); openProUpsell(); }} className="px-4 py-2 rounded-2xl bg-amber-500 text-black text-[10px] font-black uppercase tracking-widest shadow-lg">
+                          {t('upgrade_pro')}
+                        </motion.button>
+                      </div>
+                    </motion.div>
+                  )}
+
                   <div className="flex justify-center pt-4">
                     <button
                       onClick={() => requestExport('image')}
@@ -3537,19 +3786,6 @@ export default function App() {
                     <div className={cn("space-y-3", !isProMember && "opacity-60")}>
                       <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
                         <div className="flex items-center space-x-3">
-                          <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", "lux-carbon border-[#2A2A2A]")}>
-                            <Sparkles size={18} className="text-[#D4AF37]" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-black">{t('pro.perk_skin.label')}</p>
-                            <p className={cn("text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('pro.perk_skin.desc')}</p>
-                          </div>
-                        </div>
-                        {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
-                      </div>
-
-                      <div className={cn("p-4 rounded-[1.75rem] border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
-                        <div className="flex items-center space-x-3">
                           <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
                             <Share2 size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
                           </div>
@@ -3585,16 +3821,6 @@ export default function App() {
                           </div>
                         </div>
                         {!isProMember && <Lock size={16} className={cn(isDarkMode ? "text-white/40" : "text-gray-400")} />}
-                      </div>
-                    </div>
-
-                    <div className="mt-5">
-                      <div className="flex items-center justify-between mb-3">
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('theme')}</span>
-                        <span className={cn("text-[10px] font-black", isDarkMode ? "text-white/40" : "text-gray-400")}>{t('locked')}</span>
-                      </div>
-                      <div className={cn("py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border text-center shadow-lg", theme.primary)}>
-                        {t('black_gold')}
                       </div>
                     </div>
 
@@ -4644,6 +4870,54 @@ export default function App() {
               )}
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isProUpsellOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.18, ease: proUpsellSheetEase }}
+            className="fixed inset-0 z-[188] flex items-end justify-center bg-black/50"
+            onClick={() => setIsProUpsellOpen(false)}
+          >
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ duration: 0.38, ease: proUpsellSheetEase }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md overflow-hidden rounded-t-[32px] border border-white/10 bg-black/80 backdrop-blur-[20px]"
+              style={{ transform: "translate3d(0,0,0)" }}
+            >
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
+                <button
+                  onClick={() => setIsProUpsellOpen(false)}
+                  className={cn("text-sm font-black", isDarkMode ? "text-[#D4AF37]" : "text-[#007AFF]")}
+                >
+                  {t('cancel')}
+                </button>
+                <div className="text-sm font-black text-white/90">{t('pro.only')}</div>
+                <div className="w-10" />
+              </div>
+              <div className="px-6 py-6">
+                <div className="text-[4.2vw] font-black text-white">{t('pro.upsell_title')}</div>
+                <div className="mt-2 text-[3.4vw] font-bold text-white/55 leading-relaxed">{t('pro.upsell_desc')}</div>
+                <motion.button
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => {
+                    setIsProUpsellOpen(false);
+                    setIsProPaywallOpen(true);
+                  }}
+                  className="mt-6 w-full py-4 rounded-2xl font-black text-xs bg-[#D4AF37] text-black shadow-lg"
+                >
+                  {t('pro.upsell_cta')}
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 
