@@ -366,6 +366,7 @@ export default function App() {
 
   const [hasOnboarded, setHasOnboarded] = useState(() => localStorage.getItem('onboarding_done') === 'true');
   const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   // --- Pro Features State ---
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -742,6 +743,14 @@ export default function App() {
       case 'year': return format(currentDate, 'yyyy年');
       case 'month': default: return format(currentDate, 'yyyy年MM月');
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('auth_done');
+    setIsAuthed(false);
+    setIsLogoutDialogOpen(false);
+    setIsBudgetModalOpen(false);
+    setIsMenuOpen(false);
   };
 
   if (!hasOnboarded) {
@@ -1595,7 +1604,7 @@ export default function App() {
                   </div>
                 )}
               </div>
-              <button onClick={() => setIsBudgetModalOpen(false)} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
+              <button onClick={() => { setIsBudgetModalOpen(false); setIsLogoutDialogOpen(false); }} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
                 <X size={18} />
               </button>
             </div>
@@ -1685,11 +1694,66 @@ export default function App() {
                   <LogOut size={18} />
                   <span>{t('clear_data')}</span>
                 </button>
+
+                <button
+                  onClick={() => setIsLogoutDialogOpen(true)}
+                  className={cn(
+                    "w-full p-5 flex items-center justify-between rounded-[2rem] overflow-hidden border active:scale-[0.98] transition-all",
+                    isDarkMode ? "bg-slate-700 border-slate-600 hover:bg-slate-600/80" : "bg-gray-50 border-gray-100 hover:bg-gray-100"
+                  )}
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-8 h-8 bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center">
+                      <LogOut size={18} />
+                    </div>
+                    <span className="text-sm font-black text-rose-500">退出登录</span>
+                  </div>
+                  <ChevronRight size={18} className="text-rose-400 opacity-70" />
+                </button>
               </div>
             </div>
           </motion.div>
         </div>
       )}
+
+      <AnimatePresence>
+        {isLogoutDialogOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 10 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className={cn(
+                "w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border",
+                isDarkMode ? "bg-slate-800/95 text-white border-slate-700" : "bg-white/95 text-gray-900 border-gray-100"
+              )}
+            >
+              <div className="text-center">
+                <h3 className="text-lg font-black">确定要退出登录吗？</h3>
+                <p className={cn("mt-2 text-xs font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>退出后可随时重新登录。</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                <button
+                  onClick={() => setIsLogoutDialogOpen(false)}
+                  className={cn(
+                    "py-4 rounded-2xl font-black text-xs active:scale-95 transition-all border",
+                    isDarkMode ? "bg-slate-700 border-slate-600 text-white/80" : "bg-gray-50 border-gray-100 text-gray-600"
+                  )}
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="py-4 rounded-2xl font-black text-xs bg-rose-500 text-white shadow-lg active:scale-95 transition-all"
+                >
+                  退出登录
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Language Picker */}
       <AnimatePresence>
