@@ -31,7 +31,9 @@ export interface Transaction {
   accountId: string;
   tags?: string[];
   hasImage?: boolean;
+  imageData?: string; // Base64 string for persistent storage
   originalAmount?: number;
   currency?: CurrencyCode;
   exchangeRate?: number;
+  mood?: 'happy' | 'neutral' | 'sad';
 }
