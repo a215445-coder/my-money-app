@@ -575,17 +575,17 @@ const CURRENCIES: Currency[] = [
 ];
 
 const BLACK_GOLD_THEME = {
-  primary: 'lux-gold',
+  primary: 'lux-gold lux-shimmer-tap',
   text: 'text-[#D4AF37]',
   border: 'border-[#D4AF37]',
   shadow: 'shadow-[#D4AF37]/20',
   ring: 'ring-[#D4AF37]',
-  appBg: 'bg-[#1A1A1A]',
-  appText: 'text-[#F5F5F5]',
+  appBg: 'bg-transparent',
+  appText: 'text-[#E9E9EA]',
   surface: 'lux-carbon',
   surfaceSoft: 'lux-carbon-soft',
-  surfaceBorder: 'border-[#2A2A2A]',
-  mutedText: 'text-[#F5F5F5]/60',
+  surfaceBorder: 'lux-gold-hairline',
+  mutedText: 'text-[#8E8E93]',
 } as const;
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -931,11 +931,11 @@ export default function App() {
   const accentHex = '#D4AF37';
 
   const mutedText = theme.mutedText;
-  const chipNeutral = "bg-white/10 text-white/70";
+  const chipNeutral = "bg-white/5 text-[#8E8E93]";
   const surfaceCard = (...extra: ClassValue[]) => cn(
-    "border rounded-2xl overflow-hidden",
+    "rounded-2xl overflow-hidden lux-gold-hairline lux-shimmer-tap",
     "shadow-[0_0.25rem_1.25rem_rgba(0,0,0,0.55),0_0_1.5rem_rgba(212,175,55,0.10)]",
-    cn(theme.surfaceSoft, theme.surfaceBorder, theme.appText, 'lux-gold-glow-soft lux-gold-glow-breathe'),
+    cn(theme.surfaceSoft, theme.appText, 'lux-gold-glow-soft lux-gold-glow-breathe'),
     ...extra
   );
 
@@ -2828,7 +2828,7 @@ export default function App() {
                                 className={cn(
                                   "p-[6vw] rounded-[10vw] shadow-[0_2vw_6vw_rgba(0,0,0,0.35)] relative overflow-hidden group border-[0.35vw] border-white/20",
                                   theme.primary,
-                                  "text-white"
+                                  "text-white lux-asset-sheen"
                                 )}
                               >
                                 <motion.div
@@ -2846,7 +2846,7 @@ export default function App() {
                                 <div className="flex flex-wrap justify-between items-start gap-[4vw] mb-[8vw] relative z-10">
                                   <div className="min-w-0 flex-1 overflow-hidden">
                                     <p className={cn("text-[3.5vw] font-black uppercase tracking-[0.2em] mb-[2.5vw]", "text-white/60", "max-w-full overflow-hidden text-ellipsis whitespace-nowrap")}>{t('total_assets')}</p>
-                                    <div className="text-[8vw] leading-none font-black tracking-tighter drop-shadow-[0_1vw_2vw_rgba(0,0,0,0.35)] flex items-end min-w-0 overflow-hidden">
+                                    <div className="text-[8vw] leading-none font-black font-cinzel tracking-tighter drop-shadow-[0_1vw_2vw_rgba(0,0,0,0.35)] flex items-end min-w-0 overflow-hidden">
                                       <span className="mr-[1.2vw] flex-shrink-0 whitespace-nowrap">{displayCurrency.symbol}</span>
                                       <div className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
                                         <RollingNumber value={convertCNYToDisplay(totalAssets)} />
@@ -2974,17 +2974,17 @@ export default function App() {
                           exit={{ y: "100%", opacity: 0 }}
                           transition={{ type: "spring", damping: 25, stiffness: 240 }}
                           onClick={(e) => e.stopPropagation()}
-                          className={cn(
-                            "w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl border",
-                            isDarkUI ? "bg-slate-900/95 border-slate-700 text-white" : "bg-white/95 border-gray-100 text-gray-900"
-                          )}
+                          className="w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline text-[#E9E9EA]"
                         >
+                          <div className="pt-1 pb-6 flex justify-center">
+                            <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+                          </div>
                           <div className="flex items-center justify-between mb-6">
                             <div>
                               <h3 className="text-lg font-black">{t('widget_center')}</h3>
                               <p className={cn("text-[10px] font-bold mt-1", mutedText)}>{t('widget_center_desc')}</p>
                             </div>
-                            <button onClick={() => setIsWidgetCenterOpen(false)} className={cn("p-2 rounded-full", isDarkUI ? "bg-slate-800" : "bg-gray-100")}>
+                            <button onClick={() => setIsWidgetCenterOpen(false)} className="p-2 rounded-full lux-carbon-soft border border-white/10 text-[#D4AF37] active:scale-95 transition-transform">
                               <X size={18} />
                             </button>
                           </div>
@@ -2999,7 +2999,7 @@ export default function App() {
                                   onClick={() => setHomeWidgetEnabled(id, !on)}
                                   className={cn(
                                     "w-full p-4 rounded-2xl border flex items-center justify-between transition-all active:scale-[0.99]",
-                                    isDarkUI ? "bg-slate-800/60 border-slate-700 hover:bg-slate-800/75" : "bg-white/70 border-gray-100 hover:bg-white"
+                                    "lux-carbon-soft border-white/10 hover:bg-white/5 lux-shimmer-tap"
                                   )}
                                 >
                                   <div>
@@ -3008,7 +3008,7 @@ export default function App() {
                                   </div>
                                   <div className={cn(
                                     "w-12 h-7 rounded-full relative transition-colors",
-                                    on ? theme.primary : (isDarkUI ? "bg-slate-700" : "bg-gray-200")
+                                    on ? theme.primary : "bg-white/10"
                                   )}>
                                     <motion.div
                                       layout
@@ -3135,15 +3135,15 @@ export default function App() {
                     <div className="w-10" />
                   </div>
 
-                  <div className={cn("p-8", surfaceCard())}>
+                  <div className={cn("p-8", surfaceCard("lux-asset-sheen"))}>
                     <div className="flex items-end justify-between mb-6">
                       <div>
                         <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.current_total_assets')}</p>
-                        <p className="text-3xl font-black">{formatMoney(totalAssets)}</p>
+                        <p className="text-3xl font-black font-cinzel">{formatMoney(totalAssets)}</p>
                       </div>
                       <div className="text-right">
                         <p className={cn("text-[10px] font-black uppercase tracking-widest", mutedText)}>{t('assets_dashboard.net_assets')}</p>
-                        <p className={cn("text-lg font-black", theme.text)}>{formatMoney(assetDashboard.netAssets)}</p>
+                        <p className={cn("text-lg font-black font-cinzel", theme.text)}>{formatMoney(assetDashboard.netAssets)}</p>
                       </div>
                     </div>
                     <div className="h-44 w-full">
@@ -4773,19 +4773,18 @@ export default function App() {
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className={cn(
-              "w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden border",
-              "lux-carbon border-[#2A2A2A] text-[#F5F5F5]"
-            )}
+            className="w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline text-[#E9E9EA]"
           >
             <div className="absolute inset-0 backdrop-blur-2xl -z-10" />
 
-            {/* Close button for mobile accessibility */}
+            <div className="pt-1 pb-4 flex justify-center">
+              <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+            </div>
             <button
               onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }}
               className={cn(
                 "absolute top-6 right-6 p-2 rounded-full transition-all active:scale-90 z-10",
-                "lux-carbon-soft border border-[#2A2A2A] text-[#D4AF37]"
+                "lux-carbon-soft border border-white/10 text-[#D4AF37] lux-shimmer-tap"
               )}
             >
               <X size={20} />
@@ -5054,16 +5053,16 @@ export default function App() {
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 240 }}
               onClick={(e) => e.stopPropagation()}
-              className={cn(
-                "w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl border",
-                "lux-carbon border-[#2A2A2A] text-[#F5F5F5]"
-              )}
+              className="w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] p-8 shadow-2xl bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline text-[#E9E9EA]"
             >
+              <div className="pt-1 pb-6 flex justify-center">
+                <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+              </div>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-black">
                   {discoveryTool === 'groupSaving' ? t('group_saving_title') : discoveryTool === 'categories' ? t('categories_manage') : discoveryTool === 'exchange' ? t('exchange') : t('calculator')}
                 </h3>
-                <button onClick={() => setDiscoveryTool(null)} className={cn("p-2 rounded-full border", "lux-carbon-soft border-[#2A2A2A] text-[#D4AF37]")}>
+                <button onClick={() => setDiscoveryTool(null)} className="p-2 rounded-full border lux-carbon-soft border-white/10 text-[#D4AF37] lux-shimmer-tap">
                   <X size={18} />
                 </button>
               </div>
@@ -5356,7 +5355,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18, ease: proUpsellSheetEase }}
-            className="fixed inset-0 z-[187] flex items-end justify-center bg-black/50"
+            className="fixed inset-0 z-[187] flex items-end justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setIsWealthMilestoneSheetOpen(false)}
           >
             <motion.div
@@ -5365,9 +5364,12 @@ export default function App() {
               exit={{ y: "100%" }}
               transition={{ duration: 0.38, ease: proUpsellSheetEase }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md overflow-hidden rounded-t-[32px] border border-white/10 bg-black/80 backdrop-blur-[20px]"
+              className="w-full max-w-md overflow-hidden rounded-t-[32px] bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline"
               style={{ transform: "translate3d(0,0,0)" }}
             >
+              <div className="pt-3 pb-2 flex justify-center">
+                <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+              </div>
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                 <button
                   onClick={() => setIsWealthMilestoneSheetOpen(false)}
@@ -5389,7 +5391,7 @@ export default function App() {
                     { key: 'well_off_life', descKey: 'well_off_life' },
                     { key: 'financial_freedom', descKey: 'financial_freedom' },
                   ].map((x) => (
-                    <div key={x.key} className="p-4 rounded-2xl border border-white/10 bg-white/5">
+                    <div key={x.key} className="p-4 rounded-2xl lux-gold-hairline bg-white/5">
                       <div className="flex items-center justify-between">
                         <div className="text-[3.6vw] font-black text-[#D4AF37]">{t(`wealth_milestone.level.${x.key}`)}</div>
                         <div className="text-[3.2vw] font-bold text-white/45">{t('wealth_milestone.badge')}</div>
@@ -5401,7 +5403,7 @@ export default function App() {
 
                 <button
                   onClick={() => setIsWealthMilestoneSheetOpen(false)}
-                  className="mt-6 w-full py-4 rounded-2xl font-black text-xs bg-[#D4AF37] text-black shadow-lg active:scale-[0.98] transition-transform"
+                  className="mt-6 w-full py-4 rounded-2xl font-black text-xs lux-gold text-black shadow-lg active:scale-[0.98] transition-transform lux-shimmer-tap"
                 >
                   {t('ok')}
                 </button>
@@ -5418,7 +5420,7 @@ export default function App() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18, ease: proUpsellSheetEase }}
-            className="fixed inset-0 z-[188] flex items-end justify-center bg-black/50"
+            className="fixed inset-0 z-[188] flex items-end justify-center bg-black/60 backdrop-blur-sm"
             onClick={() => setIsProUpsellOpen(false)}
           >
             <motion.div
@@ -5427,9 +5429,12 @@ export default function App() {
               exit={{ y: "100%" }}
               transition={{ duration: 0.38, ease: proUpsellSheetEase }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md overflow-hidden rounded-t-[32px] border border-white/10 bg-black/80 backdrop-blur-[20px]"
+              className="w-full max-w-md overflow-hidden rounded-t-[32px] bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline"
               style={{ transform: "translate3d(0,0,0)" }}
             >
+              <div className="pt-3 pb-2 flex justify-center">
+                <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+              </div>
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                 <button
                   onClick={() => setIsProUpsellOpen(false)}
@@ -5449,7 +5454,7 @@ export default function App() {
                     setIsProUpsellOpen(false);
                     setIsProPaywallOpen(true);
                   }}
-                  className="mt-6 w-full py-4 rounded-2xl font-black text-xs bg-[#D4AF37] text-black shadow-lg"
+                  className="mt-6 w-full py-4 rounded-2xl font-black text-xs lux-gold text-black shadow-lg lux-shimmer-tap"
                 >
                   {t('pro.upsell_cta')}
                 </motion.button>
@@ -5468,13 +5473,13 @@ export default function App() {
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 240 }}
               onClick={(e) => e.stopPropagation()}
-              className={cn(
-                "w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl border overflow-hidden relative",
-                isDarkMode ? "bg-slate-900/95 border-slate-700 text-white" : "bg-white/95 border-gray-100 text-gray-900"
-              )}
+              className="w-full max-w-md rounded-t-[2.75rem] sm:rounded-[2.75rem] p-8 shadow-2xl overflow-hidden relative bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline text-[#E9E9EA]"
             >
               <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full blur-[110px] opacity-50 bg-gradient-to-br from-amber-400 to-fuchsia-400" />
               <div className="relative">
+                <div className="pt-1 pb-6 flex justify-center">
+                  <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+                </div>
                 <div className="flex items-start justify-between mb-6">
                   <div>
                     <div className="flex items-center space-x-2">
@@ -5487,12 +5492,12 @@ export default function App() {
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => setIsProPaywallOpen(false)} className={cn("p-2 rounded-2xl border", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-gray-50 border-gray-100")}>
+                  <button onClick={() => setIsProPaywallOpen(false)} className="p-2 rounded-2xl border lux-carbon-soft border-white/10 text-[#D4AF37] active:scale-95 transition-transform">
                     <X size={18} />
                   </button>
                 </div>
 
-                <div className={cn("rounded-[2rem] p-5 border", isDarkMode ? "bg-slate-800/70 border-slate-700" : "bg-gray-50 border-gray-100")}>
+                <div className="rounded-[2rem] p-5 border border-white/10 bg-white/5 backdrop-blur-xl">
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { label: t('pro.perk_skin.label'), desc: t('pro.perk_skin.desc') },
@@ -5500,7 +5505,7 @@ export default function App() {
                       { label: t('pro.perk_lab.label'), desc: t('pro.perk_lab.desc') },
                       { label: t('pro.perk_badge.label'), desc: t('pro.perk_badge.desc') },
                     ].map(i => (
-                      <div key={i.label} className={cn("p-4 rounded-2xl border", isDarkMode ? "bg-slate-900/60 border-slate-700" : "bg-white border-white")}>
+                      <div key={i.label} className="p-4 rounded-2xl border border-white/10 bg-white/5 lux-shimmer-tap">
                         <p className="text-xs font-black">{i.label}</p>
                         <p className={cn("mt-1 text-[10px] font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>{i.desc}</p>
                       </div>
@@ -5520,7 +5525,7 @@ export default function App() {
                   <motion.button
                     whileTap={{ scale: 0.96 }}
                     onClick={purchasePro}
-                    className="py-4 rounded-2xl font-black text-xs bg-amber-500 text-black shadow-lg transition-all"
+                    className="py-4 rounded-2xl font-black text-xs lux-gold text-black shadow-lg transition-all lux-shimmer-tap"
                   >
                     {t('pro.buy_now')}
                   </motion.button>
@@ -5544,12 +5549,11 @@ export default function App() {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className={cn(
-                "w-full max-w-md rounded-t-[3rem] p-8 pb-10 border",
-                "lux-carbon-soft border-[#2A2A2A] text-[#F5F5F5]"
+                "w-full max-w-md rounded-t-[3rem] p-8 pb-10 bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline text-[#E9E9EA]"
               )}
               onClick={e => e.stopPropagation()}
             >
-              <div className="w-12 h-1.5 rounded-full mx-auto mb-8 bg-white/10" />
+              <div className="w-12 h-1.5 rounded-full mx-auto mb-8 bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
               <h3 className="text-lg font-black mb-6">{t('profile.edit_profile')}</h3>
               <div className="space-y-3">
                 <motion.button
@@ -5557,7 +5561,7 @@ export default function App() {
                   onClick={() => avatarLibraryInputRef.current?.click()}
                   className={cn(
                     "w-full py-4 rounded-2xl font-black text-xs border transition-all",
-                    "lux-carbon border-[#2A2A2A] text-[#D4AF37]"
+                    "lux-carbon-soft border-white/10 text-[#D4AF37] lux-shimmer-tap"
                   )}
                 >
                   {t('profile.choose_from_library')}
@@ -5567,7 +5571,7 @@ export default function App() {
                   onClick={() => avatarCameraInputRef.current?.click()}
                   className={cn(
                     "w-full py-4 rounded-2xl font-black text-xs border transition-all",
-                    "lux-carbon border-[#2A2A2A] text-[#D4AF37]"
+                    "lux-carbon-soft border-white/10 text-[#D4AF37] lux-shimmer-tap"
                   )}
                 >
                   {t('profile.take_photo')}
@@ -5577,7 +5581,7 @@ export default function App() {
                   onClick={openEditName}
                   className={cn(
                     "w-full py-4 rounded-2xl font-black text-xs border transition-all",
-                    "lux-carbon border-[#2A2A2A] text-[#D4AF37]"
+                    "lux-carbon-soft border-white/10 text-[#D4AF37] lux-shimmer-tap"
                   )}
                 >
                   {t('profile.edit_name')}
@@ -5692,12 +5696,11 @@ export default function App() {
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className={cn(
-                "w-full max-w-md rounded-t-[3rem] p-8 pb-12",
-                isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+                "w-full max-w-md rounded-t-[3rem] p-8 pb-12 bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline text-[#E9E9EA]"
               )}
               onClick={e => e.stopPropagation()}
             >
-              <div className={cn("w-12 h-1.5 rounded-full mx-auto mb-8", isDarkMode ? "bg-slate-700" : "bg-gray-100")} />
+              <div className="w-12 h-1.5 rounded-full mx-auto mb-8 bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
               <h3 className="text-lg font-black mb-6">{t('select_lang')}</h3>
               <div className="grid grid-cols-2 gap-3">
                 {[
@@ -5709,7 +5712,7 @@ export default function App() {
                     onClick={() => { localStorage.setItem('app_lang', l.id); i18n.changeLanguage(l.id); setIsLangPickerOpen(false); }}
                     className={cn(
                       "w-full p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 transition-all border",
-                      i18n.language === l.id ? cn(theme.primary, "text-white", "border-transparent") : "lux-carbon-soft border-[#2A2A2A] text-[#F5F5F5]/80 hover:bg-white/5"
+                      i18n.language === l.id ? cn(theme.primary, "text-white", "border-transparent") : "lux-carbon-soft border-white/10 text-[#E9E9EA]/85 hover:bg-white/5"
                     )}
                   >
                     <span className="text-2xl">{l.flag}</span>
@@ -5731,13 +5734,28 @@ export default function App() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className={cn("w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl", isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900")}
+              className="w-full max-w-md rounded-t-[3rem] sm:rounded-[3rem] p-10 shadow-2xl bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px] lux-gold-hairline text-[#E9E9EA]"
               onClick={e => e.stopPropagation()}
             >
-              <div className="flex justify-between items-center mb-10"><h2 className="text-2xl font-black">{t('filter_dimension')}</h2><button onClick={() => setIsFilterModalOpen(false)} className="p-3 bg-gray-100 rounded-full"><X size={20} /></button></div>
+              <div className="w-12 h-1.5 rounded-full mx-auto mb-8 bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+              <div className="flex justify-between items-center mb-10">
+                <h2 className="text-2xl font-black">{t('filter_dimension')}</h2>
+                <button onClick={() => setIsFilterModalOpen(false)} className="p-3 rounded-full lux-carbon-soft border border-white/10 text-[#D4AF37] active:scale-95 transition-transform">
+                  <X size={20} />
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 {[{ id: 'today', label: t('today'), icon: '🕒' }, { id: 'week', label: t('week'), icon: '📅' }, { id: 'month', label: t('month'), icon: '📊' }, { id: 'year', label: t('year'), icon: '🗓️' }].map(dim => (
-                  <button key={dim.id} onClick={() => { setFilterType(dim.id as any); setCurrentDate(new Date()); setIsFilterModalOpen(false); }} className={cn("flex flex-col items-center justify-center p-6 rounded-[2rem] border-2 transition-all", filterType === dim.id ? "bg-black text-white border-black" : "bg-gray-50 text-gray-500 border-transparent")}>
+                  <button
+                    key={dim.id}
+                    onClick={() => { setFilterType(dim.id as any); setCurrentDate(new Date()); setIsFilterModalOpen(false); }}
+                    className={cn(
+                      "flex flex-col items-center justify-center p-6 rounded-[2rem] transition-all lux-shimmer-tap",
+                      filterType === dim.id
+                        ? "lux-carbon-soft lux-gold-hairline text-[#D4AF37]"
+                        : "lux-carbon-soft border border-white/10 text-[#8E8E93] hover:bg-white/5"
+                    )}
+                  >
                     <span className="text-2xl mb-2">{dim.icon}</span><span className="font-black text-[10px] uppercase tracking-widest">{dim.label}</span>
                   </button>
                 ))}
@@ -5749,8 +5767,8 @@ export default function App() {
 
       {/* Navigation */}
       <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-[100] px-[clamp(1rem,3vw,1.5rem)] pb-[calc(clamp(1rem,2.5vw,1.5rem)+env(safe-area-inset-bottom))] pt-[clamp(0.75rem,2vw,1rem)] backdrop-blur-xl border-t border-white/5 shadow-2xl transition-all duration-500",
-        isDarkMode ? "bg-slate-900/80" : "bg-white/80"
+        "fixed bottom-0 left-0 right-0 z-[100] px-[clamp(1rem,3vw,1.5rem)] pb-[calc(clamp(1rem,2.5vw,1.5rem)+env(safe-area-inset-bottom))] pt-[clamp(0.75rem,2vw,1rem)] backdrop-blur-xl shadow-2xl transition-all duration-500 lux-gold-hairline",
+        isDarkMode ? "bg-[rgba(10,10,11,0.78)]" : "bg-white/80"
       )}>
         <div className="flex justify-between items-center max-w-lg mx-auto relative">
           {[
@@ -5768,14 +5786,14 @@ export default function App() {
                     whileTap={{ scale: 0.9 }}
                     onClick={() => { setEditingTransaction(null); setIsModalOpen(true); }}
                     className={cn(
-                      "w-16 h-16 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-white dark:border-slate-900 transition-all pointer-events-auto",
+                      "w-16 h-16 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-black/60 transition-all pointer-events-auto",
                       theme.primary,
                       "text-white"
                     )}
                   >
                     <Plus size={32} strokeWidth={3} />
                   </motion.button>
-                  <span className="absolute -bottom-6 text-[0.5rem] font-black uppercase tracking-tighter text-gray-400">{t('add_bill')}</span>
+                  <span className="absolute -bottom-6 text-[0.5rem] font-black uppercase tracking-tighter text-[#8E8E93]">{t('add_bill')}</span>
                 </div>
               );
             }
@@ -5785,12 +5803,14 @@ export default function App() {
                 onClick={() => setActiveTab(tab.id as any)}
                 className={cn(
                   "flex-1 flex flex-col items-center space-y-1 transition-all relative group",
-                  activeTab === tab.id ? theme.text : "text-gray-400"
+                  activeTab === tab.id ? theme.text : "text-[#8E8E93]"
                 )}
               >
                 <div className={cn(
                   "p-2 rounded-2xl transition-all duration-500",
-                  activeTab === tab.id ? "bg-gray-100/50 scale-110 shadow-sm" : "group-hover:bg-gray-50"
+                  activeTab === tab.id
+                    ? "lux-carbon-soft lux-gold-hairline lux-tab-breathe scale-110 shadow-[0_0.75rem_1.5rem_rgba(212,175,55,0.12)]"
+                    : "group-hover:bg-white/5"
                 )}>
                   {tab.icon}
                 </div>
@@ -6224,7 +6244,7 @@ function TransactionForm({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18, ease }}
-            className="fixed inset-0 z-[170] flex items-end justify-center bg-black/50"
+            className="fixed inset-0 z-[170] flex items-end justify-center bg-black/60 backdrop-blur-sm"
             onClick={onClose}
           >
             <motion.div
@@ -6234,12 +6254,15 @@ function TransactionForm({
               transition={{ duration: 0.38, ease }}
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "w-full max-w-md overflow-hidden border border-white/10",
+                "w-full max-w-md overflow-hidden lux-gold-hairline",
                 "rounded-t-[32px]",
-                "bg-black/80 backdrop-blur-[20px]"
+                "bg-[rgba(10,10,11,0.80)] backdrop-blur-[24px]"
               )}
               style={{ transform: "translate3d(0,0,0)" }}
             >
+              <div className="pt-3 pb-2 flex justify-center">
+                <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(212,175,55,0.35),rgba(241,213,146,0.85),rgba(184,134,11,0.45))]" />
+              </div>
               {header}
               <div className="px-6 py-6">
                 {children}

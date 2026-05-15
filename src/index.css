@@ -1,10 +1,45 @@
 @import "tailwindcss";
 
+:root {
+  --lux-abyss: #0a0a0b;
+  --lux-abyss-blue: #0b0f14;
+  --lux-gold-sand: #d4af37;
+  --lux-gold-champagne: #f1d592;
+  --lux-gold-bronze: #b8860b;
+  --lux-text-muted: #8e8e93;
+}
+
+body {
+  background: radial-gradient(circle at 20% 12%, rgba(212, 175, 55, 0.08), transparent 42%),
+    radial-gradient(circle at 86% 18%, rgba(241, 213, 146, 0.06), transparent 44%),
+    linear-gradient(180deg, var(--lux-abyss-blue), var(--lux-abyss));
+  color: #e9e9ea;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.22;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.10) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 22%, rgba(255, 255, 255, 0.08) 0 1px, transparent 2px),
+    radial-gradient(circle at 32% 72%, rgba(255, 255, 255, 0.06) 0 1px, transparent 2px),
+    radial-gradient(circle at 64% 68%, rgba(255, 255, 255, 0.06) 0 1px, transparent 2px),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0 1px, rgba(0, 0, 0, 0) 1px 7px);
+  background-size: 320px 320px, 420px 420px, 520px 520px, 620px 620px, 100% 100%;
+  mix-blend-mode: screen;
+}
+
 @theme {
   --animate-gradient-x: gradient-x 3s ease infinite;
   --animate-lux-shine: lux-shine 2.8s linear infinite;
   --animate-lux-gold-breathe: lux-gold-breathe 3.2s ease-in-out infinite;
   --animate-ai-voice-standby: ai-voice-standby 2.8s ease-in-out infinite;
+  --animate-lux-tab-breathe: lux-tab-breathe 2.6s ease-in-out infinite;
+  --animate-lux-shimmer-tap: lux-shimmer-tap 0.65s cubic-bezier(0.32, 0.72, 0, 1) 1;
 
   @keyframes gradient-x {
 
@@ -68,6 +103,30 @@
     }
   }
 
+  @keyframes lux-tab-breathe {
+    0%,
+    100% {
+      filter: drop-shadow(0 0 0.7rem rgba(212, 175, 55, 0.18));
+    }
+    50% {
+      filter: drop-shadow(0 0 1.15rem rgba(212, 175, 55, 0.38));
+    }
+  }
+
+  @keyframes lux-shimmer-tap {
+    0% {
+      transform: translateX(-140%) skewX(-18deg);
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(140%) skewX(-18deg);
+      opacity: 0;
+    }
+  }
+
 }
 
 @layer utilities {
@@ -81,28 +140,29 @@
   }
 
   .lux-gold {
-    background-color: #d4af37;
+    background-color: var(--lux-gold-sand);
     background-image: linear-gradient(120deg,
-        #d4af37 0%,
-        #f6e6b0 18%,
-        #d4af37 36%,
-        #caa24a 54%,
-        #f6e6b0 72%,
-        #d4af37 100%);
+        var(--lux-gold-sand) 0%,
+        var(--lux-gold-champagne) 18%,
+        var(--lux-gold-sand) 36%,
+        var(--lux-gold-bronze) 54%,
+        var(--lux-gold-champagne) 72%,
+        var(--lux-gold-sand) 100%);
     background-size: 200% 200%;
     animation: var(--animate-lux-shine);
   }
 
   .lux-carbon {
-    background-color: #111111;
+    background-color: var(--lux-abyss);
     background-image:
       repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 1px, rgba(0, 0, 0, 0) 1px 6px),
       repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 1px, rgba(0, 0, 0, 0) 1px 7px),
-      radial-gradient(circle at 30% 20%, rgba(212, 175, 55, 0.09), rgba(0, 0, 0, 0) 60%);
+      radial-gradient(circle at 30% 20%, rgba(212, 175, 55, 0.09), rgba(0, 0, 0, 0) 60%),
+      linear-gradient(180deg, rgba(11, 15, 20, 0.9), rgba(10, 10, 11, 1));
   }
 
   .lux-carbon-soft {
-    background-color: rgba(17, 17, 17, 0.72);
+    background-color: rgba(10, 10, 11, 0.72);
     background-image:
       repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 1px, rgba(0, 0, 0, 0) 1px 6px),
       repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0 1px, rgba(0, 0, 0, 0) 1px 7px);
@@ -125,8 +185,51 @@
     text-shadow: 0 0 1.1rem rgba(212, 175, 55, 0.18);
   }
 
+  .lux-gold-hairline {
+    border: 0.5px solid transparent;
+    border-image: linear-gradient(135deg, rgba(212, 175, 55, 0.55), rgba(241, 213, 146, 0.24), rgba(184, 134, 11, 0.45)) 1;
+  }
+
+  .lux-shimmer-tap {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lux-shimmer-tap::after {
+    content: "";
+    position: absolute;
+    inset: -40% -60%;
+    background: linear-gradient(90deg, transparent 0%, rgba(241, 213, 146, 0.06) 35%, rgba(241, 213, 146, 0.22) 50%, rgba(212, 175, 55, 0.12) 65%, transparent 100%);
+    opacity: 0;
+    transform: translateX(-140%) skewX(-18deg);
+    pointer-events: none;
+  }
+
+  .lux-shimmer-tap:active::after {
+    opacity: 1;
+    animation: var(--animate-lux-shimmer-tap);
+  }
+
+  .lux-tab-breathe {
+    animation: var(--animate-lux-tab-breathe);
+  }
+
+  .lux-asset-sheen {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lux-asset-sheen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(45deg, rgba(212, 175, 55, 0.14), transparent 46%, rgba(241, 213, 146, 0.08));
+    opacity: 0.65;
+    pointer-events: none;
+  }
+
   .lux-abyss-gold-wave {
-    background-image: linear-gradient(135deg, #1a1a1a, #2a2417, #1a1a1a);
+    background-image: linear-gradient(135deg, #0b0f14, #2a2417, #0a0a0b);
     background-size: 400% 400%;
     animation: WaveMove 8s ease-in-out infinite;
   }
@@ -143,4 +246,12 @@
 
 .html2canvas-container .show-on-export {
   display: block !important;
+}
+
+.recharts-area-curve,
+.recharts-radar-polygon,
+.recharts-radar-curve,
+.recharts-polar-grid-angle line,
+.recharts-polar-grid-concentric circle {
+  filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.22)) drop-shadow(0 0 22px rgba(212, 175, 55, 0.12));
 }
