@@ -2392,7 +2392,7 @@ export default function App() {
   return (
     <motion.div
       className={cn(
-        "min-h-screen transition-all duration-1000 pb-[calc(clamp(6rem,12vw,8rem)+env(safe-area-inset-bottom))] font-sans relative overflow-hidden",
+        "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+12px)] font-sans relative overflow-hidden",
         cn(theme.appBg, theme.appText)
       )}
     >
@@ -5766,60 +5766,67 @@ export default function App() {
       </AnimatePresence>
 
       {/* Navigation */}
-      <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-[100] px-[clamp(1rem,3vw,1.5rem)] pb-[calc(clamp(1rem,2.5vw,1.5rem)+env(safe-area-inset-bottom))] pt-[clamp(0.75rem,2vw,1rem)] backdrop-blur-xl shadow-2xl transition-all duration-500 lux-gold-hairline",
-        isDarkMode ? "bg-[rgba(10,10,11,0.78)]" : "bg-white/80"
-      )}>
-        <div className="flex justify-between items-center max-w-lg mx-auto relative">
-          {[
-            { id: 'list', icon: <History size={22} />, label: t('bill_detail') },
-            { id: 'chart', icon: <PieIcon size={22} />, label: t('stats') },
-            { id: 'plus', icon: null, label: '' }, // Placeholder for the big plus
-            { id: 'vault', icon: <Vault size={22} />, label: t('vault') },
-            { id: 'discovery', icon: <Compass size={22} />, label: t('discovery') },
-          ].map((tab) => {
-            if (tab.id === 'plus') {
+      <nav className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
+        <div className="px-[clamp(0.75rem,2.5vw,1.25rem)]">
+          <div
+            className={cn(
+              "mx-auto max-w-lg overflow-visible pointer-events-auto",
+              "h-[52px] flex items-center justify-between",
+              "backdrop-blur-xl shadow-2xl transition-all duration-500 lux-gold-hairline",
+              isDarkMode ? "bg-[rgba(10,10,11,0.78)]" : "bg-white/80"
+            )}
+          >
+            {[
+              { id: 'list', icon: <History size={20} />, label: t('bill_detail') },
+              { id: 'chart', icon: <PieIcon size={20} />, label: t('stats') },
+              { id: 'plus', icon: null, label: '' }, // Placeholder for the big plus
+              { id: 'vault', icon: <Vault size={20} />, label: t('vault') },
+              { id: 'discovery', icon: <Compass size={20} />, label: t('discovery') },
+            ].map((tab) => {
+              if (tab.id === 'plus') {
+                return (
+                  <div key="plus-container" className="relative flex-1 flex justify-center -mt-10 overflow-visible">
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={() => { setEditingTransaction(null); setIsModalOpen(true); }}
+                      className={cn(
+                        "w-16 h-16 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-black/60 transition-all pointer-events-auto",
+                        theme.primary,
+                        "text-white"
+                      )}
+                    >
+                      <Plus size={32} strokeWidth={3} />
+                    </motion.button>
+                    <span className="absolute -bottom-6 text-[0.5rem] font-black uppercase tracking-tighter text-[#8E8E93]">{t('add_bill')}</span>
+                  </div>
+                );
+              }
               return (
-                <div key="plus-container" className="relative flex-1 flex justify-center -mt-12">
-                  <motion.button
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => { setEditingTransaction(null); setIsModalOpen(true); }}
-                    className={cn(
-                      "w-16 h-16 rounded-full flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.2)] border-4 border-black/60 transition-all pointer-events-auto",
-                      theme.primary,
-                      "text-white"
-                    )}
-                  >
-                    <Plus size={32} strokeWidth={3} />
-                  </motion.button>
-                  <span className="absolute -bottom-6 text-[0.5rem] font-black uppercase tracking-tighter text-[#8E8E93]">{t('add_bill')}</span>
-                </div>
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={cn(
+                    "flex-1 flex flex-col items-center justify-center gap-0.5 transition-all relative group py-1",
+                    activeTab === tab.id ? theme.text : "text-[#8E8E93]"
+                  )}
+                >
+                  <div className={cn(
+                    "p-1.5 rounded-2xl transition-all duration-500",
+                    activeTab === tab.id
+                      ? "lux-carbon-soft lux-gold-hairline lux-tab-breathe scale-105 shadow-[0_0.75rem_1.5rem_rgba(212,175,55,0.12)]"
+                      : "group-hover:bg-white/5"
+                  )}>
+                    {tab.icon}
+                  </div>
+                  <span className="text-[0.5rem] leading-none font-black uppercase tracking-tighter">{tab.label}</span>
+                  {activeTab === tab.id && <motion.div layoutId="nav-dot" className={cn("absolute -top-1 w-1 h-1 rounded-full", theme.primary)} />}
+                </button>
               );
-            }
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={cn(
-                  "flex-1 flex flex-col items-center space-y-1 transition-all relative group",
-                  activeTab === tab.id ? theme.text : "text-[#8E8E93]"
-                )}
-              >
-                <div className={cn(
-                  "p-2 rounded-2xl transition-all duration-500",
-                  activeTab === tab.id
-                    ? "lux-carbon-soft lux-gold-hairline lux-tab-breathe scale-110 shadow-[0_0.75rem_1.5rem_rgba(212,175,55,0.12)]"
-                    : "group-hover:bg-white/5"
-                )}>
-                  {tab.icon}
-                </div>
-                <span className="text-[0.5rem] font-black uppercase tracking-tighter">{tab.label}</span>
-                {activeTab === tab.id && <motion.div layoutId="nav-dot" className={cn("absolute -top-1 w-1 h-1 rounded-full", theme.primary)} />}
-              </button>
-            );
-          })}
+            })}
+          </div>
         </div>
+        <div className="h-[env(safe-area-inset-bottom)] pointer-events-none" />
       </nav>
     </motion.div>
   );
