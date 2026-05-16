@@ -2442,9 +2442,15 @@ export default function App() {
       )}
 
       {/* Sidebar Menu */}
-      <div className={cn("fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity", isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none")} onClick={() => setIsMenuOpen(false)} />
+      <div
+        className={cn(
+          "sidebar-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] transition-opacity",
+          isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={() => setIsMenuOpen(false)}
+      />
       <aside className={cn(
-        "fixed top-0 left-0 h-full w-[280px] z-[70] shadow-2xl transition-transform duration-500 rounded-r-[2.5rem] p-8",
+        "sidebar drawer menu-container fixed top-0 left-0 h-[100dvh] w-[280px] z-[70] shadow-2xl transition-transform duration-500 rounded-r-[2.5rem] p-8",
         cn(theme.surface, theme.surfaceBorder, theme.appText, "border-r"),
         isMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
@@ -2481,7 +2487,7 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pt-[calc(clamp(1.75rem,4vw,3rem)+env(safe-area-inset-top))] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10">
+      <main className="main-content max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pt-[calc(clamp(1.75rem,4vw,3rem)+env(safe-area-inset-top))] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10">
         <header className="flex justify-between items-center mb-12">
           <div className="flex items-center space-x-2">
             <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
