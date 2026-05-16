@@ -40,6 +40,7 @@ body::before {
   --animate-ai-voice-standby: ai-voice-standby 2.8s ease-in-out infinite;
   --animate-lux-tab-breathe: lux-tab-breathe 2.6s ease-in-out infinite;
   --animate-lux-shimmer-tap: lux-shimmer-tap 0.65s cubic-bezier(0.32, 0.72, 0, 1) 1;
+  --animate-lux-liquid-shimmer: liquidShimmer 8s infinite linear;
 
   @keyframes gradient-x {
 
@@ -127,6 +128,15 @@ body::before {
     }
   }
 
+  @keyframes liquidShimmer {
+    0% {
+      background-position: 200% 0%;
+    }
+    100% {
+      background-position: -200% 0%;
+    }
+  }
+
 }
 
 @layer utilities {
@@ -162,11 +172,32 @@ body::before {
   }
 
   .lux-carbon-soft {
-    background-color: rgba(10, 10, 11, 0.72);
-    background-image:
-      repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0 1px, rgba(0, 0, 0, 0) 1px 6px),
-      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.03) 0 1px, rgba(0, 0, 0, 0) 1px 7px);
-    backdrop-filter: blur(24px);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(212, 175, 55, 0.01) 100%) !important;
+    backdrop-filter: blur(25px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-image: none !important;
+    background-clip: padding-box;
+    box-shadow:
+      inset 0 1px 2px rgba(255, 255, 255, 0.2),
+      inset 0 -1px 3px rgba(212, 175, 55, 0.1),
+      0 12px 40px 0 rgba(0, 0, 0, 0.5) !important;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .lux-carbon-soft::before {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    border-radius: inherit;
+    background: linear-gradient(45deg, transparent 45%, rgba(212, 175, 55, 0.05) 50%, transparent 55%);
+    background-size: 200% 200%;
+    animation: var(--animate-lux-liquid-shimmer);
+    pointer-events: none;
   }
 
   .lux-gold-glow-soft {
@@ -186,8 +217,23 @@ body::before {
   }
 
   .lux-gold-hairline {
-    border: 0.5px solid transparent;
-    border-image: linear-gradient(135deg, rgba(212, 175, 55, 0.55), rgba(241, 213, 146, 0.24), rgba(184, 134, 11, 0.45)) 1;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-image: none;
+    background-clip: padding-box;
+  }
+
+  .lux-gold-hairline::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.55), rgba(241, 213, 146, 0.24), rgba(184, 134, 11, 0.45));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
   }
 
   .lux-shimmer-tap {
@@ -254,4 +300,15 @@ body::before {
 .recharts-polar-grid-angle line,
 .recharts-polar-grid-concentric circle {
   filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.22)) drop-shadow(0 0 22px rgba(212, 175, 55, 0.12));
+}
+
+.card,
+[class*="card"],
+[class*="block"]:not([class~="block"]):not([class~="inline-block"]):not([class*=":block"]):not([class*="inline-block"]) {
+  border-radius: 24px !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-image: none !important;
+  background-clip: padding-box;
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), inset 0 -1px 3px rgba(212, 175, 55, 0.1), 0 12px 40px rgba(0, 0, 0, 0.5) !important;
 }
