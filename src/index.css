@@ -467,3 +467,66 @@ button:active {
 .speech-modal-dialog button {
   max-width: 100% !important;
 }
+
+/* ==========================================================================
+   精准修复：黑金网格背景移位导致的顶部大面积漏白
+   ========================================================================== */
+
+/* 1. 全局宿主容器：仅做安全底色，严禁产生任何位移 */
+html,
+body,
+#root {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: #08070B !important;
+  overflow-x: hidden;
+}
+
+/* 2. 彻底清空可能导致整个界面被往下挤压的怪异边距 */
+.app-container,
+[class*="layout"],
+main,
+.main-content {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  top: 0 !important;
+}
+
+/* 3. 抓出内鬼：新引入的【网格纹理/液态玻璃背景层】 */
+/* 必须让背景图作为绝对背景悬浮在最底层，绝对不允许它占据空间去挤压上方的文字和卡片 */
+[class*="bg-shadow"],
+[class*="background"],
+[class*="pattern"],
+.glass-bg-layer {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+/* 4. 内容层：确保高光和卡片浮在背景之上，且顶部顶格 */
+main,
+.main-content {
+  position: relative !important;
+  z-index: 1 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   精准对齐：让左侧菜单的“我的账本”与主界面顶栏高度绝对一致
+   ========================================================================== */
+
+.main-header,
+.sidebar-header {
+  padding-top: calc(20px + env(safe-area-inset-top)) !important;
+  margin-top: 0 !important;
+  box-sizing: border-box !important;
+}

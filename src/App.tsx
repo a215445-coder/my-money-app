@@ -2454,7 +2454,7 @@ export default function App() {
         cn(theme.surface, theme.surfaceBorder, theme.appText, "border-r"),
         isMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="flex justify-between items-center mb-12">
+        <div className="sidebar-header flex justify-between items-center mb-12">
           <div className="flex items-center space-x-3">
             <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shadow-lg", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>
               <Wallet size={20} />
@@ -2494,7 +2494,7 @@ export default function App() {
           : "pt-[env(safe-area-inset-top)]"
       )}>
         {activeTab === 'list' && (
-          <header className="flex justify-between items-center mb-12">
+          <header className="main-header flex justify-between items-center mb-12">
             <div className="flex items-center space-x-2">
               <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
                 <Menu size={20} />
