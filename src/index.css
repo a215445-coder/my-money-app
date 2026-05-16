@@ -467,27 +467,3 @@ button:active {
 .speech-modal-dialog button {
   max-width: 100% !important;
 }
-
-html,
-body,
-#root,
-.app-container {
-  width: 100vw !important;
-  height: 100vh !important;
-  overflow: hidden !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  position: fixed !important;
-}
-
-main,
-.main-content,
-[class*="scroll-container"] {
-  width: 100% !important;
-  height: calc(100vh - 52px) !important;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
-  margin-top: 0 !important;
-  padding-top: 0 !important;
-  -webkit-overflow-scrolling: touch !important;
-}

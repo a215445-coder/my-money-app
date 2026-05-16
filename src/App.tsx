@@ -2392,7 +2392,7 @@ export default function App() {
   return (
     <motion.div
       className={cn(
-        "app-container flex flex-col transition-all duration-1000 font-sans relative",
+        "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+12px)] font-sans relative overflow-hidden",
         cn(theme.appBg, theme.appText)
       )}
     >
