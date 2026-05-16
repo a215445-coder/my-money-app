@@ -530,3 +530,95 @@ main,
   margin-top: 0 !important;
   box-sizing: border-box !important;
 }
+
+/* ==========================================================================
+   【iOS 高阶体验】全局页面布局对齐与丝滑转场动效系统
+   ========================================================================== */
+
+/* 1. 强制统一所有板块的容器行为，左右两边留出绝对等宽的黄金安全边距 */
+main,
+.main-content,
+[class*="page-container"],
+[class*="view-wrapper"] {
+  width: 100% !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  box-sizing: border-box !important;
+}
+
+/* 2. 强行把所有卡片、方块板块的总宽度统一撑满内容区，确保上下垂直绝对对齐 */
+.card,
+[class*="card"],
+[class*="block"]:not([class~="block"]):not([class~="inline-block"]):not([class*=":block"]):not([class*="inline-block"]),
+[class*="panel"],
+[class*="section"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+/* 3. 定义 iOS 标志性的“从底部往上蹦”的弹性帧动画 */
+@keyframes iosSlideUp {
+  0% {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 4. 捕捉并应用到四大核心界面的主体内容区 */
+.tab-panel,
+main > div,
+.main-content > div,
+[class*="page-content"],
+[class*="tab-panel"] {
+  animation: iosSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform, opacity;
+}
+
+/* ==========================================================================
+   最高约束：强制【统计】页面与【账单】页面大卡片左右宽度像素级对齐
+   ========================================================================== */
+
+.stats-page,
+[class*="stats"],
+[class*="statistics"],
+[id*="stats"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.stats-page .card,
+.stats-page [class*="card"],
+.stats-page [class*="chart"],
+.stats-page [class*="list-item"],
+.stats-page [class*="block"],
+[class*="stats"] .card,
+[class*="statistics"] [class*="card"],
+[class*="stats"] [class*="chart"],
+[class*="stats"] [class*="list-item"],
+[class*="statistics"] [class*="block"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.recharts-wrapper,
+.echarts-for-react,
+[class*="chart-container"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  box-sizing: border-box !important;
+}

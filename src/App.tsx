@@ -2553,6 +2553,7 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="tab-panel"
             >
               {activeTab === 'list' && (
                 <div className="space-y-8">
@@ -3242,7 +3243,7 @@ export default function App() {
               )}
 
               {activeTab === 'chart' && (
-                <div id="stats-content" className="space-y-6 pb-10 p-4">
+                <div id="stats-content" className="stats-page space-y-6 pb-10">
                   {/* Branding for Export */}
                   <div className="hidden show-on-export mb-8">
                     <div className="flex items-center justify-between">
