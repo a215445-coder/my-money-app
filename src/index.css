@@ -353,3 +353,20 @@ body::before {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+.app-container,
+[class*="layout"],
+main {
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+}
+
+[class*="header-bar"],
+[class*="top-bar"],
+.header {
+  margin-top: 0 !important;
+  position: relative !important;
+  top: 0 !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
