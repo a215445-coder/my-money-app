@@ -2392,7 +2392,7 @@ export default function App() {
   return (
     <motion.div
       className={cn(
-        "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+12px)] font-sans relative overflow-hidden",
+        "app-container flex flex-col transition-all duration-1000 font-sans relative",
         cn(theme.appBg, theme.appText)
       )}
     >
@@ -2488,7 +2488,7 @@ export default function App() {
 
       {/* Main Content */}
       <main className={cn(
-        "main-content max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10",
+        "main-content max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10 flex-1",
         activeTab === 'list'
           ? "pt-[calc(clamp(1.75rem,4vw,3rem)+env(safe-area-inset-top))]"
           : "pt-[env(safe-area-inset-top)]"
@@ -4666,39 +4666,39 @@ export default function App() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/60 backdrop-blur-3xl p-6"
+            className="speech-modal-overlay fixed inset-0 z-[200] flex items-start justify-center bg-black/60 backdrop-blur-3xl px-[clamp(0.75rem,3vw,1.25rem)] pt-[calc(clamp(0.75rem,3vw,1.25rem)+env(safe-area-inset-top))] pb-[calc(clamp(0.75rem,3vw,1.25rem)+env(safe-area-inset-bottom))] overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.8, opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full max-w-sm flex flex-col items-center bg-white/10 p-10 rounded-[4rem] border border-white/20 shadow-2xl relative overflow-hidden"
+              className="speech-container speech-modal-dialog w-full max-w-sm flex flex-col items-center bg-white/10 p-[clamp(1.25rem,4.5vw,2rem)] rounded-[clamp(2.25rem,10vw,3.25rem)] border border-white/20 shadow-2xl relative overflow-hidden max-h-[calc(100dvh-(clamp(1.5rem,6vw,2.5rem)+env(safe-area-inset-top)+env(safe-area-inset-bottom)))]"
             >
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-pink-500 to-indigo-500 animate-gradient-x" />
 
-              <div className="relative mb-12">
+              <div className="relative mb-[clamp(1.75rem,6vw,3rem)]">
                 <motion.div
                   animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0.1, 0.3] }}
                   transition={{ repeat: Infinity, duration: 1.5 }}
                   className="absolute -inset-4 bg-indigo-500 rounded-full blur-xl"
                 />
-                <div className="relative w-24 h-24 bg-gradient-to-tr from-indigo-500 to-pink-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(99,102,241,0.5)]">
+                <div className="relative w-[clamp(4.25rem,18vw,6rem)] h-[clamp(4.25rem,18vw,6rem)] bg-gradient-to-tr from-indigo-500 to-pink-500 rounded-full flex items-center justify-center shadow-[0_0_50px_rgba(99,102,241,0.5)]">
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ repeat: Infinity, duration: 1 }}
                   >
-                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-[clamp(1.75rem,7vw,2.5rem)] h-[clamp(1.75rem,7vw,2.5rem)] text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
                   </motion.div>
                 </div>
               </div>
 
-              <h2 className="text-white text-2xl font-black mb-2 tracking-tight">{t('voice.title')}</h2>
-              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mb-10">{t('voice.listening')}</p>
+              <h2 className="text-white text-[clamp(1.125rem,5vw,1.5rem)] font-black mb-2 tracking-tight text-center max-w-full">{t('voice.title')}</h2>
+              <p className="text-white/40 text-[clamp(0.55rem,2.5vw,0.625rem)] font-black uppercase tracking-widest mb-[clamp(1.25rem,4.5vw,2.25rem)] text-center max-w-full">{t('voice.listening')}</p>
 
-              <div className="w-full space-y-6">
+              <div className="w-full space-y-[clamp(1rem,4vw,1.5rem)] overflow-y-auto no-scrollbar">
                 <div className="relative">
                   <input
                     autoFocus
@@ -4724,13 +4724,13 @@ export default function App() {
                         }
                       }
                     }}
-                    className="w-full bg-white/5 border border-white/10 rounded-3xl py-6 px-6 text-white text-center text-lg font-bold focus:outline-none focus:ring-4 ring-indigo-500/20 transition-all placeholder:text-white/20"
+                    className="w-full bg-white/5 border border-white/10 rounded-3xl py-[clamp(0.85rem,3.8vw,1.25rem)] px-[clamp(0.9rem,4vw,1.5rem)] text-white text-center text-[clamp(0.95rem,4vw,1.125rem)] font-bold focus:outline-none focus:ring-4 ring-indigo-500/20 transition-all placeholder:text-white/20 max-w-full"
                   />
                   {voiceText && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="mt-6 p-6 bg-white/5 rounded-[2.5rem] border border-white/10 backdrop-blur-md"
+                      className="mt-[clamp(0.85rem,3.8vw,1.5rem)] p-[clamp(0.85rem,3.8vw,1.5rem)] bg-white/5 rounded-[clamp(1.5rem,7vw,2.5rem)] border border-white/10 backdrop-blur-md max-w-full"
                     >
                       <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-4">{t('voice.parse_result')}</p>
                       <div className="flex justify-between items-center">
@@ -4760,7 +4760,7 @@ export default function App() {
                           setIsVoiceModalOpen(false);
                           setVoiceText('');
                         }}
-                        className="w-full mt-6 py-4 bg-indigo-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all"
+                        className="w-full mt-[clamp(0.85rem,3.8vw,1.5rem)] py-[clamp(0.75rem,3.5vw,1rem)] bg-indigo-500 text-white rounded-2xl font-black text-[clamp(0.55rem,2.5vw,0.75rem)] uppercase tracking-widest shadow-lg shadow-indigo-500/20 active:scale-95 transition-all max-w-full"
                       >
                         {t('voice.confirm_post')}
                       </button>
@@ -4770,7 +4770,7 @@ export default function App() {
 
                 <button
                   onClick={() => setIsVoiceModalOpen(false)}
-                  className="mx-auto w-12 h-12 flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:text-white transition-all border border-white/10"
+                  className="mx-auto w-[clamp(2.5rem,12vw,3rem)] h-[clamp(2.5rem,12vw,3rem)] flex items-center justify-center bg-white/5 rounded-full text-white/40 hover:text-white transition-all border border-white/10"
                 >
                   <X size={20} />
                 </button>
