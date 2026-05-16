@@ -2487,35 +2487,43 @@ export default function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="main-content max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pt-[calc(clamp(1.75rem,4vw,3rem)+env(safe-area-inset-top))] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10">
-        <header className="flex justify-between items-center mb-12">
-          <div className="flex items-center space-x-2">
-            <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
-              <Menu size={20} />
-            </button>
-            <button onClick={() => setIsVoiceModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
-              <svg className="w-5 h-5 text-[#D4AF37] ai-voice-standby" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-              </svg>
-            </button>
-          </div>
-          <div className="text-center">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{getFilterLabel()}</p>
-            <div className="flex items-center justify-center space-x-4">
-              <button onClick={() => changeDate('prev')} className="p-1 hover:scale-125 transition-transform"><ChevronLeft size={16} /></button>
-              <h1 onClick={() => setIsFilterModalOpen(true)} className="text-xl font-black cursor-pointer hover:opacity-70">{t('app_name')}</h1>
-              <button onClick={() => changeDate('next')} className="p-1 hover:scale-125 transition-transform"><ChevronRight size={16} /></button>
+      <main className={cn(
+        "main-content max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10",
+        activeTab === 'list'
+          ? "pt-[calc(clamp(1.75rem,4vw,3rem)+env(safe-area-inset-top))]"
+          : "pt-[env(safe-area-inset-top)]"
+      )}>
+        {activeTab === 'list' && (
+          <header className="flex justify-between items-center mb-12">
+            <div className="flex items-center space-x-2">
+              <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+                <Menu size={20} />
+              </button>
+              <button onClick={() => setIsVoiceModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+                <svg className="w-5 h-5 text-[#D4AF37] ai-voice-standby" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </button>
             </div>
-          </div>
-          <button onClick={() => setIsSearchModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
-            <Search size={20} />
-          </button>
-        </header>
+            <div className="text-center">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{getFilterLabel()}</p>
+              <div className="flex items-center justify-center space-x-4">
+                <button onClick={() => changeDate('prev')} className="p-1 hover:scale-125 transition-transform"><ChevronLeft size={16} /></button>
+                <h1 onClick={() => setIsFilterModalOpen(true)} className="text-xl font-black cursor-pointer hover:opacity-70">{t('app_name')}</h1>
+                <button onClick={() => changeDate('next')} className="p-1 hover:scale-125 transition-transform"><ChevronRight size={16} /></button>
+              </div>
+            </div>
+            <button onClick={() => setIsSearchModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+              <Search size={20} />
+            </button>
+          </header>
+        )}
 
         <input
           ref={avatarLibraryInputRef}
           type="file"
           accept="image/*"
+          hidden
           className="hidden"
           onChange={async (e) => {
             const file = e.target.files?.[0];
@@ -2528,6 +2536,7 @@ export default function App() {
           type="file"
           accept="image/*"
           capture="environment"
+          hidden
           className="hidden"
           onChange={async (e) => {
             const file = e.target.files?.[0];
