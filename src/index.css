@@ -482,7 +482,7 @@ main,
   left: 0 !important;
   right: 0 !important;
   width: 100% !important;
-  bottom: 0 !important;
+  bottom: calc(12px + env(safe-area-inset-bottom)) !important;
   z-index: 100 !important;
   transform: none !important;
 }
@@ -497,8 +497,8 @@ main,
   max-width: none !important;
   margin-left: 16px !important;
   margin-right: 16px !important;
-  height: calc(52px + env(safe-area-inset-bottom)) !important;
-  padding-bottom: env(safe-area-inset-bottom) !important;
+  height: 52px !important;
+  padding-bottom: 0 !important;
   border-radius: 20px !important;
   background: rgba(255, 255, 255, 0.75) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
