@@ -479,11 +479,12 @@ main,
 
 .tabbar-glass {
   position: fixed !important;
-  left: 16px !important;
-  right: 16px !important;
+  left: 50% !important;
+  right: auto !important;
   width: calc(100% - 32px) !important;
   bottom: calc(16px + env(safe-area-inset-bottom)) !important;
   z-index: 100 !important;
+  transform: translateX(-50%) !important;
 }
 
 .tabbar-glass-inner {
