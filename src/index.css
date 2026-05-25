@@ -477,6 +477,32 @@ main,
   backdrop-filter: none !important;
 }
 
+.tabbar-glass {
+  position: fixed !important;
+  left: 16px !important;
+  right: 16px !important;
+  width: calc(100% - 32px) !important;
+  bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+  z-index: 100 !important;
+}
+
+.tabbar-glass-inner {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.tabbar-surface {
+  width: 100% !important;
+  max-width: none !important;
+  height: 52px !important;
+  border-radius: 20px !important;
+  background: rgba(255, 255, 255, 0.75) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.30) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
 main,
 .main-content,
 [class*="page-container"],

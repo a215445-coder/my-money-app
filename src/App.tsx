@@ -2853,7 +2853,7 @@ export default function App() {
   return (
     <motion.div
       className={cn(
-        "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+12px)] font-sans relative overflow-hidden",
+        "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+28px)] font-sans relative overflow-hidden",
         cn(theme.appBg, theme.appText)
       )}
     >
@@ -5246,10 +5246,11 @@ export default function App() {
       </AnimatePresence>
 
       {/* Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
-        <div className="px-[clamp(0.75rem,2.5vw,1.25rem)]">
+      <nav className="tabbar-glass fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
+        <div className="tabbar-glass-inner px-[clamp(0.75rem,2.5vw,1.25rem)]">
           <div
             className={cn(
+              "tabbar-surface",
               "mx-auto max-w-lg overflow-visible pointer-events-auto",
               "h-[52px] flex items-center justify-between",
               "bg-white/92 shadow-[0_8px_32px_rgba(0,0,0,0.04)] transition-all duration-500 lux-gold-hairline rounded-[24px]"
