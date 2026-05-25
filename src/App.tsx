@@ -5305,7 +5305,7 @@ export default function App() {
             })}
           </div>
         </div>
-        <div className="h-[env(safe-area-inset-bottom)] pointer-events-none" />
+        <div className="tabbar-safe-spacer h-[env(safe-area-inset-bottom)] pointer-events-none" />
       </nav>
     </motion.div>
   );
