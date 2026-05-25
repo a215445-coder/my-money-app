@@ -2853,7 +2853,7 @@ export default function App() {
   return (
     <motion.div
       className={cn(
-        "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+28px)] font-sans relative overflow-hidden",
+        "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+12px)] font-sans relative overflow-hidden",
         cn(theme.appBg, theme.appText)
       )}
     >
