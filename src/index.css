@@ -1,142 +1,81 @@
 @import "tailwindcss";
 
+/* ==========================================================================
+   Apple Ultra-Clean Light Mode — Design Tokens
+   ========================================================================== */
+
 :root {
-  --lux-abyss: #0a0a0b;
-  --lux-abyss-blue: #0b0f14;
-  --lux-gold-sand: #d4af37;
-  --lux-gold-champagne: #f1d592;
-  --lux-gold-bronze: #b8860b;
-  --lux-text-muted: #8e8e93;
+  --apple-bg: #F6F8FA;
+  --apple-surface: #FFFFFF;
+  --apple-text-primary: #111111;
+  --apple-text-secondary: #6E6E73;
+  --apple-text-tertiary: #86868B;
+  --apple-border: rgba(0, 0, 0, 0.06);
+  --apple-border-subtle: rgba(0, 0, 0, 0.04);
+  --apple-shadow: 0 8px 32px rgba(0, 0, 0, 0.02);
+  --apple-shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.03);
+  --apple-radius: 24px;
+  --apple-accent: #1D1D1F;
+  --apple-accent-muted: #48484A;
+  --apple-progress-bg: #E8E8ED;
+  --apple-progress-fill: linear-gradient(90deg, #34D399 0%, #14B8A6 100%);
+  --apple-fill-secondary: #AEAEB2;
 }
 
-body {
-  background: radial-gradient(circle at 20% 12%, rgba(212, 175, 55, 0.08), transparent 42%),
-    radial-gradient(circle at 86% 18%, rgba(241, 213, 146, 0.06), transparent 44%),
-    linear-gradient(180deg, var(--lux-abyss-blue), var(--lux-abyss));
-  color: #e9e9ea;
+html,
+body,
+#root {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background-color: var(--apple-bg) !important;
+  background-image: none !important;
+  overflow-x: hidden;
+  color: var(--apple-text-primary);
 }
 
 body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  opacity: 0.22;
-  background-image:
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.10) 0 1px, transparent 2px),
-    radial-gradient(circle at 78% 22%, rgba(255, 255, 255, 0.08) 0 1px, transparent 2px),
-    radial-gradient(circle at 32% 72%, rgba(255, 255, 255, 0.06) 0 1px, transparent 2px),
-    radial-gradient(circle at 64% 68%, rgba(255, 255, 255, 0.06) 0 1px, transparent 2px),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0 1px, rgba(0, 0, 0, 0) 1px 7px);
-  background-size: 320px 320px, 420px 420px, 520px 520px, 620px 620px, 100% 100%;
-  mix-blend-mode: screen;
+  display: none !important;
+}
+
+body,
+#root,
+.app-container {
+  background: var(--apple-bg) !important;
+  background-image: none !important;
 }
 
 @theme {
-  --animate-gradient-x: gradient-x 3s ease infinite;
-  --animate-lux-shine: lux-shine 2.8s linear infinite;
-  --animate-lux-gold-breathe: lux-gold-breathe 3.2s ease-in-out infinite;
-  --animate-ai-voice-standby: ai-voice-standby 2.8s ease-in-out infinite;
-  --animate-lux-tab-breathe: lux-tab-breathe 2.6s ease-in-out infinite;
   --animate-lux-shimmer-tap: lux-shimmer-tap 0.65s cubic-bezier(0.32, 0.72, 0, 1) 1;
-  --animate-lux-liquid-shimmer: liquidShimmer 8s infinite linear;
-
-  @keyframes gradient-x {
-
-    0%,
-    100% {
-      background-size: 200% 200%;
-      background-position: left center;
-    }
-
-    50% {
-      background-size: 200% 200%;
-      background-position: right center;
-    }
-  }
-
-  @keyframes lux-shine {
-    0% {
-      background-position: 0% 50%;
-    }
-
-    100% {
-      background-position: 200% 50%;
-    }
-  }
-
-  @keyframes lux-gold-breathe {
-
-    0%,
-    100% {
-      box-shadow: 0 14px 42px rgba(212, 175, 55, 0.10);
-    }
-
-    50% {
-      box-shadow: 0 18px 55px rgba(212, 175, 55, 0.18);
-    }
-  }
-
-  @keyframes WaveMove {
-    0% {
-      background-position: 92% 18%;
-    }
-
-    50% {
-      background-position: 12% 82%;
-    }
-
-    100% {
-      background-position: 92% 18%;
-    }
-  }
-
-  @keyframes ai-voice-standby {
-
-    0%,
-    100% {
-      filter: drop-shadow(0 0 0.6rem rgba(212, 175, 55, 0.22));
-    }
-
-    50% {
-      filter: drop-shadow(0 0 1.05rem rgba(212, 175, 55, 0.40));
-    }
-  }
-
-  @keyframes lux-tab-breathe {
-    0%,
-    100% {
-      filter: drop-shadow(0 0 0.7rem rgba(212, 175, 55, 0.18));
-    }
-    50% {
-      filter: drop-shadow(0 0 1.15rem rgba(212, 175, 55, 0.38));
-    }
-  }
 
   @keyframes lux-shimmer-tap {
     0% {
       transform: translateX(-140%) skewX(-18deg);
       opacity: 0;
     }
+
     30% {
-      opacity: 1;
+      opacity: 0.4;
     }
+
     100% {
       transform: translateX(140%) skewX(-18deg);
       opacity: 0;
     }
   }
 
-  @keyframes liquidShimmer {
+  @keyframes iosSlideUp {
     0% {
-      background-position: 200% 0%;
+      transform: translateY(40px);
+      opacity: 0;
     }
+
     100% {
-      background-position: -200% 0%;
+      transform: translateY(0);
+      opacity: 1;
     }
   }
-
 }
 
 @layer utilities {
@@ -149,91 +88,72 @@ body::before {
     scrollbar-width: none;
   }
 
+  /* Primary accent — graphite, not gold */
   .lux-gold {
-    background-color: var(--lux-gold-sand);
-    background-image: linear-gradient(120deg,
-        var(--lux-gold-sand) 0%,
-        var(--lux-gold-champagne) 18%,
-        var(--lux-gold-sand) 36%,
-        var(--lux-gold-bronze) 54%,
-        var(--lux-gold-champagne) 72%,
-        var(--lux-gold-sand) 100%);
-    background-size: 200% 200%;
-    animation: var(--animate-lux-shine);
+    background-color: var(--apple-accent) !important;
+    background-image: none !important;
+    animation: none !important;
+    color: #FFFFFF !important;
   }
 
   .lux-carbon {
-    background-color: var(--lux-abyss);
-    background-image:
-      repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0 1px, rgba(0, 0, 0, 0) 1px 6px),
-      repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.035) 0 1px, rgba(0, 0, 0, 0) 1px 7px),
-      radial-gradient(circle at 30% 20%, rgba(212, 175, 55, 0.09), rgba(0, 0, 0, 0) 60%),
-      linear-gradient(180deg, rgba(11, 15, 20, 0.9), rgba(10, 10, 11, 1));
+    background: var(--apple-surface) !important;
+    background-image: none !important;
   }
 
   .lux-carbon-soft {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(212, 175, 55, 0.01) 100%) !important;
-    backdrop-filter: blur(25px) saturate(180%) !important;
-    -webkit-backdrop-filter: blur(25px) saturate(180%) !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: var(--apple-surface) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 0.5px solid var(--apple-border) !important;
     border-image: none !important;
-    background-clip: padding-box;
-    box-shadow:
-      inset 0 1px 2px rgba(255, 255, 255, 0.2),
-      inset 0 -1px 3px rgba(212, 175, 55, 0.1),
-      0 12px 40px 0 rgba(0, 0, 0, 0.5) !important;
+    box-shadow: var(--apple-shadow) !important;
     position: relative;
     overflow: hidden;
   }
 
   .lux-carbon-soft::before {
-    content: "";
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    border-radius: inherit;
-    background: linear-gradient(45deg, transparent 45%, rgba(212, 175, 55, 0.05) 50%, transparent 55%);
-    background-size: 200% 200%;
-    animation: var(--animate-lux-liquid-shimmer);
-    pointer-events: none;
+    display: none !important;
   }
 
-  .lux-gold-glow-soft {
-    box-shadow: 0 16px 48px rgba(212, 175, 55, 0.12);
+  .lux-ios-glass,
+  .lux-gold-hairline {
+    background: var(--apple-surface) !important;
+    border: 0.5px solid var(--apple-border) !important;
+    border-image: none !important;
+    box-shadow: var(--apple-shadow) !important;
   }
 
+  .lux-ios-glass-subtle {
+    background: var(--apple-surface) !important;
+    border: 0.5px solid var(--apple-border-subtle) !important;
+    box-shadow: none !important;
+  }
+
+  .lux-glass-divider-b {
+    border-bottom: 0.5px solid var(--apple-border) !important;
+  }
+
+  .lux-glass-divider-r {
+    border-right: 0.5px solid var(--apple-border) !important;
+  }
+
+  .lux-glass-divider-t {
+    border-top: 0.5px solid var(--apple-border) !important;
+  }
+
+  .lux-glass-divider-t-dashed {
+    border-top: 0.5px dashed var(--apple-border) !important;
+  }
+
+  .lux-gold-glow-soft,
   .lux-gold-glow-breathe {
-    animation: var(--animate-lux-gold-breathe);
-  }
-
-  .font-cinzel {
-    font-family: "Cinzel", ui-serif, Georgia, serif;
+    box-shadow: var(--apple-shadow) !important;
+    animation: none !important;
   }
 
   .lux-text-gold-glow {
-    text-shadow: 0 0 1.1rem rgba(212, 175, 55, 0.18);
-  }
-
-  .lux-gold-hairline {
-    position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-image: none;
-    background-clip: padding-box;
-  }
-
-  .lux-gold-hairline::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg, rgba(212, 175, 55, 0.55), rgba(241, 213, 146, 0.24), rgba(184, 134, 11, 0.45));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+    text-shadow: none !important;
   }
 
   .lux-shimmer-tap {
@@ -245,7 +165,7 @@ body::before {
     content: "";
     position: absolute;
     inset: -40% -60%;
-    background: linear-gradient(90deg, transparent 0%, rgba(241, 213, 146, 0.06) 35%, rgba(241, 213, 146, 0.22) 50%, rgba(212, 175, 55, 0.12) 65%, transparent 100%);
+    background: linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, 0.02) 50%, transparent 100%);
     opacity: 0;
     transform: translateX(-140%) skewX(-18deg);
     pointer-events: none;
@@ -257,33 +177,120 @@ body::before {
   }
 
   .lux-tab-breathe {
-    animation: var(--animate-lux-tab-breathe);
-  }
-
-  .lux-asset-sheen {
-    position: relative;
-    overflow: hidden;
+    animation: none !important;
+    filter: none !important;
   }
 
   .lux-asset-sheen::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(45deg, rgba(212, 175, 55, 0.14), transparent 46%, rgba(241, 213, 146, 0.08));
-    opacity: 0.65;
-    pointer-events: none;
+    display: none !important;
   }
 
   .lux-abyss-gold-wave {
-    background-image: linear-gradient(135deg, #0b0f14, #2a2417, #0a0a0b);
-    background-size: 400% 400%;
-    animation: WaveMove 8s ease-in-out infinite;
+    display: none !important;
   }
 
   .ai-voice-standby {
-    animation: var(--animate-ai-voice-standby);
-    will-change: filter;
+    animation: none !important;
+    filter: none !important;
+    color: var(--apple-text-primary) !important;
   }
+
+  .font-cinzel {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+  }
+
+  .apple-progress-bg {
+    background: var(--apple-progress-bg) !important;
+  }
+
+  .apple-progress-fill {
+    background: var(--apple-progress-fill) !important;
+    box-shadow: none !important;
+  }
+}
+
+.lux-gold-hairline::before,
+.lux-ios-glass::before {
+  display: none !important;
+  content: none !important;
+}
+
+/* ==========================================================================
+   Global card & panel surfaces
+   ========================================================================== */
+
+.card,
+[class*="card"],
+[class*="block"]:not([class~="block"]):not([class~="inline-block"]):not([class*=":block"]):not([class*="inline-block"]),
+[class*="panel"],
+[class*="section"],
+[class*="item-container"],
+[class*="list-wrapper"],
+.wealth-vault-card,
+.dividend-bubble-card {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  margin-bottom: 16px !important;
+  box-sizing: border-box !important;
+  background: #FFFFFF !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border: 0.5px solid rgba(0, 0, 0, 0.06) !important;
+  border-image: none !important;
+  border-radius: 24px !important;
+  padding: 20px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.02) !important;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s !important;
+  animation: iosSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.card:active,
+[class*="card"]:active,
+[class*="block"]:active {
+  transform: scale(0.98) !important;
+}
+
+/* Progress bars — Apple monochrome */
+.vault-progress-bg {
+  width: 100%;
+  height: 8px;
+  background: var(--apple-progress-bg) !important;
+  border-radius: 999px;
+  overflow: hidden;
+  position: relative;
+  margin: 15px 0;
+}
+
+.vault-progress-fill {
+  height: 100%;
+  background: var(--apple-progress-fill) !important;
+  box-shadow: none !important;
+  border-radius: 999px;
+  position: relative;
+}
+
+.vault-progress-fill::after {
+  display: none !important;
+}
+
+.dividend-glow-dot {
+  width: 8px;
+  height: 8px;
+  background-color: var(--apple-accent);
+  border-radius: 50%;
+  box-shadow: none;
+  display: inline-block;
+}
+
+/* Charts — remove gold glow */
+.recharts-area-curve,
+.recharts-radar-polygon,
+.recharts-radar-curve,
+.recharts-polar-grid-angle line,
+.recharts-polar-grid-concentric circle {
+  filter: none !important;
 }
 
 .show-on-export {
@@ -294,26 +301,12 @@ body::before {
   display: block !important;
 }
 
-.recharts-area-curve,
-.recharts-radar-polygon,
-.recharts-radar-curve,
-.recharts-polar-grid-angle line,
-.recharts-polar-grid-concentric circle {
-  filter: drop-shadow(0 0 10px rgba(212, 175, 55, 0.22)) drop-shadow(0 0 22px rgba(212, 175, 55, 0.12));
-}
-
-.card,
-[class*="card"],
-[class*="block"]:not([class~="block"]):not([class~="inline-block"]):not([class*=":block"]):not([class*="inline-block"]) {
-  border-radius: 24px !important;
-  overflow: hidden !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  border-image: none !important;
-  background-clip: padding-box;
-  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.2), inset 0 -1px 3px rgba(212, 175, 55, 0.1), 0 12px 40px rgba(0, 0, 0, 0.5) !important;
-}
+/* ==========================================================================
+   Layout & navigation
+   ========================================================================== */
 
 @media (max-width: 640px) {
+
   html,
   body,
   #root {
@@ -340,9 +333,10 @@ body::before {
     left: 0 !important;
     right: 0 !important;
     z-index: 9999 !important;
-    background: rgba(10, 10, 11, 0.9) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
     backdrop-filter: blur(20px) !important;
     -webkit-backdrop-filter: blur(20px) !important;
+    border-top: 0.5px solid rgba(0, 0, 0, 0.06) !important;
   }
 
   main,
@@ -427,32 +421,6 @@ main,
   -webkit-overflow-scrolling: touch !important;
 }
 
-body,
-#root,
-.app-container {
-  background: #08070B !important;
-  background-image:
-    radial-gradient(circle at 0% 0%, rgba(44, 24, 73, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 100% 100%, rgba(214, 175, 55, 0.03) 0%, transparent 50%) !important;
-}
-
-.card,
-[class*="card"],
-[class*="block"] {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(44, 24, 73, 0.05) 100%) !important;
-  backdrop-filter: blur(30px) saturate(200%) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(200%) !important;
-  border: 0.5px solid rgba(214, 175, 55, 0.18) !important;
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 20px 40px rgba(0, 0, 0, 0.6) !important;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s !important;
-}
-
-.card:active,
-[class*="card"]:active,
-button:active {
-  transform: scale(0.98) !important;
-}
-
 .speech-modal-overlay,
 .speech-modal-dialog {
   max-width: 100vw !important;
@@ -468,23 +436,6 @@ button:active {
   max-width: 100% !important;
 }
 
-/* ==========================================================================
-   精准修复：黑金网格背景移位导致的顶部大面积漏白
-   ========================================================================== */
-
-/* 1. 全局宿主容器：仅做安全底色，严禁产生任何位移 */
-html,
-body,
-#root {
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  background-color: #08070B !important;
-  overflow-x: hidden;
-}
-
-/* 2. 彻底清空可能导致整个界面被往下挤压的怪异边距 */
 .app-container,
 [class*="layout"],
 main,
@@ -494,24 +445,13 @@ main,
   top: 0 !important;
 }
 
-/* 3. 抓出内鬼：新引入的【网格纹理/液态玻璃背景层】 */
-/* 必须让背景图作为绝对背景悬浮在最底层，绝对不允许它占据空间去挤压上方的文字和卡片 */
 [class*="bg-shadow"],
 [class*="background"],
 [class*="pattern"],
 .glass-bg-layer {
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  z-index: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  pointer-events: none !important;
+  display: none !important;
 }
 
-/* 4. 内容层：确保高光和卡片浮在背景之上，且顶部顶格 */
 main,
 .main-content {
   position: relative !important;
@@ -520,10 +460,6 @@ main,
   box-sizing: border-box !important;
 }
 
-/* ==========================================================================
-   精准对齐：让左侧菜单的“我的账本”与主界面顶栏高度绝对一致
-   ========================================================================== */
-
 .main-header,
 .sidebar-header {
   padding-top: calc(20px + env(safe-area-inset-top)) !important;
@@ -531,11 +467,6 @@ main,
   box-sizing: border-box !important;
 }
 
-/* ==========================================================================
-   【iOS 高阶体验】全局页面布局对齐与丝滑转场动效系统
-   ========================================================================== */
-
-/* 1. 强制统一所有板块的容器行为，左右两边留出绝对等宽的黄金安全边距 */
 main,
 .main-content,
 [class*="page-container"],
@@ -546,7 +477,6 @@ main,
   box-sizing: border-box !important;
 }
 
-/* 2. 强行把所有卡片、方块板块的总宽度统一撑满内容区，确保上下垂直绝对对齐 */
 .card,
 [class*="card"],
 [class*="block"]:not([class~="block"]):not([class~="inline-block"]):not([class*=":block"]):not([class*="inline-block"]),
@@ -559,31 +489,14 @@ main,
   box-sizing: border-box !important;
 }
 
-/* 3. 定义 iOS 标志性的“从底部往上蹦”的弹性帧动画 */
-@keyframes iosSlideUp {
-  0% {
-    transform: translateY(40px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-/* 4. 捕捉并应用到四大核心界面的主体内容区 */
 .tab-panel,
-main > div,
-.main-content > div,
+main>div,
+.main-content>div,
 [class*="page-content"],
 [class*="tab-panel"] {
   animation: iosSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
   will-change: transform, opacity;
 }
-
-/* ==========================================================================
-   最高约束：强制【统计】页面与【账单】页面大卡片左右宽度像素级对齐
-   ========================================================================== */
 
 .stats-page,
 [class*="stats"],
@@ -621,4 +534,119 @@ main > div,
   padding-left: 0 !important;
   padding-right: 0 !important;
   box-sizing: border-box !important;
+}
+
+.wealth-vault-card {
+  width: 100% !important;
+  background: #FFFFFF !important;
+  border: 0.5px solid rgba(0, 0, 0, 0.06) !important;
+  border-radius: 24px !important;
+  padding: 20px !important;
+  margin-bottom: 20px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.02) !important;
+  box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   支付方式列表 — 解除高度锁死，开启纵向滚动
+   ========================================================================== */
+
+.payment-methods-list,
+[class*="payment-list"] {
+  max-height: none !important;
+  overflow-y: auto !important;
+  padding-bottom: 24px !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+.channel-name,
+[class*="channel-label"] {
+  color: #1D1D1F !important;
+  font-weight: 500 !important;
+}
+
+/* ==========================================================================
+   所属分类选择器 — 上图下字，图标完整显示
+   ========================================================================== */
+
+.sheet-scroll-area {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: visible !important;
+  -webkit-overflow-scrolling: touch;
+  /* 勿使用含 block 的类名，避免命中全局 [class*="block"] 的 overflow:hidden */
+}
+
+.category-sheet-body {
+  /* 8 项 = 2 行 × 4 列，保证内容区至少能完整容纳两行 */
+  min-height: min(240px, 52dvh) !important;
+}
+
+.category-picker-list {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  grid-auto-rows: minmax(100px, auto) !important;
+  gap: 12px !important;
+  overflow: visible !important;
+  padding-bottom: 20px !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 360px) {
+  .category-picker-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+.category-picker-item {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  overflow: visible !important;
+  min-height: 100px !important;
+  height: auto !important;
+  padding: 10px 6px 12px !important;
+  box-sizing: border-box !important;
+}
+
+.category-picker-item.lux-gold-hairline,
+.category-picker-item.lux-ios-glass-subtle {
+  overflow: visible !important;
+}
+
+.category-picker-icon {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 44px !important;
+  height: 44px !important;
+  flex-shrink: 0 !important;
+  overflow: visible !important;
+  font-size: 1.75rem !important;
+  line-height: 1 !important;
+}
+
+.category-picker-label {
+  display: block !important;
+  flex-shrink: 0 !important;
+  margin-top: 6px !important;
+  text-align: center !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1.3 !important;
+  color: #6e6e73 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  /* 至少保留两行文字高度，避免被父级裁切时完全看不见 */
+  min-height: 2.6em !important;
+}
+
+.category-picker-item.is-selected .category-picker-label {
+  color: #1d1d1f !important;
+  font-weight: 600 !important;
 }

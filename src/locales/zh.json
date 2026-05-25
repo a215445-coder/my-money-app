@@ -33,7 +33,12 @@
   "stats_ui": {
     "income_radar_title": "收入雷达",
     "income_radar_hint": "点击雷达图任一顶点，查看该收入来源建议。",
-    "mock": "示例"
+    "mock": "示例",
+    "monthly_compare_title": "月度消费趋势（本月 vs 上月）",
+    "weekly_stacked_title": "周内每日开销（分类堆叠）",
+    "yearly_heatmap_title": "开销频次年历热力图",
+    "less": "少",
+    "more": "多"
   },
   "pro": {
     "unlock_income_radar": "永久会员解锁：收入来源雷达，查看结构与建议。"
@@ -44,7 +49,7 @@
     "category_donut": "分类占比圆环图",
     "savings_progress": "储蓄比例进度条",
     "summary": "三大汇总",
-    "watermark": "Exclusive for Black-Gold VIP"
+    "watermark": "由我的账本生成"
   },
   "income_sources": {
     "salary": "工资收入",
