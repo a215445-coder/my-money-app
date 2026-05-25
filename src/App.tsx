@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   Plus,
   X,
@@ -16,28 +16,28 @@ import {
   History,
   ChevronDown,
   Lock,
-  LineChart as LineIcon,
   Search,
-  Cloud,
   Camera,
   Hash,
   Smile,
   Globe,
   ArrowRightLeft,
-  User,
   Pencil,
   Languages,
   Share2,
   LogOut,
-  Compass,
-  Zap as ZapIcon,
-  Calculator,
   GripVertical,
   Users,
   Trophy,
   Sprout,
   TreePine,
   Vault,
+  LineChart as LineIcon,
+  Cloud,
+  User,
+  Compass,
+  Zap as ZapIcon,
+  Calculator,
 } from 'lucide-react';
 import {
   format,
@@ -94,6 +94,7 @@ const SAVING_CHALLENGE_TIPS = [
 ];
 import html2canvas from 'html2canvas';
 import { useTranslation } from 'react-i18next';
+import { LiquidGlass } from '@ybouane/liquidglass';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 
 // Utility for tailwind classes
@@ -101,415 +102,61 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-type OnboardingSlide = {
-  titleKey: string;
-  descriptionKey: string;
-  Icon: React.ElementType;
-  bg: string;
-  accent: string;
-  ctaKey?: string;
-};
 
-const ONBOARDING_BG_STOPS: string[] = ['#F6F8FA', '#F8F9FA', '#F2F2F7', '#EEF1F5', '#FFFFFF'];
-const ONBOARDING_BG_LUMINANCE_STOPS: number[] = [0.96, 0.97, 0.95, 0.94, 1];
-
-const ONBOARDING_SLIDES: OnboardingSlide[] = [
-  {
-    titleKey: 'onboarding.slides.lab.title',
-    descriptionKey: 'onboarding.slides.lab.desc',
-    Icon: LineIcon,
-    bg: 'bg-[#F6F8FA]',
-    accent: 'from-[#E8E8ED] to-[#D1D1D6]',
-  },
-  {
-    titleKey: 'onboarding.slides.fast.title',
-    descriptionKey: 'onboarding.slides.fast.desc',
-    Icon: ZapIcon,
-    bg: 'bg-[#F8F9FA]',
-    accent: 'from-[#E8E8ED] to-[#D1D1D6]',
-  },
-  {
-    titleKey: 'onboarding.slides.rule.title',
-    descriptionKey: 'onboarding.slides.rule.desc',
-    Icon: Calculator,
-    bg: 'bg-[#F2F2F7]',
-    accent: 'from-[#E8E8ED] to-[#D1D1D6]',
-  },
-  {
-    titleKey: 'onboarding.slides.insight.title',
-    descriptionKey: 'onboarding.slides.insight.desc',
-    Icon: Cloud,
-    bg: 'bg-[#EEF1F5]',
-    accent: 'from-[#E8E8ED] to-[#D1D1D6]',
-  },
-  {
-    titleKey: 'onboarding.slides.start.title',
-    descriptionKey: 'onboarding.slides.start.desc',
-    Icon: User,
-    bg: 'bg-[#FFFFFF]',
-    accent: 'from-[#1D1D1F] to-[#48484A]',
-    ctaKey: 'onboarding.slides.start.cta',
-  },
-];
-
-function OnboardingSlideCard({
-  slideIndex,
-  isActive,
-  globalProgress,
-  contentColor,
-  mutedColor,
-}: {
-  slideIndex: number;
-  isActive: boolean;
-  globalProgress: any;
-  contentColor: any;
-  mutedColor: any;
-}) {
-  const { t } = useTranslation();
-  const slide = ONBOARDING_SLIDES[slideIndex];
-  const slideProgress = useTransform(globalProgress, (v: number) => v - slideIndex);
-  const bgParallaxX = useTransform(slideProgress, [-1, 0, 1], [12, 0, -12]);
-  const fgParallaxX = useTransform(slideProgress, [-1, 0, 1], [36, 0, -36]);
-  const iconParallaxX = useTransform(slideProgress, [-1, 0, 1], [64, 0, -64]);
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.08, delayChildren: 0.06 },
-    },
-  } as const;
-
-  const titleVariants = {
-    hidden: { opacity: 0, y: 10, filter: 'blur(6px)' },
-    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.38, ease: [0.23, 1, 0.32, 1] } },
-  } as const;
-
-  const descVariants = {
-    hidden: { opacity: 0, y: 14, filter: 'blur(6px)' },
-    show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.44, ease: [0.23, 1, 0.32, 1] } },
-  } as const;
-
-  const chromeVariants = {
-    hidden: { opacity: 0, y: 6 },
-    show: { opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.23, 1, 0.32, 1] } },
-  } as const;
-
-  return (
-    <div className="min-w-full w-full snap-center px-8 py-10 flex items-center justify-center">
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate={isActive ? "show" : "hidden"}
-        className="w-full max-w-md"
-        style={{ color: contentColor }}
-      >
-        <div className="relative rounded-[3.25rem] p-10 lux-ios-glass bg-[#F2F2F7] backdrop-blur-3xl shadow-[0_20px_80px_rgba(0,0,0,0.25)] overflow-hidden">
-          <motion.div style={{ x: bgParallaxX }} className="absolute inset-0 pointer-events-none">
-            <div className={cn("absolute -top-24 -right-24 w-64 h-64 rounded-full blur-[110px] opacity-70 bg-gradient-to-br", slide.accent)} />
-            <div className="absolute -bottom-24 -left-24 w-72 h-72 rounded-full blur-[120px] opacity-30 bg-white/20" />
-          </motion.div>
-
-          <motion.div variants={chromeVariants} className="relative">
-            <div className="relative h-56 w-full">
-              {slideIndex === 0 && (
-                <>
-                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-full max-w-sm">
-                      <div className="rounded-[2rem] lux-ios-glass bg-[#F2F2F7] backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                        <div className="flex items-center justify-between mb-6">
-                          <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>WEALTH PULSE</div>
-                          <div className="flex items-center space-x-1">
-                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-sky-400" />
-                            <div className="w-1.5 h-1.5 rounded-full bg-fuchsia-400" />
-                          </div>
-                        </div>
-                        <div className="relative h-24">
-                          <div className="absolute inset-0 grid grid-cols-10 gap-2 items-end">
-                            {Array.from({ length: 10 }).map((_, i) => (
-                              <motion.div
-                                key={i}
-                                animate={{ height: [18, 44, 26, 56, 34] }}
-                                transition={{ duration: 1.6, repeat: Infinity, ease: [0.23, 1, 0.32, 1], delay: i * 0.03 }}
-                                className={cn("rounded-xl lux-ios-glass-subtle", i % 3 === 0 ? "bg-white/20" : "bg-white/12")}
-                              />
-                            ))}
-                          </div>
-                          <motion.div
-                            animate={{ opacity: [0.3, 0.6, 0.3] }}
-                            transition={{ duration: 2.0, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
-                            className="absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/10 to-transparent"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-
-              {slideIndex === 1 && (
-                <>
-                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-end justify-center pb-4">
-                    <div className="w-full max-w-sm">
-                      <motion.div
-                        initial={{ y: 40, opacity: 0 }}
-                        animate={isActive ? { y: 0, opacity: 1 } : { y: 40, opacity: 0 }}
-                        transition={{ type: "spring", damping: 22, stiffness: 220 }}
-                        className="rounded-[2.25rem] lux-ios-glass bg-[#F2F2F7] backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>RECORD</div>
-                            <div className="text-lg font-black mt-1">¥ 50.00</div>
-                            <div className="text-[10px] font-bold mt-1" style={{ color: mutedColor }}>{t('onboarding.mock.category_line')}</div>
-                          </div>
-                          <motion.div
-                            animate={{ boxShadow: ["0 0 0 rgba(255,255,255,0.0)", "0 0 26px rgba(255,255,255,0.26)", "0 0 0 rgba(255,255,255,0.0)"] }}
-                            transition={{ duration: 1.6, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
-                            className={cn("w-14 h-14 rounded-full flex items-center justify-center bg-gradient-to-br lux-ios-glass", slide.accent)}
-                          >
-                            <Plus size={26} className="text-black/80" strokeWidth={3} />
-                          </motion.div>
-                        </div>
-                      </motion.div>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-
-              {slideIndex === 2 && (
-                <>
-                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-full max-w-sm">
-                      <div className="rounded-[2.25rem] lux-ios-glass bg-[#F2F2F7] backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                        <div className="text-[10px] font-black uppercase tracking-[0.25em] mb-6" style={{ color: mutedColor }}>5 · 3 · 2</div>
-                        <div className="h-28 flex flex-col justify-end space-y-3">
-                          {[
-                            { w: 'w-[88%]', label: '50%', tone: 'bg-white/20' },
-                            { w: 'w-[72%]', label: '30%', tone: 'bg-white/14' },
-                            { w: 'w-[58%]', label: '20%', tone: 'bg-[#F2F2F7]' },
-                          ].map((b, i) => (
-                            <motion.div
-                              key={b.label}
-                              initial={{ y: 30, opacity: 0, scale: 0.98 }}
-                              animate={isActive ? { y: 0, opacity: 1, scale: 1 } : { y: 30, opacity: 0, scale: 0.98 }}
-                              transition={{ type: "spring", damping: 22, stiffness: 240, delay: 0.08 + i * 0.08 }}
-                              className={cn(
-                                "h-10 rounded-2xl lux-ios-glass-subtle flex items-center justify-between px-4",
-                                b.w,
-                                b.tone
-                              )}
-                            >
-                              <span className="text-xs font-black">{t('onboarding.module', { n: i + 1 })}</span>
-                              <span className="text-sm font-black">{b.label}</span>
-                            </motion.div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-
-              {slideIndex === 3 && (
-                <>
-                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-center justify-center">
-                    <motion.div
-                      animate={{
-                        boxShadow: [
-                          "0 0 0 rgba(255,255,255,0)",
-                          "0 0 40px rgba(255,255,255,0.16)",
-                          "0 0 0 rgba(255,255,255,0)"
-                        ],
-                      }}
-                      transition={{ duration: 2.2, repeat: Infinity, ease: [0.23, 1, 0.32, 1] }}
-                      className="w-full max-w-sm rounded-[2.25rem] lux-ios-glass bg-[#F2F2F7] backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
-                    >
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="text-[10px] font-black uppercase tracking-[0.25em]" style={{ color: mutedColor }}>TIP</div>
-                          <div className="text-lg font-black leading-snug mt-2">{t('onboarding.mock.insight_title')}</div>
-                          <div className="mt-2 text-[10px] font-bold" style={{ color: mutedColor }}>{t('onboarding.mock.insight_desc')}</div>
-                        </div>
-                        <div className={cn("w-12 h-12 rounded-[1.4rem] flex items-center justify-center bg-gradient-to-br lux-ios-glass", slide.accent)}>
-                          <Smile size={22} className="text-black/80" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  </motion.div>
-                </>
-              )}
-
-              {slideIndex === 4 && (
-                <>
-                  <motion.div style={{ x: fgParallaxX }} className="absolute inset-0 flex items-end justify-center pb-4">
-                    <div className="w-full max-w-sm rounded-[2.25rem] lux-ios-glass bg-[#F2F2F7] backdrop-blur-3xl p-6 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                      <div className="grid grid-cols-2 gap-3">
-                        <button className="py-4 rounded-2xl bg-white text-black font-black text-xs shadow-lg active:scale-95 transition-all">
-                          {t('login.phone_login')}
-                        </button>
-                        <button className="py-4 rounded-2xl bg-[#F2F2F7] lux-ios-glass-subtle font-black text-xs active:scale-95 transition-all">
-                          {t('login.wechat_login')}
-                        </button>
-                      </div>
-                      <button className="mt-3 w-full py-4 rounded-2xl bg-[#F2F2F7] lux-ios-glass-subtle font-black text-xs active:scale-95 transition-all">
-                        {t('login.google_login')}
-                      </button>
-                    </div>
-                  </motion.div>
-                </>
-              )}
-
-              <motion.div style={{ x: iconParallaxX }} className="absolute top-0 left-0 right-0 flex justify-center">
-                <div className={cn("w-14 h-14 rounded-[1.6rem] flex items-center justify-center bg-gradient-to-br shadow-lg lux-ios-glass", slide.accent)}>
-                  <slide.Icon size={26} className="text-black/80" />
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
-
-          <motion.div variants={titleVariants} className="mt-10 relative">
-            <h1 className="text-4xl font-black tracking-tight leading-[1.05]">{t(slide.titleKey)}</h1>
-          </motion.div>
-          <motion.p variants={descVariants} className="mt-4 text-base font-bold leading-relaxed" style={{ color: mutedColor }}>
-            {t(slide.descriptionKey)}
-          </motion.p>
-        </div>
-      </motion.div>
-    </div>
-  );
-}
-
-function OnboardingScreen({ onGoLogin }: { onGoLogin: () => void }) {
-  const { t } = useTranslation();
-  const total = ONBOARDING_SLIDES.length;
-  const scrollerRef = React.useRef<HTMLDivElement>(null);
-  const [index, setIndex] = useState(0);
-
-  const { scrollXProgress } = useScroll({ container: scrollerRef });
-  const bgColor = useTransform(scrollXProgress, [0, 0.25, 0.5, 0.75, 1], ONBOARDING_BG_STOPS);
-  const bgLum = useTransform(scrollXProgress, [0, 0.25, 0.5, 0.75, 1], ONBOARDING_BG_LUMINANCE_STOPS);
-  const contentColor = useTransform(bgLum, [0, 1], ['#FFFFFF', '#0B0B0C']);
-  const mutedColor = useTransform(bgLum, [0, 1], ['rgba(255,255,255,0.64)', 'rgba(11,11,12,0.55)']);
-  const contentInverseColor = useTransform(bgLum, [0, 1], ['#0B0B0C', '#FFFFFF']);
-
-  const globalProgress = useTransform(scrollXProgress, (v: number) => v * (total - 1));
+function SplashScreen({ onDone }: { onDone: () => void }) {
+  const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
 
   useEffect(() => {
-    const unsubscribe = scrollXProgress.on('change', (v: number) => {
-      const next = Math.round(v * (total - 1));
-      setIndex(prev => (prev === next ? prev : next));
-    });
-    return () => unsubscribe();
-  }, [scrollXProgress, total]);
-
-  const scrollToIndex = (next: number) => {
-    const el = scrollerRef.current;
-    if (!el) return;
-    const clamped = Math.max(0, Math.min(total - 1, next));
-    el.scrollTo({ left: el.clientWidth * clamped, behavior: 'smooth' });
-  };
+    const enterTimer = setTimeout(() => setPhase('exit'), 1400);
+    const exitTimer = setTimeout(onDone, 2000);
+    return () => {
+      clearTimeout(enterTimer);
+      clearTimeout(exitTimer);
+    };
+  }, [onDone]);
 
   return (
-    <div className="fixed inset-0 z-[300] overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+      className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#F6F8FA]"
+    >
       <motion.div
-        className="absolute inset-0"
-        style={{
-          backgroundColor: bgColor,
-          backgroundImage:
-            "radial-gradient(circle at 18% 12%, rgba(255,255,255,0.8), transparent 55%), radial-gradient(circle at 82% 88%, rgba(0,0,0,0.02), transparent 60%)",
-        }}
-        animate={{
-          filter: [
-            "saturate(112%) brightness(1.02)",
-            "saturate(105%) brightness(0.98)",
-            "saturate(112%) brightness(1.02)",
-          ],
-        }}
-        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
-      />
-
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-0 right-0 px-8 pt-[calc(1.25rem+env(safe-area-inset-top))]">
-          <div className="flex items-center justify-between">
-            <motion.div className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: mutedColor }}>
-              {t('onboarding.badge')}
-            </motion.div>
-            <div className="flex items-center space-x-2">
-              {ONBOARDING_SLIDES.map((_, i) => (
-                <motion.div
-                  key={i}
-                  animate={{ width: i === index ? 18 : 6, opacity: i === index ? 1 : 0.35 }}
-                  transition={{ type: "spring", damping: 20, stiffness: 250 }}
-                  className="h-1.5 rounded-full bg-black/30"
-                  style={{ backgroundColor: contentColor }}
-                />
-              ))}
-            </div>
-          </div>
+        animate={
+          phase === 'enter'
+            ? { scale: [0.6, 1.15, 1], opacity: [0, 1, 1] }
+            : { scale: 0.8, opacity: 0 }
+        }
+        transition={
+          phase === 'enter'
+            ? { duration: 0.9, ease: [0.34, 1.56, 0.64, 1] }
+            : { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+        }
+        className="flex flex-col items-center"
+      >
+        <div className="w-24 h-24 rounded-[2rem] bg-[#1D1D1F] flex items-center justify-center shadow-2xl mb-6">
+          <Wallet size={44} className="text-white" />
         </div>
-
-        <div className="absolute inset-0 pt-[calc(3.5rem+env(safe-area-inset-top))] pb-[calc(6.5rem+env(safe-area-inset-bottom))]">
-          <div
-            ref={scrollerRef}
-            className="h-full w-full overflow-x-auto no-scrollbar flex snap-x snap-mandatory scroll-smooth"
-            style={{ WebkitOverflowScrolling: 'touch' as any }}
-          >
-            {ONBOARDING_SLIDES.map((_, i) => (
-              <OnboardingSlideCard
-                key={i}
-                slideIndex={i}
-                isActive={i === index}
-                globalProgress={globalProgress}
-                contentColor={contentColor}
-                mutedColor={mutedColor}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 px-8 pb-[calc(1.25rem+env(safe-area-inset-bottom))]">
-          <div className="max-w-md mx-auto flex items-center justify-between">
-            <motion.button
-              onClick={() => scrollToIndex(index - 1)}
-              disabled={index === 0}
-              className={cn(
-                "px-5 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all active:scale-95 disabled:opacity-30",
-                "border-black/10 hover:bg-white/40"
-              )}
-              style={{ color: contentColor }}
-            >
-              {t('onboarding.prev')}
-            </motion.button>
-
-            {index < total - 1 ? (
-              <motion.button
-                whileTap={{ scale: 0.96 }}
-                onClick={() => scrollToIndex(index + 1)}
-                className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
-                style={{ backgroundColor: contentColor, color: contentInverseColor }}
-              >
-                {t('onboarding.next')}
-              </motion.button>
-            ) : (
-              <motion.button
-                whileTap={{ scale: 0.96 }}
-                onClick={onGoLogin}
-                className="px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg transition-all"
-                style={{ backgroundColor: contentColor, color: contentInverseColor }}
-              >
-                {t('onboarding.slides.start.cta')}
-              </motion.button>
-            )}
-          </div>
-
-          <motion.div className="mt-4 text-center text-[10px] font-bold" style={{ color: mutedColor }}>
-            {t('onboarding.swipe_hint')}
-          </motion.div>
-        </div>
-      </div>
-    </div>
+        <motion.h1
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="text-3xl font-black tracking-tight text-[#1D1D1F]"
+        >
+          My Money
+        </motion.h1>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="mt-2 text-sm font-bold text-[#6E6E73]"
+        >
+          轻松记账，掌控财富
+        </motion.p>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -714,7 +361,7 @@ export default function App() {
     return saved ? JSON.parse(saved) : DEFAULT_ACCOUNTS;
   });
 
-  const [budget] = useState<number>(() => {
+  const [budget, setBudget] = useState<number>(() => {
     const saved = localStorage.getItem('monthly_budget');
     return saved ? Number(saved) : 5000;
   });
@@ -722,6 +369,8 @@ export default function App() {
   // --- UI State ---
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
+  const [isBudgetEditModalOpen, setIsBudgetEditModalOpen] = useState(false);
+  const [budgetDraft, setBudgetDraft] = useState<string>('');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
@@ -753,6 +402,8 @@ export default function App() {
   const homeLongPressFiredRef = useRef(false);
   const backupFileInputRef = useRef<HTMLInputElement>(null);
   const vaultJarRef = useRef<HTMLDivElement>(null);
+  const tabbarGlassRef = useRef<HTMLElement>(null);
+  const liquidGlassRef = useRef<LiquidGlass | null>(null);
 
   const [localUserId] = useState(() => {
     const existing = sessionStorage.getItem('local_user_id');
@@ -787,8 +438,8 @@ export default function App() {
   const [groupDraftName, setGroupDraftName] = useState('');
   const [groupJoinCode, setGroupJoinCode] = useState('');
 
-  const [hasOnboarded, setHasOnboarded] = useState(() => localStorage.getItem('onboarding_done') === 'true');
   const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
+  const [showSplash, setShowSplash] = useState(true);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -972,6 +623,66 @@ export default function App() {
     return () => window.clearTimeout(t1);
   }, [activeTab]);
 
+  // ── LiquidGlass WebGL TabBar ──
+  // Initialise the real-time liquid glass effect on the bottom
+  // navigation bar.  The .tabbar-glass nav is the root container;
+  // .tabbar-surface is the glass element that receives the WebGL
+  // refraction / blur / chromatic aberration shader.
+  useEffect(() => {
+    const root = tabbarGlassRef.current;
+    if (!root) return;
+
+    const glassEl = root.querySelector<HTMLElement>('.tabbar-surface');
+    if (!glassEl) return;
+
+    // Per-element glass configuration — tuned for a thin, elegant
+    // navigation bar with a subtle liquid refraction.
+    glassEl.dataset.config = JSON.stringify({
+      blurAmount: 0.15,       // gentle background blur
+      refraction: 0.55,       // moderate light bending
+      chromAberration: 0.03,  // subtle colour fringing
+      edgeHighlight: 0.04,    // soft rim light
+      specular: 0.02,         // faint specular highlight
+      fresnel: 0.85,          // grazing-angle reflection
+      distortion: 0.01,       // micro-distortion for organic feel
+      cornerRadius: 24,       // matches CSS border-radius
+      zRadius: 16,            // shallow bevel depth for a thin bar
+      opacity: 0.92,          // slightly transparent
+      saturation: 0.05,       // near-neutral
+      tintStrength: 0.02,     // barely-there cool tint
+      brightness: 0.02,       // subtle brightening
+      shadowOpacity: 0.12,    // soft floating shadow
+      shadowSpread: 12,
+      shadowOffsetY: 2,
+      floating: false,
+      button: false,
+      bevelMode: 0,
+    });
+
+    let instance: LiquidGlass | null = null;
+
+    (async () => {
+      try {
+        instance = await LiquidGlass.init({
+          root,
+          glassElements: [glassEl],
+          defaults: {
+            cornerRadius: 24,
+            zRadius: 16,
+          },
+        });
+        liquidGlassRef.current = instance;
+      } catch (err) {
+        console.warn('[LiquidGlass] init failed — falling back to CSS glassmorphism', err);
+      }
+    })();
+
+    return () => {
+      instance?.destroy();
+      liquidGlassRef.current = null;
+    };
+  }, []);
+
   const avatarLibraryInputRef = useRef<HTMLInputElement>(null);
   const avatarCameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -1154,7 +865,6 @@ export default function App() {
       'accounts',
       'monthly_budget',
       'app_lang',
-      'onboarding_done',
       'auth_done',
       'privacy_lock_enabled',
       'privacy_pin',
@@ -1181,7 +891,6 @@ export default function App() {
     kv.accounts = JSON.stringify(accounts);
     kv.monthly_budget = String(budget);
     kv.app_lang = i18n.language;
-    kv.onboarding_done = String(hasOnboarded);
     kv.auth_done = String(isAuthed);
     kv.local_user_id = localUserId;
     kv.local_user_name = localUserName;
@@ -2257,10 +1966,20 @@ export default function App() {
           <div className="flex justify-between items-baseline gap-[4vw] mt-[1.8vw]">
             <div className="min-w-0 flex items-baseline space-x-[2.5vw] overflow-hidden">
               <div aria-hidden className="w-[7vw] h-[7vw] flex-shrink-0" />
-              <div className="min-w-0 overflow-hidden flex-shrink">
+              <div className="min-w-0 overflow-hidden flex-shrink flex items-center gap-[2vw]">
                 <p className="text-[4.5vw] leading-none font-black max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
                   {formatMoney(budget)}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBudgetDraft(String(budget));
+                    setIsBudgetEditModalOpen(true);
+                  }}
+                  className="w-[5vw] h-[5vw] rounded-full flex items-center justify-center bg-[#F2F2F7] hover:bg-[#E8E8ED] active:scale-90 transition-all flex-shrink-0"
+                >
+                  <Pencil size="0.55em" className="text-[#6E6E73]" />
+                </button>
               </div>
             </div>
             <p
@@ -2828,15 +2547,8 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
-  if (!hasOnboarded) {
-    return (
-      <OnboardingScreen
-        onGoLogin={() => {
-          localStorage.setItem('onboarding_done', 'true');
-          setHasOnboarded(true);
-        }}
-      />
-    );
+  if (showSplash) {
+    return <SplashScreen onDone={() => setShowSplash(false)} />;
   }
 
   if (!isAuthed) {
@@ -2948,7 +2660,7 @@ export default function App() {
       <main className={cn(
         "main-content max-w-lg sm:max-w-xl md:max-w-2xl mx-auto px-[clamp(1rem,3vw,2rem)] pb-[clamp(1.25rem,3vw,2rem)] space-y-[clamp(1.25rem,3vw,2rem)] relative z-10 flex-1",
         activeTab === 'list'
-          ? "pt-[calc(clamp(1.75rem,4vw,3rem)+env(safe-area-inset-top))]"
+          ? "pt-[calc(clamp(3.5rem,8vw,5rem)+env(safe-area-inset-top))]"
           : "pt-[env(safe-area-inset-top)]"
       )}>
         {activeTab === 'list' && (
@@ -4098,7 +3810,7 @@ export default function App() {
               )}
 
               {activeTab === 'groupSaving' && (
-                <div className="space-y-5">
+                <div className="space-y-5 pt-16">
                   {!groupSaving ? (
                     <>
                       <div className={cn("p-5 rounded-[2rem] border", "lux-carbon-soft")}>
@@ -4884,15 +4596,16 @@ export default function App() {
               {discoveryTool === 'exchange' && (
                 <div className="space-y-3">
                   {[
-                    { code: 'USD' },
-                    { code: 'EUR' },
-                    { code: 'JPY' },
-                    { code: 'HKD' },
+                    { code: 'USD', flag: '🇺🇸' },
+                    { code: 'EUR', flag: '🇪🇺' },
+                    { code: 'JPY', flag: '🇯🇵' },
+                    { code: 'HKD', flag: '🇭🇰' },
                   ].map(c => (
                     <div key={c.code} className={cn("p-4 rounded-2xl border flex items-center justify-between", isDarkMode ? "bg-slate-700/60 border-slate-600" : "bg-gray-50 border-gray-100")}>
                       <div className="flex items-center space-x-3">
-                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
-                          <Globe size={18} className={cn(isDarkMode ? "text-white" : "text-gray-800")} />
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border relative", isDarkMode ? "bg-slate-800/70 border-slate-600" : "bg-white border-white")}>
+                          <span className="absolute inset-0 flex items-center justify-center text-lg">{c.flag}</span>
+                          <Globe size={18} className={cn("opacity-0", isDarkMode ? "text-white" : "text-gray-800")} />
                         </div>
                         <div>
                           <p className="text-sm font-black">{t(`currencies.${c.code}`)}</p>
@@ -5166,6 +4879,98 @@ export default function App() {
         )}
       </AnimatePresence>
 
+      {/* Budget Edit Modal */}
+      <AnimatePresence>
+        {isBudgetEditModalOpen && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/20 backdrop-blur-md" onClick={() => setIsBudgetEditModalOpen(false)}>
+            <motion.div
+              initial={{ scale: 0.92, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 26, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border bg-white/80 backdrop-blur-[24px] text-[#111111] border-white/40"
+              style={{ boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.08)" }}
+            >
+              <div className="text-center mb-6">
+                <div className="w-14 h-14 rounded-full bg-[#F2F2F7] flex items-center justify-center mx-auto mb-4">
+                  <Pencil size={22} className="text-[#1D1D1F]" />
+                </div>
+                <h3 className="text-xl font-black">{t('edit_monthly_budget')}</h3>
+                <p className={cn("mt-2 text-xs font-bold", "text-[#6E6E73]")}>{t('edit_budget_desc')}</p>
+              </div>
+
+              <div className="relative mb-6">
+                <div className="flex items-center justify-center">
+                  <span className="text-2xl font-black text-[#6E6E73] mr-2">{displayCurrency.symbol}</span>
+                  <input
+                    autoFocus
+                    type="number"
+                    inputMode="decimal"
+                    step="100"
+                    value={budgetDraft}
+                    onChange={(e) => setBudgetDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const val = Number(budgetDraft);
+                        if (val > 0) {
+                          setBudget(val);
+                          setIsBudgetEditModalOpen(false);
+                        }
+                      }
+                    }}
+                    className="w-full text-center text-5xl font-black focus:outline-none bg-transparent text-[#1D1D1F] placeholder:text-[#C7C7CC]"
+                    placeholder="5000"
+                  />
+                </div>
+                <div className="mt-2 h-px bg-gradient-to-r from-transparent via-[#1D1D1F]/20 to-transparent" />
+              </div>
+
+              <div className="flex items-center justify-center gap-2 mb-6 px-4">
+                {[3000, 5000, 8000, 10000].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setBudgetDraft(String(v))}
+                    className={cn(
+                      "flex-1 px-2 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all active:scale-90",
+                      Number(budgetDraft) === v
+                        ? "bg-[#1D1D1F] text-white border-[#1D1D1F]"
+                        : "bg-[#F2F2F7] text-[#6E6E73] border-transparent hover:bg-[#E8E8ED]"
+                    )}
+                  >
+                    {displayCurrency.symbol}{v.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBudgetEditModalOpen(false)}
+                  className="py-4 rounded-2xl font-black text-xs bg-[#F2F2F7] text-[#6E6E73] active:scale-95 transition-all"
+                >
+                  {t('cancel')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = Number(budgetDraft);
+                    if (val > 0) {
+                      setBudget(val);
+                      setIsBudgetEditModalOpen(false);
+                    }
+                  }}
+                  className="py-4 rounded-2xl font-black text-xs bg-[#1D1D1F] text-white shadow-lg active:scale-95 transition-all"
+                >
+                  {t('confirm')}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Language Picker */}
       <AnimatePresence>
         {isLangPickerOpen && (
@@ -5246,14 +5051,13 @@ export default function App() {
       </AnimatePresence>
 
       {/* Navigation */}
-      <nav className="tabbar-glass fixed bottom-0 left-0 right-0 z-[100] pointer-events-none">
-        <div className="tabbar-glass-inner px-[clamp(0.75rem,2.5vw,1.25rem)]">
+      <nav ref={tabbarGlassRef} className="tabbar-glass pointer-events-none">
+        <div className="tabbar-glass-inner">
           <div
             className={cn(
               "tabbar-surface",
-              "mx-auto max-w-lg overflow-visible pointer-events-auto",
-              "h-[52px] flex items-center justify-between",
-              "bg-white/92 shadow-[0_8px_32px_rgba(0,0,0,0.04)] transition-all duration-500 lux-gold-hairline rounded-[24px]"
+              "mx-auto max-w-lg pointer-events-auto",
+              "flex items-center justify-between"
             )}
           >
             {[
@@ -5277,7 +5081,6 @@ export default function App() {
                     >
                       <Plus size={32} strokeWidth={3} />
                     </motion.button>
-                    <span className="absolute -bottom-6 text-[0.5rem] font-black uppercase tracking-tighter text-[#8E8E93]">{t('add_bill')}</span>
                   </div>
                 );
               }
@@ -5305,7 +5108,7 @@ export default function App() {
             })}
           </div>
         </div>
-        <div className="tabbar-safe-spacer h-[env(safe-area-inset-bottom)] pointer-events-none" />
+        <div className="tabbar-safe-spacer pointer-events-none" />
       </nav>
     </motion.div>
   );
@@ -5338,8 +5141,13 @@ function TransactionForm({
   const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
   const [amount, setAmount] = useState(initialData?.originalAmount?.toString() || initialData?.amount.toString() || '');
   const [category, setCategory] = useState<Category>(initialData?.category || '餐饮');
-  const [date, setDate] = useState(initialData?.date || format(new Date(), 'yyyy-MM-dd'));
   const [accountId, setAccountId] = useState(initialData?.accountId || accounts[0].id);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    if (initialData?.date) {
+      return initialData.date.split('T')[0];
+    }
+    return format(new Date(), 'yyyy-MM-dd');
+  });
   const [note, setNote] = useState(initialData?.note || '');
   const [tags, setTags] = useState<string[]>(initialData?.tags || []);
   const [tagInput, setTagInput] = useState('');
@@ -5349,6 +5157,7 @@ function TransactionForm({
   const [mood, setMood] = useState<'happy' | 'neutral' | 'sad'>(initialData?.mood || 'happy');
   const [visibility, setVisibility] = useState<'private' | 'group'>(initialData?.visibility || 'private');
   const [toGroupPool, setToGroupPool] = useState<boolean>(!!initialData?.toGroupPool);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -5442,7 +5251,7 @@ function TransactionForm({
       amount: convertedCNY,
       type,
       category,
-      date,
+      date: new Date(selectedDate + 'T12:00:00').toISOString(),
       note,
       accountId,
       tags,
@@ -5467,62 +5276,8 @@ function TransactionForm({
     setTimeout(() => setIsAmountAnimating(false), 500);
   };
 
-  const dateDisplayText = useMemo(() => {
-    try {
-      return format(parseISO(date), 'yyyy/MM/dd');
-    } catch {
-      return date;
-    }
-  }, [date]);
-
-  const [isDateSheetOpen, setIsDateSheetOpen] = useState(false);
   const [isAccountSheetOpen, setIsAccountSheetOpen] = useState(false);
   const [isCategorySheetOpen, setIsCategorySheetOpen] = useState(false);
-  const [draftYear, setDraftYear] = useState(() => {
-    try {
-      return parseISO(date).getFullYear();
-    } catch {
-      return new Date().getFullYear();
-    }
-  });
-  const [draftMonth, setDraftMonth] = useState(() => {
-    try {
-      return parseISO(date).getMonth() + 1;
-    } catch {
-      return new Date().getMonth() + 1;
-    }
-  });
-  const [draftDay, setDraftDay] = useState(() => {
-    try {
-      return parseISO(date).getDate();
-    } catch {
-      return new Date().getDate();
-    }
-  });
-
-  const daysInMonth = (year: number, month: number) => new Date(year, month, 0).getDate();
-
-  const years = useMemo(() => {
-    const current = new Date().getFullYear();
-    const start = 1970;
-    const end = current + 30;
-    const out: number[] = [];
-    for (let y = start; y <= end; y += 1) out.push(y);
-    return out;
-  }, []);
-
-  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
-
-  const days = useMemo(() => {
-    const max = daysInMonth(draftYear, draftMonth);
-    return Array.from({ length: max }, (_, i) => i + 1);
-  }, [draftYear, draftMonth]);
-
-  useEffect(() => {
-    const max = daysInMonth(draftYear, draftMonth);
-    if (draftDay > max) setDraftDay(max);
-  }, [draftYear, draftMonth, draftDay]);
-
   const selectedAccount = useMemo(() => accounts.find(a => a.id === accountId) || accounts[0], [accounts, accountId]);
 
   const AccountBrandIcon = ({ account, size = '1.5em' }: { account: Account; size?: number | string }) => {
@@ -5659,7 +5414,8 @@ function TransactionForm({
           setDragging(false);
           startYRef.current = null;
           tapIndexRef.current = null;
-          snapTo(offset, v);
+          // Use the actual current offset (startOffsetRef.current + dyTotal) instead of the stale `offset` from closure
+          snapTo(startOffsetRef.current + dyTotal, v);
         }}
         onPointerCancel={() => {
           setDragging(false);
@@ -5919,32 +5675,6 @@ function TransactionForm({
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.date')}</label>
-          <button
-            type="button"
-            onClick={() => {
-              try {
-                const d = parseISO(date);
-                setDraftYear(d.getFullYear());
-                setDraftMonth(d.getMonth() + 1);
-                setDraftDay(d.getDate());
-              } catch {
-                const d = new Date();
-                setDraftYear(d.getFullYear());
-                setDraftMonth(d.getMonth() + 1);
-                setDraftDay(d.getDate());
-              }
-              setIsDateSheetOpen(true);
-            }}
-            className={cn(
-              "w-full p-4 rounded-2xl text-xs font-bold focus:outline-none text-left active:scale-[0.99] transition-transform",
-              isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black"
-            )}
-          >
-            {dateDisplayText}
-          </button>
-        </div>
-        <div>
           <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.account')}</label>
           <button
             type="button"
@@ -5963,6 +5693,137 @@ function TransactionForm({
               </span>
             </span>
           </button>
+        </div>
+        <div className="relative">
+          <label className="text-[10px] font-black text-gray-400 mb-2 block">{t('form.date')}</label>
+          <button
+            type="button"
+            onClick={() => setIsDatePickerOpen(v => !v)}
+            className={cn(
+              "w-full p-4 rounded-2xl text-xs font-bold text-left active:scale-[0.99] transition-transform",
+              isDarkMode ? "bg-slate-700 text-white" : "bg-gray-50 text-black"
+            )}
+          >
+            {format(parseISO(selectedDate), 'yyyy-MM-dd')}
+          </button>
+
+          {isDatePickerOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsDatePickerOpen(false)} />
+              <div className={cn(
+                "absolute right-0 top-full mt-2 z-50 w-[320px] p-5 rounded-[20px] shadow-lg",
+                "bg-[#F6F8FA]"
+              )}
+                style={{ boxShadow: "0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)" }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setMonth(d.getMonth() - 1);
+                      setSelectedDate(format(d, 'yyyy-MM-dd'));
+                    }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 active:scale-90 transition-all"
+                  >
+                    <ChevronLeft size={16} className="text-[#6E6E73]" />
+                  </button>
+                  <div className="text-sm font-black text-[#1D1D1F]">
+                    {format(parseISO(selectedDate), 'yyyy年 M月')}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date(selectedDate);
+                      d.setMonth(d.getMonth() + 1);
+                      setSelectedDate(format(d, 'yyyy-MM-dd'));
+                    }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-black/5 active:scale-90 transition-all"
+                  >
+                    <ChevronRight size={16} className="text-[#6E6E73]" />
+                  </button>
+                </div>
+
+                {/* Weekday headers */}
+                <div className="grid grid-cols-7 mb-2">
+                  {['日', '一', '二', '三', '四', '五', '六'].map((d) => (
+                    <div key={d} className="text-center text-[10px] font-black text-[#8E8E93] uppercase tracking-wider py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar grid */}
+                <div className="grid grid-cols-7 gap-1">
+                  {(() => {
+                    const date = parseISO(selectedDate);
+                    const year = date.getFullYear();
+                    const month = date.getMonth();
+                    const firstDay = new Date(year, month, 1).getDay();
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const todayStr = format(new Date(), 'yyyy-MM-dd');
+                    const selectedStr = selectedDate;
+                    const cells: React.ReactNode[] = [];
+
+                    // Empty cells before first day
+                    for (let i = 0; i < firstDay; i++) {
+                      cells.push(<div key={`empty-${i}`} />);
+                    }
+
+                    for (let day = 1; day <= daysInMonth; day++) {
+                      const dayStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      const isSelected = dayStr === selectedStr;
+                      const isToday = dayStr === todayStr;
+
+                      cells.push(
+                        <button
+                          key={day}
+                          type="button"
+                          onClick={() => {
+                            setSelectedDate(dayStr);
+                            setIsDatePickerOpen(false);
+                          }}
+                          className={cn(
+                            "w-full aspect-square rounded-full text-xs font-bold transition-all active:scale-90",
+                            isSelected
+                              ? "bg-[#1D1D1F] text-white"
+                              : isToday
+                                ? "text-[#1D1D1F] ring-1 ring-[#1D1D1F]/20"
+                                : "text-[#3A3A3C] hover:bg-black/5"
+                          )}
+                        >
+                          {day}
+                        </button>
+                      );
+                    }
+                    return cells;
+                  })()}
+                </div>
+
+                {/* Bottom buttons */}
+                <div className="flex items-center justify-between mt-5 pt-4 border-t border-black/5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
+                      setIsDatePickerOpen(false);
+                    }}
+                    className="px-4 py-2 rounded-full text-[10px] font-black text-[#6E6E73] bg-black/5 hover:bg-black/10 active:scale-95 transition-all"
+                  >
+                    今天
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsDatePickerOpen(false)}
+                    className="px-4 py-2 rounded-full text-[10px] font-black text-white bg-[#1D1D1F] hover:bg-[#2C2C2E] active:scale-95 transition-all"
+                  >
+                    确定
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
@@ -6115,43 +5976,6 @@ function TransactionForm({
         {onDelete && <button type="button" onClick={onDelete} className="flex-1 py-5 bg-rose-50 text-rose-500 rounded-[2.5rem] font-black text-sm active:scale-95 transition-all">{t('delete')}</button>}
         <button type="submit" className={cn("flex-[3] py-5 rounded-[2.5rem] font-black text-sm shadow-xl active:scale-95 transition-all", isDarkMode ? "bg-white text-black" : "bg-black text-white")}>{t('save_bill')}</button>
       </div>
-
-      <BottomSheet
-        open={isDateSheetOpen}
-        onClose={() => setIsDateSheetOpen(false)}
-        header={
-          <div className="flex items-center justify-between px-6 py-4 border-b lux-glass-divider-b">
-            <button
-              type="button"
-              onClick={() => setIsDateSheetOpen(false)}
-              className={cn("text-sm font-black", isDarkMode ? "text-[#1D1D1F]" : "text-[#007AFF]")}
-            >
-              {t('cancel')}
-            </button>
-            <div className="text-sm font-black text-[#111111]/90">{t('form.date')}</div>
-            <button
-              type="button"
-              onClick={() => {
-                const next = format(new Date(draftYear, draftMonth - 1, draftDay), 'yyyy-MM-dd');
-                setDate(next);
-                setIsDateSheetOpen(false);
-              }}
-              className={cn("text-sm font-black", isDarkMode ? "text-[#1D1D1F]" : "text-[#007AFF]")}
-            >
-              {t('confirm')}
-            </button>
-          </div>
-        }
-      >
-        <div
-          className="flex items-center justify-between gap-3 text-[15px]"
-          style={{ perspective: 900, transform: "translate3d(0,0,0)" }}
-        >
-          <WheelColumn items={years} selected={draftYear} onSelect={setDraftYear} formatItem={(n) => `${n}`} />
-          <WheelColumn items={months} selected={draftMonth} onSelect={setDraftMonth} formatItem={(n) => String(n).padStart(2, '0')} />
-          <WheelColumn items={days} selected={draftDay} onSelect={setDraftDay} formatItem={(n) => String(n).padStart(2, '0')} />
-        </div>
-      </BottomSheet>
 
       <BottomSheet
         open={isAccountSheetOpen}

@@ -64,5 +64,9 @@
     "side_hustle": "副业适合做增量：优先选择可复制、可复利的方向。",
     "bonus": "奖金波动较大：建议将其更多用于储蓄或一次性目标。",
     "other_transfer": "建议标注来源：避免现金流统计失真。"
-  }
+  },
+  "edit_monthly_budget": "设置每月预算",
+  "edit_budget_desc": "合理规划每月支出，助你更有序地理财",
+  "confirm": "确认",
+  "cancel": "取消"
 }

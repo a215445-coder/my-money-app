@@ -1,7 +1,8 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="512" height="512" rx="120" fill="#1A1A1A"/>
-  <path d="M360 180H152C138.745 180 128 190.745 128 204V332C128 345.255 138.745 356 152 356H360C373.255 356 384 345.255 384 332V204C384 190.745 373.255 180 360 180Z" fill="#FFD700"/>
-  <path d="M384 236H344C330.745 236 320 246.745 320 260C320 273.255 330.745 284 344 284H384V236Z" fill="#B8860B"/>
-  <circle cx="348" cy="260" r="12" fill="#1A1A1A"/>
-  <path d="M152 180C152 180 160 140 256 140C352 140 360 180 360 180H152Z" fill="#DAA520" fill-opacity="0.8"/>
+  <rect width="512" height="512" rx="120" fill="#1D1D1F"/>
+  <rect x="96" y="156" width="320" height="200" rx="32" fill="#F6F8FA" stroke="#1D1D1F" stroke-width="8"/>
+  <path d="M96 196C96 173.909 113.909 156 136 156H376C398.091 156 416 173.909 416 196V196H96V196Z" fill="#1D1D1F"/>
+  <text x="256" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="120" font-weight="900" fill="#1D1D1F">$</text>
+  <rect x="128" y="240" width="160" height="8" rx="4" fill="#E8E8ED"/>
+  <rect x="128" y="264" width="100" height="8" rx="4" fill="#E8E8ED"/>
 </svg>

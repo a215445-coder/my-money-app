@@ -5,7 +5,7 @@ import zhExtra from '../locales/zh.json';
 import enExtra from '../locales/en.json';
 
 const deepMerge = (base: any, extra: any) => {
-  if (!extra || typeof extra !== 'object') return base;
+  if (!extra || typeof extra !== 'object') return extra ?? base;
   if (!base || typeof base !== 'object') return extra;
   if (Array.isArray(base) || Array.isArray(extra)) return extra;
   const out: Record<string, any> = { ...base };

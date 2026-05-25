@@ -64,5 +64,9 @@
     "side_hustle": "Build scalable income streams with repeatable processes.",
     "bonus": "Treat bonuses as volatile: allocate more to savings or one-off goals.",
     "other_transfer": "Label the source to avoid distorting cashflow stats."
-  }
+  },
+  "edit_monthly_budget": "Set Monthly Budget",
+  "edit_budget_desc": "Plan your monthly spending wisely for better financial management.",
+  "confirm": "Confirm",
+  "cancel": "Cancel"
 }

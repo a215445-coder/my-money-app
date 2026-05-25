@@ -1,6 +1,6 @@
 {
-  "short_name": "我的账本",
-  "name": "我的账本 - 极简清爽记账",
+  "short_name": "MyMoney",
+  "name": "MyMoney - 轻松记账",
   "icons": [
     {
       "src": "icon.svg",
@@ -17,7 +17,7 @@
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff",
+  "theme_color": "#1D1D1F",
+  "background_color": "#F6F8FA",
   "orientation": "portrait"
 }
