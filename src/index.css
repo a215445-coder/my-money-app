@@ -1019,22 +1019,42 @@ input[type="submit"]:active:not(:disabled) {
 }
 
 .home-edge-glow {
+  /* iOS 动态曲率：JS 嗅探写入 --ios-screen-corner-radius；CSS 用 safe-area 公式兜底 */
+  --home-edge-corner-radius: var(
+    --ios-screen-corner-radius,
+    max(
+      38px,
+      min(
+        56px,
+        calc(env(safe-area-inset-top, 0px) * 0.68 + env(safe-area-inset-left, 0px) * 0.22 + 24px)
+      )
+    )
+  );
+  --home-edge-bleed: 1px;
   position: fixed !important;
-  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
-  left: calc(-1 * env(safe-area-inset-left, 0px)) !important;
-  right: calc(-1 * env(safe-area-inset-right, 0px)) !important;
-  bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
-  width: calc(100vw + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px)) !important;
-  height: calc(100vh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)) !important;
-  height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)) !important;
-  margin: 0 !important;
+  top: calc(-1 * env(safe-area-inset-top, 0px) - var(--home-edge-bleed)) !important;
+  left: calc(-1 * env(safe-area-inset-left, 0px) - var(--home-edge-bleed)) !important;
+  right: calc(-1 * env(safe-area-inset-right, 0px) - var(--home-edge-bleed)) !important;
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px) - var(--home-edge-bleed)) !important;
+  width: calc(
+    100vw + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px) + 2 * var(--home-edge-bleed)
+  ) !important;
+  height: calc(
+    100vh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 2 * var(--home-edge-bleed)
+  ) !important;
+  height: calc(
+    100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px) + 2 * var(--home-edge-bleed)
+  ) !important;
+  margin: calc(-1 * var(--home-edge-bleed)) !important;
   padding: 0 !important;
   z-index: 999999 !important;
   pointer-events: none !important;
   overflow: hidden !important;
   isolation: isolate;
   box-sizing: border-box !important;
-  border-radius: 50px;
+  border-radius: var(--home-edge-corner-radius);
+  clip-path: inset(0 round var(--home-edge-corner-radius));
+  -webkit-clip-path: inset(0 round var(--home-edge-corner-radius));
   transform: translateZ(0);
 }
 
@@ -1043,6 +1063,7 @@ input[type="submit"]:active:not(:disabled) {
   .home-edge-glow-ring,
   .home-edge-glow-soft {
     corner-shape: squircle;
+    border-radius: var(--home-edge-corner-radius);
   }
 }
 

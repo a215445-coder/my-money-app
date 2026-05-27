@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import {
+  applyIOSScreenCornerRadiusVars,
+  clearIOSScreenCornerRadiusVars,
+} from '../utils/iosScreenCornerRadius';
 
 const ROOT_GLOW_CLASS = 'home-edge-glow-active';
 
@@ -14,7 +18,11 @@ export default function HomeEdgeGlow({ onComplete }: { onComplete: () => void })
 
   useEffect(() => {
     document.documentElement.classList.add(ROOT_GLOW_CLASS);
-    return () => document.documentElement.classList.remove(ROOT_GLOW_CLASS);
+    applyIOSScreenCornerRadiusVars();
+    return () => {
+      document.documentElement.classList.remove(ROOT_GLOW_CLASS);
+      clearIOSScreenCornerRadiusVars();
+    };
   }, []);
 
   useEffect(() => {
