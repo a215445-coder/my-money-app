@@ -92,7 +92,9 @@ import type { Transaction, Category, TransactionType, Account, CurrencyCode, Cur
 import StatsCharts from './components/StatsCharts';
 import LoginScreen from './components/LoginScreen';
 import AiBookkeepingChat from './components/AiBookkeepingChat';
+import { supabase } from './lib/supabaseClient';
 import { parseBillIntent, type ParsedBillIntent } from './utils/parseBillIntent';
+import { signOutSupabase } from './utils/loginAuth';
 
 const SESSION_AUTH_KEY = 'session_authed';
 
@@ -381,6 +383,36 @@ export default function App() {
   const [isAuthed, setIsAuthed] = useState(() => sessionStorage.getItem(SESSION_AUTH_KEY) === 'true');
   const [loginFadeOut, setLoginFadeOut] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!active || !session) return;
+      sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
+      localStorage.setItem('auth_done', 'true');
+      setIsAuthed(true);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
+        localStorage.setItem('auth_done', 'true');
+        setIsAuthed(true);
+        return;
+      }
+      if (_event === 'SIGNED_OUT') {
+        sessionStorage.removeItem(SESSION_AUTH_KEY);
+        localStorage.removeItem('auth_done');
+        setIsAuthed(false);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
@@ -2352,6 +2384,7 @@ export default function App() {
   }, []);
 
   const handleLogout = () => {
+    void signOutSupabase();
     localStorage.removeItem('auth_done');
     sessionStorage.removeItem(SESSION_AUTH_KEY);
     sessionStorage.removeItem('login_phone_e164');
@@ -2367,7 +2400,16 @@ export default function App() {
   }
 
   if (!isAuthed) {
-    return <LoginScreen onAuthed={handleLoginSuccess} />;
+    return (
+      <>
+        <LoginScreen onAuthed={handleLoginSuccess} onNotify={showToast} />
+        {isToastOpen && (
+          <div className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+1rem)] z-[400] -translate-x-1/2 rounded-full bg-[#1D1D1F]/90 px-4 py-2 text-[11px] font-black text-white shadow-lg backdrop-blur-md">
+            {toastMessage}
+          </div>
+        )}
+      </>
+    );
   }
 
   return (

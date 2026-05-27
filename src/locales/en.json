@@ -203,6 +203,10 @@
     "google_login": "Google",
     "continue_legal": "By continuing you agree to our Privacy Policy and Terms.",
     "error_phone": "Please enter a valid phone number",
+    "error_captcha": "Invalid verification code. Please try again.",
+    "error_apple": "Apple sign-in failed. Please try again.",
+    "captcha_sent": "Verification code sent.",
+    "verifying": "Verifying…",
     "country_picker_title": "Country or region",
     "country_picker_close": "Close country picker"
   }

@@ -399,6 +399,10 @@ const resources = {
         wechat_login: '微信登录',
         google_login: 'Google 登录',
         continue_legal: '继续即代表你同意隐私政策与用户协议',
+        error_captcha: '验证码输入有误，请重试',
+        error_apple: 'Apple 登录失败，请稍后重试',
+        captcha_sent: '验证码已发送，请查收短信',
+        verifying: '正在验证…',
       },
       langs: {
         'zh-CN': '简体中文',
@@ -813,6 +817,10 @@ const resources = {
         wechat_login: 'Continue with WeChat',
         google_login: 'Continue with Google',
         continue_legal: 'By continuing, you agree to the Privacy Policy and Terms.',
+        error_captcha: 'Invalid verification code. Please try again.',
+        error_apple: 'Apple sign-in failed. Please try again.',
+        captcha_sent: 'Verification code sent.',
+        verifying: 'Verifying…',
       },
       langs: {
         'zh-CN': 'Simplified Chinese',

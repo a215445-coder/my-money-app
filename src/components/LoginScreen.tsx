@@ -1,29 +1,40 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet } from 'lucide-react';
+import { Loader2, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import PhoneIntlField, { usePhoneIntlLogin } from './PhoneIntlInput';
 import type { PhoneCountryId } from './phoneCountries';
 import { nationalPhoneDigits } from './phoneNationalLengthRules';
 import AppleSignInButton from './login/AppleSignInButton';
 import { GoogleIconButton, WeChatIconButton } from './login/SocialIconButton';
-import { handleAppleSignIn, handleSendCaptcha } from '../utils/loginAuthMocks';
+import {
+  handleAppleSignIn,
+  handleSendCaptcha,
+  handleVerifyOtp,
+} from '../utils/loginAuth';
 
 type LoginScreenProps = {
   onAuthed: () => void;
+  onNotify?: (message: string) => void;
   exiting?: boolean;
 };
 
 const CAPTCHA_COOLDOWN_SEC = 60;
 const LOGIN_BTN_RADIUS = 'rounded-2xl';
 
-export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenProps) {
+export default function LoginScreen({
+  onAuthed,
+  onNotify,
+  exiting = false,
+}: LoginScreenProps) {
   const { t } = useTranslation();
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [captchaCode, setCaptchaCode] = useState('');
   const [captchaCooldown, setCaptchaCooldown] = useState(0);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [phoneLoginLoading, setPhoneLoginLoading] = useState(false);
+  const [captchaSending, setCaptchaSending] = useState(false);
   const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const phoneIntl = usePhoneIntlLogin();
 
@@ -54,23 +65,43 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
   useEffect(() => () => clearCooldownTimer(), [clearCooldownTimer]);
 
   const onSendCaptchaClick = useCallback(async () => {
-    if (captchaCooldown > 0) return;
-    const phoneE164 = phoneIntl.getE164();
-    const result = await handleSendCaptcha(phoneE164);
-    if (result.success) {
-      startCaptchaCooldown();
+    if (captchaCooldown > 0 || captchaSending) return;
+
+    setPhoneTouched(true);
+    if (!phoneIntl.isNationalValid()) {
+      onNotify?.(t('login.error_phone'));
+      return;
     }
-  }, [captchaCooldown, phoneIntl, startCaptchaCooldown]);
+
+    const phoneE164 = phoneIntl.getE164();
+    setCaptchaSending(true);
+    try {
+      const result = await handleSendCaptcha(phoneE164);
+      if (result.success) {
+        startCaptchaCooldown();
+        onNotify?.(t('login.captcha_sent'));
+      } else {
+        onNotify?.(result.message);
+      }
+    } finally {
+      setCaptchaSending(false);
+    }
+  }, [captchaCooldown, captchaSending, onNotify, phoneIntl, startCaptchaCooldown, t]);
 
   const onAppleSignInClick = useCallback(async () => {
     if (appleLoading) return;
     setAppleLoading(true);
     try {
-      await handleAppleSignIn();
-    } finally {
+      const result = await handleAppleSignIn();
+      if (!result.success) {
+        onNotify?.(result.message);
+        setAppleLoading(false);
+      }
+    } catch {
+      onNotify?.(t('login.error_apple'));
       setAppleLoading(false);
     }
-  }, [appleLoading]);
+  }, [appleLoading, onNotify, t]);
 
   const handleNationalChange = (value: string) => {
     phoneIntl.setNationalNumber(value);
@@ -90,20 +121,35 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
     }
   };
 
-  const tryPhoneLogin = () => {
+  const tryPhoneLogin = useCallback(async () => {
     setSubmitAttempted(true);
     setPhoneTouched(true);
+
     if (!phoneIntl.isNationalValid()) {
       return;
     }
-    const e164 = phoneIntl.getE164();
-    if (e164.length >= 8) {
-      sessionStorage.setItem('login_phone_e164', e164);
-    }
-    onAuthed();
-  };
 
-  const captchaBtnDisabled = captchaCooldown > 0;
+    if (captchaCode.trim().length < 4) {
+      onNotify?.(t('login.error_captcha'));
+      return;
+    }
+
+    const phoneE164 = phoneIntl.getE164();
+    setPhoneLoginLoading(true);
+    try {
+      const result = await handleVerifyOtp(phoneE164, captchaCode.trim());
+      if (result.success) {
+        sessionStorage.setItem('login_phone_e164', phoneE164);
+        onAuthed();
+        return;
+      }
+      onNotify?.(t('login.error_captcha'));
+    } finally {
+      setPhoneLoginLoading(false);
+    }
+  }, [captchaCode, onAuthed, onNotify, phoneIntl, t]);
+
+  const captchaBtnDisabled = captchaCooldown > 0 || captchaSending;
 
   return (
     <motion.div
@@ -143,7 +189,7 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
                   onCountryChange={handleCountryChange}
                   onNationalChange={handleNationalChange}
                   onBlurField={handlePhoneBlur}
-                  onEnter={tryPhoneLogin}
+                  onEnter={() => void tryPhoneLogin()}
                 />
                 <AnimatePresence>
                   {showPhoneError && (
@@ -182,18 +228,30 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
                       : 'bg-[#1D1D1F] text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.35)]'
                   }`}
                 >
-                  {captchaBtnDisabled
-                    ? t('login.captcha_retry', { seconds: captchaCooldown })
-                    : t('login.send_captcha')}
+                  {captchaSending ? (
+                    <Loader2 size={16} className="mx-auto animate-spin" aria-hidden />
+                  ) : captchaCooldown > 0 ? (
+                    t('login.captcha_retry', { seconds: captchaCooldown })
+                  ) : (
+                    t('login.send_captcha')
+                  )}
                 </button>
               </div>
 
               <button
                 type="button"
-                onClick={tryPhoneLogin}
-                className={`w-full ${LOGIN_BTN_RADIUS} bg-[#1D1D1F] py-4 text-sm font-black text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.45)] transition-transform active:scale-[0.98]`}
+                disabled={phoneLoginLoading}
+                onClick={() => void tryPhoneLogin()}
+                className={`flex w-full items-center justify-center gap-2 ${LOGIN_BTN_RADIUS} bg-[#1D1D1F] py-4 text-sm font-black text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.45)] transition-transform active:scale-[0.98] disabled:opacity-80`}
               >
-                {t('login.phone_login')}
+                {phoneLoginLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" aria-hidden />
+                    <span>{t('login.verifying')}</span>
+                  </>
+                ) : (
+                  t('login.phone_login')
+                )}
               </button>
 
               <div className="flex items-center gap-3 pt-1">
