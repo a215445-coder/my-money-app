@@ -2356,6 +2356,7 @@ export default function App() {
   const handleLogout = () => {
     localStorage.removeItem('auth_done');
     sessionStorage.removeItem(SESSION_AUTH_KEY);
+    sessionStorage.removeItem('login_phone_e164');
     setIsAuthed(false);
     setLoginFadeOut(false);
     setShowHomeEdgeGlow(false);
@@ -4183,12 +4184,17 @@ export default function App() {
 
       <AnimatePresence>
         {isLogoutDialogOpen && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/20 backdrop-blur-md">
+          <div
+            className="fixed inset-0 z-[1200] flex items-center justify-center p-6 bg-black/30 backdrop-blur-md"
+            onClick={() => setIsLogoutDialogOpen(false)}
+            role="presentation"
+          >
             <motion.div
               initial={{ scale: 0.95, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 10 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
               className={cn(
                 "w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border",
                 isDarkMode ? "bg-slate-800/95 text-white border-slate-700" : "bg-white/95 text-gray-900 border-gray-100"
