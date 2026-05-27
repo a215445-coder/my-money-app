@@ -116,6 +116,34 @@ function shiftPeriod(period: PeriodFilter, anchor: Date, dir: -1 | 1) {
   return subMonths(anchor, dir);
 }
 
+type LegendPayloadItem = { value?: string; color?: string };
+
+/** Wrapping legend — presentation only, keeps labels inside card on narrow screens */
+function ChartWrappingLegend({ payload }: { payload?: LegendPayloadItem[] }) {
+  if (!payload?.length) return null;
+  return (
+    <ul className="recharts-custom-legend flex flex-wrap justify-center items-start gap-x-3 gap-y-2 w-full max-w-full px-2 pt-3 pb-0 m-0 list-none box-border">
+      {payload.map((entry, index) => (
+        <li
+          key={`legend-${index}-${String(entry.value ?? '')}`}
+          className="inline-flex items-center gap-1.5 min-w-0 basis-[30%] max-w-[48%] sm:basis-auto sm:max-w-none justify-center"
+        >
+          <span
+            className="w-2 h-2 rounded-full shrink-0"
+            style={{ backgroundColor: entry.color || '#6E6E73' }}
+          />
+          <span className="text-[9px] font-bold text-[#6E6E73] leading-snug text-center break-words hyphens-auto">
+            {entry.value}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const STATS_CARD =
+  'bg-white rounded-2xl p-5 border border-[rgba(0,0,0,0.04)] shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden';
+
 export default function StatsCharts() {
   const { t, i18n } = useTranslation();
   const numberLocale = getLocaleForNumber(i18n.language);
@@ -523,7 +551,7 @@ export default function StatsCharts() {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-white rounded-2xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]"
+            className="bg-white rounded-2xl p-4 border border-[rgba(0,0,0,0.04)] shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden"
           >
             <div className="flex items-center gap-2 mb-2">
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${card.iconBg}`}>
@@ -553,7 +581,7 @@ export default function StatsCharts() {
       {/* ── Main trend chart (linked to period) ── */}
       <motion.div
         layout
-        className="bg-white rounded-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]"
+        className={STATS_CARD}
       >
         <div className="flex items-center gap-2 mb-4">
           <Activity size={18} className="text-[#6E6E73]" />
@@ -566,9 +594,10 @@ export default function StatsCharts() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.35 }}
-            style={{ height: 300, width: '100%' }}
+            className="w-full max-w-full overflow-hidden"
+            style={{ height: 340, width: '100%' }}
           >
-            <ComposedChart width={chartWidth} height={300} data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+            <ComposedChart width={chartWidth} height={340} data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 72 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F2F7" />
               <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#6E6E73' }} />
               <YAxis
@@ -579,12 +608,16 @@ export default function StatsCharts() {
               />
               <RechartsTooltip content={<GlassTooltip />} />
               <Legend
-                wrapperStyle={{ fontSize: 9, fontWeight: 700 }}
-                formatter={(v) => {
-                  const s = String(v);
-                  if (s === 'Income') return t(I18N_KEYS.stats.income);
-                  if (s === 'Expense') return t(I18N_KEYS.stats.expense);
-                  return trCategory(s);
+                layout="horizontal"
+                verticalAlign="bottom"
+                align="center"
+                content={<ChartWrappingLegend />}
+                wrapperStyle={{
+                  width: '100%',
+                  left: 0,
+                  right: 0,
+                  paddingTop: 12,
+                  position: 'relative',
                 }}
               />
               {EXPENSE_CATS.map((cat, idx) => (
@@ -625,7 +658,7 @@ export default function StatsCharts() {
       </motion.div>
 
       {/* ── Radar + mini charts ── */}
-      <motion.div layout className="bg-white rounded-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]">
+      <motion.div layout className={STATS_CARD}>
         <div className="flex items-center gap-2 mb-3">
           <Activity size={18} className="text-[#6E6E73]" />
           <span className="text-xs font-black text-[#1D1D1F]">{t(I18N_KEYS.stats.radarTitle)}</span>
@@ -681,7 +714,7 @@ export default function StatsCharts() {
       {/* ── 30-day spending heatmap ── */}
       <motion.div
         layout
-        className="bg-white rounded-2xl p-5 shadow-[0_8px_32px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]"
+        className={STATS_CARD}
       >
         <div className="mb-1">
           <h3 className="text-sm font-black text-[#1D1D1F]">{t(I18N_KEYS.stats.footprintTitle)}</h3>
