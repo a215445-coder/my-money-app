@@ -5,21 +5,29 @@
    ========================================================================== */
 
 :root {
-  --apple-bg: #F6F8FA;
-  --apple-surface: #FFFFFF;
+  /* Micro sand / cream-gray canvas — not flat #fff */
+  --apple-bg: #f8fafc;
+  --apple-bg-subtle: #f4f4f5;
+  --apple-surface: #ffffff;
   --apple-text-primary: #111111;
-  --apple-text-secondary: #6E6E73;
-  --apple-text-tertiary: #86868B;
+  --apple-text-secondary: #6e6e73;
+  --apple-text-tertiary: #86868b;
   --apple-border: rgba(0, 0, 0, 0.06);
   --apple-border-subtle: rgba(0, 0, 0, 0.04);
-  --apple-shadow: 0 8px 32px rgba(0, 0, 0, 0.02);
-  --apple-shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.03);
+  --apple-shadow: 0 8px 30px rgb(0 0 0 / 0.015), 0 2px 8px rgb(0 0 0 / 0.008);
+  --apple-shadow-soft: 0 4px 24px rgb(0 0 0 / 0.012);
+  --apple-shadow-lift: 0 12px 40px rgb(0 0 0 / 0.02), 0 4px 12px rgb(0 0 0 / 0.006);
   --apple-radius: 24px;
-  --apple-accent: #1D1D1F;
-  --apple-accent-muted: #48484A;
-  --apple-progress-bg: #E8E8ED;
-  --apple-progress-fill: linear-gradient(90deg, #34D399 0%, #14B8A6 100%);
-  --apple-fill-secondary: #AEAEB2;
+  --apple-accent: #1d1d1f;
+  --apple-accent-muted: #48484a;
+  --apple-progress-bg: #e8e8ed;
+  --apple-progress-fill: linear-gradient(90deg, #34d399 0%, #14b8a6 100%);
+  --apple-fill-secondary: #aeaeb2;
+  --apple-ambient-orange: rgba(249, 115, 22, 0.07);
+  --apple-ambient-blue: rgba(59, 130, 246, 0.06);
+  --apple-ambient-purple: rgba(168, 85, 247, 0.05);
+  --lux-ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --lux-ease-press: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 html,
@@ -30,7 +38,11 @@ body,
   margin: 0 !important;
   padding: 0 !important;
   background-color: var(--apple-bg) !important;
-  background-image: none !important;
+  background-image:
+    radial-gradient(ellipse 90% 55% at 12% -8%, var(--apple-ambient-orange), transparent 58%),
+    radial-gradient(ellipse 70% 45% at 92% 4%, var(--apple-ambient-blue), transparent 55%),
+    radial-gradient(ellipse 60% 50% at 50% 105%, var(--apple-ambient-purple), transparent 52%) !important;
+  background-attachment: fixed !important;
   overflow-x: hidden;
   color: var(--apple-text-primary);
 }
@@ -76,6 +88,20 @@ body,
       opacity: 1;
     }
   }
+
+  @keyframes luxFadeInUp {
+    0% {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+
+    100% {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  --animate-lux-fade-in-up: luxFadeInUp 0.55s var(--lux-ease-spring) both;
 }
 
 @layer utilities {
@@ -241,9 +267,18 @@ body,
   border-image: none !important;
   border-radius: 24px !important;
   padding: 20px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.02) !important;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s !important;
-  animation: iosSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  box-shadow: var(--apple-shadow) !important;
+  transition: transform 0.4s var(--lux-ease-spring), box-shadow 0.4s ease !important;
+  animation: luxFadeInUp 0.55s var(--lux-ease-spring) forwards !important;
+}
+
+/* Pure-white surfaces float above the sand canvas */
+.bg-white.rounded-2xl,
+.bg-white.rounded-\[2\.5rem\],
+.bg-white.rounded-\[2\.25rem\],
+.bg-white.rounded-\[3rem\],
+.bg-white.rounded-xl {
+  box-shadow: var(--apple-shadow) !important;
 }
 
 .card:active,
@@ -619,9 +654,16 @@ main>div,
 .main-content>div,
 [class*="page-content"],
 [class*="tab-panel"] {
-  animation: iosSlideUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  animation: luxFadeInUp 0.55s var(--lux-ease-spring) forwards !important;
   will-change: transform, opacity;
 }
+
+main > div > *:nth-child(1) { animation-delay: 0.04s !important; }
+main > div > *:nth-child(2) { animation-delay: 0.08s !important; }
+main > div > *:nth-child(3) { animation-delay: 0.12s !important; }
+main > div > *:nth-child(4) { animation-delay: 0.16s !important; }
+main > div > *:nth-child(5) { animation-delay: 0.2s !important; }
+main > div > *:nth-child(n+6) { animation-delay: 0.24s !important; }
 
 .stats-page,
 [class*="stats"],
@@ -663,13 +705,124 @@ main>div,
 
 .wealth-vault-card {
   width: 100% !important;
-  background: #FFFFFF !important;
+  background: #ffffff !important;
   border: 0.5px solid rgba(0, 0, 0, 0.06) !important;
   border-radius: 24px !important;
   padding: 20px !important;
   margin-bottom: 20px !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.02) !important;
+  box-shadow: var(--apple-shadow-lift) !important;
   box-sizing: border-box !important;
+}
+
+/* ==========================================================================
+   Global premium polish — CSS-only (no logic / i18n changes)
+   ========================================================================== */
+
+/* Map legacy flat bg tokens to new canvas */
+.bg-\[\#F6F8FA\],
+[class*="bg-[#F6F8FA]"] {
+  background-color: var(--apple-bg) !important;
+}
+
+.bg-\[\#F2F2F7\] {
+  background-color: var(--apple-bg-subtle) !important;
+}
+
+/* iOS-grade press feedback on interactive controls */
+button:not(:disabled),
+[role="button"]:not(:disabled),
+a[role="button"]:not(:disabled),
+input[type="button"]:not(:disabled),
+input[type="submit"]:not(:disabled),
+.lux-shimmer-tap {
+  transition: transform 0.15s var(--lux-ease-press), box-shadow 0.2s ease, opacity 0.2s ease !important;
+}
+
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled),
+a[role="button"]:active:not(:disabled),
+input[type="button"]:active:not(:disabled),
+input[type="submit"]:active:not(:disabled) {
+  transform: scale(0.95) !important;
+}
+
+.tabbar-surface button:active,
+.tabbar-surface a:active {
+  transform: scale(0.92) !important;
+}
+
+/* Subtle ambient glow behind hero numbers & charts */
+.tabular-nums {
+  position: relative;
+  isolation: isolate;
+}
+
+.tabular-nums::before {
+  content: "";
+  position: absolute;
+  inset: -35% -15%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(29, 29, 31, 0.06) 0%, transparent 72%);
+  opacity: 0.85;
+}
+
+.recharts-wrapper,
+[class*="chart-container"] {
+  position: relative;
+}
+
+.recharts-wrapper::before,
+[class*="chart-container"]::before {
+  content: "";
+  position: absolute;
+  inset: 8% 4%;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse 70% 60% at 20% 30%, var(--apple-ambient-orange), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 80% 70%, var(--apple-ambient-purple), transparent 68%);
+  opacity: 0.55;
+}
+
+.recharts-wrapper > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Stats / list sections — staggered organic entrance */
+[class*="stats"] > *,
+.w-full.space-y-5 > * {
+  animation: luxFadeInUp 0.52s var(--lux-ease-spring) both !important;
+}
+
+.w-full.space-y-5 > *:nth-child(1) { animation-delay: 0.05s !important; }
+.w-full.space-y-5 > *:nth-child(2) { animation-delay: 0.1s !important; }
+.w-full.space-y-5 > *:nth-child(3) { animation-delay: 0.15s !important; }
+.w-full.space-y-5 > *:nth-child(4) { animation-delay: 0.2s !important; }
+.w-full.space-y-5 > *:nth-child(5) { animation-delay: 0.25s !important; }
+.w-full.space-y-5 > *:nth-child(n+6) { animation-delay: 0.3s !important; }
+
+/* Tab bar — softer float on sand background */
+.tabbar-surface {
+  box-shadow: var(--apple-shadow-lift) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  [class*="card"],
+  .tab-panel,
+  main > div,
+  .w-full.space-y-5 > *,
+  [class*="stats"] > * {
+    animation: none !important;
+  }
+
+  button:active:not(:disabled),
+  [role="button"]:active:not(:disabled) {
+    transform: none !important;
+  }
 }
 
 /* ==========================================================================
