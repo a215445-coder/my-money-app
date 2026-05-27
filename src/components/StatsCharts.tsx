@@ -143,6 +143,15 @@ function ChartWrappingLegend({ payload }: { payload?: LegendPayloadItem[] }) {
 const STATS_CARD =
   'bg-white rounded-2xl p-5 border border-[rgba(0,0,0,0.04)] shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden';
 
+/** 汇总卡片金额字号：字符串越长字号越小，避免截断 */
+function summaryAmountTextClass(formatted: string): string {
+  const len = formatted.length;
+  if (len > 11) return 'text-[10px] leading-snug';
+  if (len > 9) return 'text-xs leading-snug';
+  if (len > 7) return 'text-sm leading-snug';
+  return 'text-base leading-snug';
+}
+
 export default function StatsCharts() {
   const { t, i18n } = useTranslation();
   const numberLocale = getLocaleForNumber(i18n.language);
@@ -516,7 +525,7 @@ export default function StatsCharts() {
       </div>
 
       {/* ── Summary cards ── */}
-      <motion.div layout className="grid grid-cols-3 gap-3">
+      <motion.div layout className="grid grid-cols-3 gap-2 min-w-0">
         {[
           {
             label: t(I18N_KEYS.stats.summaryIncome),
@@ -543,29 +552,31 @@ export default function StatsCharts() {
             iconColor: 'text-blue-500',
             valueColor: summary.balance >= 0 ? 'text-[#1D1D1F]' : 'text-red-500',
           },
-        ].map((card, i) => (
+        ].map((card, i) => {
+          const formattedAmount = formatMoney(card.value);
+          return (
           <motion.div
             key={card.label}
             layout
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06, duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-            className="bg-white rounded-2xl p-4 border border-[rgba(0,0,0,0.04)] shadow-[0_8px_30px_rgb(0,0,0,0.015)] overflow-hidden"
+            className="bg-white rounded-2xl px-2 py-3 border border-[rgba(0,0,0,0.04)] shadow-[0_8px_30px_rgb(0,0,0,0.015)] min-w-0"
           >
-            <div className="flex items-center gap-2 mb-2">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${card.iconBg}`}>
-                <card.Icon size={16} className={card.iconColor} />
+            <div className="flex items-center gap-1.5 mb-1.5 min-w-0">
+              <div className={`w-7 h-7 shrink-0 rounded-xl flex items-center justify-center ${card.iconBg}`}>
+                <card.Icon size={14} className={card.iconColor} />
               </div>
-              <span className="text-[9px] font-black text-[#6E6E73] uppercase tracking-widest leading-tight">{card.label}</span>
+              <span className="min-w-0 text-[8px] font-black text-[#6E6E73] uppercase tracking-wider leading-tight">{card.label}</span>
             </div>
             <motion.p
               key={`${period}-${card.value}`}
               initial={{ opacity: 0.4, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-              className={`text-base font-black tabular-nums ${card.valueColor}`}
+              className={`w-full max-w-full font-black tabular-nums break-all ${summaryAmountTextClass(formattedAmount)} ${card.valueColor}`}
             >
-              {formatMoney(card.value)}
+              {formattedAmount}
             </motion.p>
             {'delta' in card && card.delta !== undefined && (
               <p className={`text-[9px] font-bold mt-1 ${card.delta > 0 ? 'text-red-500' : card.delta < 0 ? 'text-emerald-600' : 'text-[#6E6E73]'}`}>
@@ -574,7 +585,8 @@ export default function StatsCharts() {
               </p>
             )}
           </motion.div>
-        ))}
+        );
+        })}
       </motion.div>
 
       {/* ── Main trend chart (linked to period) ── */}
