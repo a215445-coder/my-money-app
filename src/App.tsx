@@ -393,7 +393,6 @@ export default function App() {
   const homeLongPressTimeoutRef = useRef<number | null>(null);
   const homeLongPressStartRef = useRef<{ x: number; y: number } | null>(null);
   const homeLongPressFiredRef = useRef(false);
-  const backupFileInputRef = useRef<HTMLInputElement>(null);
   const vaultJarRef = useRef<HTMLDivElement>(null);
   const tabbarGlassRef = useRef<HTMLElement>(null);
   const liquidGlassRef = useRef<LiquidGlass | null>(null);
@@ -908,65 +907,6 @@ export default function App() {
     link.download = `my-money-backup-${format(new Date(), 'yyyyMMdd-HHmm')}.json`;
     link.click();
     URL.revokeObjectURL(url);
-  };
-
-  const restoreBackupKV = (kv: Record<string, string | null>) => {
-    const keysToClear: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (!key) continue;
-      const isKnownExact = [
-        'transactions',
-        'accounts',
-        'monthly_budget',
-        'app_lang',
-        'onboarding_done',
-        'auth_done',
-        'privacy_lock_enabled',
-        'privacy_pin',
-        'exchange_rates',
-        'last_rate_update',
-        'last_used_currency',
-        'local_user_id',
-        'local_user_name',
-        HOME_WIDGETS_STORAGE_KEY,
-        GROUP_SAVING_STORAGE_KEY,
-        GROUP_SAVING_POOL_KEY,
-      ].includes(key);
-      if (isKnownExact || key.startsWith('group_saving_activities_')) keysToClear.push(key);
-    }
-    keysToClear.forEach(k => localStorage.removeItem(k));
-
-    Object.entries(kv).forEach(([key, value]) => {
-      if (value === null || value === undefined) return;
-      localStorage.setItem(key, typeof value === 'string' ? value : String(value));
-    });
-    alert(t('backup_import_success'));
-    window.location.reload();
-  };
-
-  const triggerBackupImport = () => {
-    const ok = confirm(t('backup_confirm_replace'));
-    if (!ok) return;
-    if (backupFileInputRef.current) backupFileInputRef.current.value = '';
-    backupFileInputRef.current?.click();
-  };
-
-  const handleBackupFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      const kv = parsed?.schema === 1 && parsed?.kv && typeof parsed.kv === 'object' ? (parsed.kv as Record<string, string | null>) : null;
-      if (!kv) {
-        alert(t('backup_invalid_file'));
-        return;
-      }
-      restoreBackupKV(kv);
-    } catch {
-      alert(t('backup_invalid_file'));
-    }
   };
 
   const exportAsImage = async () => {
@@ -2486,14 +2426,6 @@ export default function App() {
         cn(theme.appBg, theme.appText)
       )}
     >
-      <input
-        ref={backupFileInputRef}
-        type="file"
-        accept="application/json"
-        className="hidden"
-        onChange={handleBackupFileChange}
-      />
-
       {/* Privacy Lock Screen */}
       {isLocked && (
         <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", "lux-carbon text-[#111111]")}>
@@ -3841,7 +3773,7 @@ export default function App() {
                         <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                       </div>
                     </div>
-                    <button onClick={exportBackup} className="w-full p-5 flex items-center justify-between hover:bg-[#E8E8ED] active:scale-[0.98] transition-all border-b border-black/5">
+                    <button onClick={exportBackup} className="w-full p-5 flex items-center justify-between hover:bg-[#E8E8ED] active:scale-[0.98] transition-all">
                       <div className="flex items-center space-x-4">
                         <div className="w-8 h-8 bg-emerald-100 text-emerald-500 rounded-lg flex items-center justify-center">
                           <Share2 size={18} />
@@ -3849,18 +3781,6 @@ export default function App() {
                         <div className="text-left">
                           <div className="text-sm font-bold">{t('backup_export')}</div>
                           <div className={cn("text-[10px] font-bold", isDarkMode ? "text-[#86868B]" : "text-gray-400")}>{t('backup_export_desc')}</div>
-                        </div>
-                      </div>
-                      <ChevronRight size={18} className={cn(isDarkMode ? "text-white/30" : "text-black/20")} />
-                    </button>
-                    <button onClick={triggerBackupImport} className="w-full p-5 flex items-center justify-between hover:bg-[#E8E8ED] active:scale-[0.98] transition-all">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-8 h-8 bg-sky-100 text-sky-500 rounded-lg flex items-center justify-center">
-                          <Cloud size={18} />
-                        </div>
-                        <div className="text-left">
-                          <div className="text-sm font-bold">{t('backup_import')}</div>
-                          <div className={cn("text-[10px] font-bold", isDarkMode ? "text-[#86868B]" : "text-gray-400")}>{t('backup_import_desc')}</div>
                         </div>
                       </div>
                       <ChevronRight size={18} className={cn(isDarkMode ? "text-white/30" : "text-black/20")} />
