@@ -57,14 +57,17 @@ function normalizeCategory(raw: string): Category {
   return '其他';
 }
 
-type MenuImportPayload = {
-  amount: number;
+/** 快捷指令：amount 参数承载 URL 编码后的整段账单纯文本 */
+const BILL_AMOUNT_RE = /(?:￥|¥|\$)\s*(\d+(?:\.\d{2})?)/g;
+
+type MenuBillImportPayload = {
   category: Category;
+  billText: string;
   note?: string;
 };
 
-/** ?action=import&type=餐饮&amount=35.5 */
-function readMenuImportFromUrl(): MenuImportPayload | null {
+/** ?action=import&type=分类名&amount=URL编码后的账单纯文本 */
+function readMenuBillImportFromUrl(): MenuBillImportPayload | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
   if (params.get('action') !== 'import') return null;
@@ -73,14 +76,42 @@ function readMenuImportFromUrl(): MenuImportPayload | null {
   const typeRaw = params.get('type');
   if (!amountRaw || !typeRaw) return null;
 
-  const amount = parseAmountStr(decodeParam(amountRaw));
-  if (amount <= 0) return null;
+  const billText = decodeParam(amountRaw);
+  if (!billText) return null;
 
   const category = normalizeCategory(typeRaw);
   const noteRaw = params.get('shop') || params.get('note');
   const note = noteRaw ? decodeParam(noteRaw) : '快捷指令';
 
-  return { amount, category, note };
+  return { category, billText, note };
+}
+
+/** 从解码后的账单文本中提取所有货币金额 */
+function extractAmountsFromBillText(text: string): number[] {
+  const amounts: number[] = [];
+  const re = new RegExp(BILL_AMOUNT_RE.source, 'g');
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(text)) !== null) {
+    const n = parseFloat(match[1]);
+    if (!Number.isFinite(n) || n <= 0 || n > 999_999) continue;
+    amounts.push(Math.round(n * 100) / 100);
+  }
+  return amounts;
+}
+
+function buildTransactionsFromMenuBill(payload: MenuBillImportPayload): Transaction[] {
+  const amounts = extractAmountsFromBillText(payload.billText);
+  const txType = payload.category === '收入' ? ('income' as const) : ('expense' as const);
+  return amounts.map((amount) => ({
+    id: crypto.randomUUID(),
+    amount,
+    type: txType,
+    category: payload.category,
+    date: new Date().toISOString(),
+    note: payload.note,
+    accountId: DEFAULT_ACCOUNT_ID,
+    mood: 'happy' as const,
+  }));
 }
 
 function readImportOcrFromUrl(): string | null {
@@ -123,19 +154,6 @@ function persistTransactionsLocally(newTxs: Transaction[]): void {
     acc.id === DEFAULT_ACCOUNT_ID ? { ...acc, balance: acc.balance + balanceDelta } : acc
   );
   localStorage.setItem('accounts', JSON.stringify(nextAcc));
-}
-
-function buildTransactionFromMenu(menu: MenuImportPayload): Transaction {
-  return {
-    id: crypto.randomUUID(),
-    amount: menu.amount,
-    type: menu.category === '收入' ? 'income' : 'expense',
-    category: menu.category,
-    date: new Date().toISOString(),
-    note: menu.note,
-    accountId: DEFAULT_ACCOUNT_ID,
-    mood: 'happy',
-  };
 }
 
 function toDraftRows(bills: Array<{ amount: number; shop: string; category?: Category }>): ShortcutImportDraftRow[] {
@@ -279,7 +297,7 @@ async function persistAndSync(newTxs: Transaction[]): Promise<void> {
 
 /**
  * 静默导入（无 UI）：
- * 1. ?action=import&type=分类&amount=金额（快捷指令原生菜单）
+ * 1. ?action=import&type=分类&amount=账单纯文本（decodeURIComponent + 正则提金额）
  * 2. ?action=import&ocrData=...（OCR 批量，兼容旧方案）
  */
 export async function executeSilentShortcutImport(): Promise<boolean> {
@@ -289,11 +307,15 @@ export async function executeSilentShortcutImport(): Promise<boolean> {
   if (params.get('action') !== 'import') return false;
 
   try {
-    const menu = readMenuImportFromUrl();
-    if (menu) {
-      const newTx = buildTransactionFromMenu(menu);
-      await persistAndSync([newTx]);
-      redirectImportResult('success', 1);
+    const menuBill = readMenuBillImportFromUrl();
+    if (menuBill) {
+      const newTxs = buildTransactionsFromMenuBill(menuBill);
+      if (newTxs.length === 0) {
+        redirectImportResult('error', 0, encodeURIComponent('未能从账单文本中提取金额'));
+        return true;
+      }
+      await persistAndSync(newTxs);
+      redirectImportResult('success', newTxs.length);
       return true;
     }
 
