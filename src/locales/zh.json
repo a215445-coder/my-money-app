@@ -44,9 +44,46 @@
     "last30_trend": "近30天分类趋势",
     "income": "收入",
     "expense": "支出",
+    "empty_title": "暂无数据",
+    "empty_desc": "快去记一笔账吧！你的财务故事从这里开始",
+    "tab_day": "日",
+    "tab_week": "周",
+    "tab_month": "月",
+    "tab_year": "年",
+    "summary_expense": "支出",
+    "summary_balance": "结余",
+    "radar_title": "消费足迹 · 支出分类雷达",
+    "no_expense_title": "暂无支出记录",
+    "no_expense_desc": "当前时段没有支出数据，去记一笔支出吧",
     "yearly_heatmap_title": "开销频次年历热力图",
     "less": "少",
     "more": "多"
+  },
+  "saving_challenge": {
+    "title": "存钱挑战",
+    "subtitle": "绿色养成系 · 30 天打卡",
+    "streak_label": "连续",
+    "day_unit": "天",
+    "checked_today": "今日已打卡",
+    "unchecked_today": "今日未打卡",
+    "progress_lit": "已点亮 {{count}} 格",
+    "action_checked": "已打卡",
+    "action_check_in": "今日打卡",
+    "tips": [
+      "干得漂亮！今天又成功击退了消费主义！",
+      "稳住！你正在变得更富有。",
+      "今天少买一杯奶茶，未来多一份底气。",
+      "把冲动存起来，把自由取出来。",
+      "每一次坚持，都是资产在发芽。",
+      "你已经在变强了，继续！"
+    ],
+    "stage": {
+      "seed": { "title": "财富种子待唤醒", "subtitle": "从今天开始，给自己一个更富有的明天" },
+      "sprout": { "title": "刚刚破土的财富嫩芽", "subtitle": "第一天最难，也最值得" },
+      "seedling": { "title": "生机勃勃的存钱幼苗", "subtitle": "坚持正在改变你的财务惯性" },
+      "sapling": { "title": "稳稳扎根的财富小树", "subtitle": "习惯开始变得可靠且可复制" },
+      "tree": { "title": "枝繁叶茂的财富之树", "subtitle": "你已经具备长期主义的力量" }
+    }
   },
   "pro": {
     "unlock_income_radar": "永久会员解锁：收入来源雷达，查看结构与建议。"

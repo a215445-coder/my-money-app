@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { I18N_KEYS } from '../i18n/keys';
 import {
   format,
   parseISO,
@@ -106,50 +107,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   '医疗': '🏥', '教育': '📚', '收入': '💰', '其他': '📦', '杂货': '🛒',
 };
 
-// ── Format Money ──
-const formatMoney = (v: number): string =>
-  `¥${v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-// ── Empty State ──
-const EmptyState = () => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-    className="flex flex-col items-center justify-center py-24 px-8"
-  >
-    <motion.div
-      initial={{ scale: 0.8 }}
-      animate={{ scale: 1 }}
-      transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1], delay: 0.1 }}
-      className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-[#F2F2F7] to-[#E8E8ED] flex items-center justify-center mb-6 shadow-lg"
-    >
-      <Inbox size={40} className="text-[#6E6E73]" />
-    </motion.div>
-    <h3 className="text-xl font-black text-[#1D1D1F] mb-2">暂无数据</h3>
-    <p className="text-sm font-bold text-[#6E6E73] text-center max-w-xs">快去记一笔账吧！你的财务故事从这里开始 📝</p>
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-8 flex space-x-2">
-      {['💰', '📊', '🎯'].map((emoji, i) => (
-        <motion.span key={`emoji-${emoji}`} initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 + i * 0.1 }} className="text-2xl">{emoji}</motion.span>
-      ))}
-    </motion.div>
-  </motion.div>
-);
-
-// ── Custom Tooltip ──
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload || !payload.length) return null;
-  return (
-    <div className="bg-white/90 backdrop-blur-xl rounded-2xl px-4 py-3 shadow-xl border border-[rgba(0,0,0,0.06)]">
-      <p className="text-[10px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">{label}</p>
-      {payload.map((entry: any, idx: number) => (
-        <p key={idx} className="text-sm font-black" style={{ color: entry.color || '#1D1D1F' }}>
-          {entry.name}: {formatMoney(entry.value)}
-        </p>
-      ))}
-    </div>
-  );
-};
+const getLocaleForNumber = (lng?: string) => (String(lng || '').toLowerCase().startsWith('en') ? 'en-US' : 'zh-CN');
 
 // ── Generate realistic mock data for charts when real data is sparse ──
 const generateMockTrend = (days: number, base: number, volatility: number): number[] => {
@@ -165,7 +123,55 @@ const generateMockTrend = (days: number, base: number, volatility: number): numb
 
 // ── Main Component ──
 export default function StatsCharts() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const numberLocale = getLocaleForNumber(i18n.language);
+  const formatMoney = (v: number): string =>
+    `¥${v.toLocaleString(numberLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const trCategory = (cat: string) => {
+    const key = `categories.${cat}`;
+    const translated = t(key as any);
+    return translated && translated !== key ? translated : cat;
+  };
+
+  const EmptyState = () => (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="flex flex-col items-center justify-center py-24 px-8"
+    >
+      <motion.div
+        initial={{ scale: 0.8 }}
+        animate={{ scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.34, 1.56, 0.64, 1], delay: 0.1 }}
+        className="w-24 h-24 rounded-[2rem] bg-gradient-to-br from-[#F2F2F7] to-[#E8E8ED] flex items-center justify-center mb-6 shadow-lg"
+      >
+        <Inbox size={40} className="text-[#6E6E73]" />
+      </motion.div>
+      <h3 className="text-xl font-black text-[#1D1D1F] mb-2">{t(I18N_KEYS.stats.emptyTitle)}</h3>
+      <p className="text-sm font-bold text-[#6E6E73] text-center max-w-xs">{t(I18N_KEYS.stats.emptyDesc)}</p>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-8 flex space-x-2">
+        {['💰', '📊', '🎯'].map((emoji, i) => (
+          <motion.span key={`emoji-${emoji}`} initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 + i * 0.1 }} className="text-2xl">{emoji}</motion.span>
+        ))}
+      </motion.div>
+    </motion.div>
+  );
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+    return (
+      <div className="bg-white/90 backdrop-blur-xl rounded-2xl px-4 py-3 shadow-xl border border-[rgba(0,0,0,0.06)]">
+        <p className="text-[10px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">{label}</p>
+        {payload.map((entry: any, idx: number) => (
+          <p key={idx} className="text-sm font-black" style={{ color: entry.color || '#1D1D1F' }}>
+            {entry.name}: {formatMoney(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  };
   const [timeDimension, setTimeDimension] = useState<TimeDimension>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -324,15 +330,16 @@ export default function StatsCharts() {
 
   // ── Time Dimension Label ──
   const getDimensionLabel = (): string => {
+    const fmt = (k: 'today' | 'week' | 'month' | 'year') => String(t(`date_formats.filter.${k}` as any));
     switch (timeDimension) {
-      case 'day': return format(currentDate, 'yyyy年MM月dd日');
+      case 'day': return format(currentDate, fmt('today'));
       case 'week': {
         const s = startOfWeek(currentDate, { weekStartsOn: 1 });
         const e = endOfWeek(currentDate, { weekStartsOn: 1 });
-        return `${format(s, 'MM.dd')} - ${format(e, 'MM.dd')}`;
+        return `${format(s, fmt('week'))} - ${format(e, fmt('week'))}`;
       }
-      case 'month': return format(currentDate, 'yyyy年MM月');
-      case 'year': return format(currentDate, 'yyyy年');
+      case 'month': return format(currentDate, fmt('month'));
+      case 'year': return format(currentDate, fmt('year'));
       default: return '';
     }
   };
@@ -350,7 +357,12 @@ export default function StatsCharts() {
       {/* ── Time Dimension Tabs ── */}
       <div className="flex items-center justify-between">
         <div className="flex space-x-1 bg-[#F2F2F7] rounded-2xl p-1">
-          {([{ key: 'day', label: '日' }, { key: 'week', label: '周' }, { key: 'month', label: '月' }, { key: 'year', label: '年' }] as { key: TimeDimension; label: string }[]).map((tab) => (
+          {([
+            { key: 'day', label: t(I18N_KEYS.stats.tabDay) },
+            { key: 'week', label: t(I18N_KEYS.stats.tabWeek) },
+            { key: 'month', label: t(I18N_KEYS.stats.tabMonth) },
+            { key: 'year', label: t(I18N_KEYS.stats.tabYear) },
+          ] as { key: TimeDimension; label: string }[]).map((tab) => (
             <button
               key={tab.key}
               onClick={() => setTimeDimension(tab.key)}
@@ -384,14 +396,14 @@ export default function StatsCharts() {
             <div className="bg-white rounded-2xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]">
               <div className="flex items-center space-x-2 mb-2">
                 <div className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center"><TrendingDown size={16} className="text-red-500" /></div>
-                <span className="text-[10px] font-black text-[#6E6E73] uppercase tracking-widest">支出</span>
+                <span className="text-[10px] font-black text-[#6E6E73] uppercase tracking-widest">{t(I18N_KEYS.stats.summaryExpense)}</span>
               </div>
               <p className="text-lg font-black text-[#1D1D1F] tabular-nums">{formatMoney(summary.expense)}</p>
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]">
               <div className="flex items-center space-x-2 mb-2">
                 <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center"><Wallet size={16} className="text-blue-500" /></div>
-                <span className="text-[10px] font-black text-[#6E6E73] uppercase tracking-widest">结余</span>
+                <span className="text-[10px] font-black text-[#6E6E73] uppercase tracking-widest">{t(I18N_KEYS.stats.summaryBalance)}</span>
               </div>
               <p className={`text-lg font-black tabular-nums ${summary.balance >= 0 ? 'text-[#1D1D1F]' : 'text-red-500'}`}>{formatMoney(summary.balance)}</p>
             </div>
@@ -408,7 +420,7 @@ export default function StatsCharts() {
           >
             <div className="flex items-center space-x-2 mb-4">
               <Activity size={18} className="text-[#6E6E73]" />
-              <span className="text-xs font-black text-[#1D1D1F]">消费足迹 · 支出分类雷达</span>
+              <span className="text-xs font-black text-[#1D1D1F]">{t(I18N_KEYS.stats.radarTitle)}</span>
             </div>
 
             {!hasExpenseData ? (
@@ -416,8 +428,8 @@ export default function StatsCharts() {
                 <div className="w-16 h-16 rounded-2xl bg-[#F2F2F7] flex items-center justify-center mb-4">
                   <Inbox size={28} className="text-[#6E6E73]" />
                 </div>
-                <p className="text-base font-black text-[#1D1D1F] mb-1">暂无支出记录</p>
-                <p className="text-xs font-bold text-[#6E6E73]">当前时段没有支出数据，去记一笔支出吧 📝</p>
+                <p className="text-base font-black text-[#1D1D1F] mb-1">{t(I18N_KEYS.stats.noExpenseTitle)}</p>
+                <p className="text-xs font-bold text-[#6E6E73]">{t(I18N_KEYS.stats.noExpenseDesc)}</p>
               </div>
             ) : (
             <div className="space-y-3 w-full">
@@ -432,10 +444,14 @@ export default function StatsCharts() {
                   outerRadius="70%"
                 >
                   <PolarGrid stroke="#E8E8ED" />
-                  <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fontWeight: 'bold', fill: '#6E6E73' }} />
+                  <PolarAngleAxis
+                    dataKey="category"
+                    tick={{ fontSize: 11, fontWeight: 'bold', fill: '#6E6E73' }}
+                    tickFormatter={(v: any) => trCategory(String(v))}
+                  />
                   <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
                   <Radar
-                    name="本月"
+                    name={t('month')}
                     dataKey="本月"
                     stroke={COLORS.orange}
                     fill={COLORS.orange}
@@ -443,7 +459,7 @@ export default function StatsCharts() {
                     strokeWidth={2}
                   />
                   <Radar
-                    name="上月"
+                    name={t('last_month')}
                     dataKey="上月"
                     stroke={COLORS.purple}
                     fill={COLORS.purple}
@@ -456,6 +472,11 @@ export default function StatsCharts() {
                     wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '4px' }}
                     iconType="circle"
                     iconSize={8}
+                    formatter={(value: any) => {
+                      if (value === '本月') return t('month');
+                      if (value === '上月') return t('last_month');
+                      return value;
+                    }}
                   />
                 </RadarChart>
               </div>
@@ -533,7 +554,7 @@ export default function StatsCharts() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <Activity size={18} className="text-[#6E6E73]" />
-                <span className="text-xs font-black text-[#1D1D1F]">Visualization Details</span>
+              <span className="text-xs font-black text-[#1D1D1F]">{t(I18N_KEYS.stats.visualizationDetails)}</span>
               </div>
               <div className="flex space-x-1 bg-[#F2F2F7] rounded-xl p-0.5">
                 {([{ key: 'day', label: t('stats_ui.detail_day') }, { key: 'week', label: t('stats_ui.detail_week') }, { key: 'month', label: t('stats_ui.detail_month') }] as { key: 'day' | 'week' | 'month'; label: string }[]).map((tab) => (
@@ -577,14 +598,20 @@ export default function StatsCharts() {
                   wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', paddingTop: '6px' }}
                   iconType="circle"
                   iconSize={6}
+                  formatter={(value: any) => {
+                    const v = String(value);
+                    if (v === 'Income') return t(I18N_KEYS.stats.income);
+                    if (v === 'Expense') return t(I18N_KEYS.stats.expense);
+                    return trCategory(v);
+                  }}
                 />
 
                 {/* Stacked Bars */}
-                <Bar dataKey="餐饮" stackId="expense" fill="#F97316" barSize={10} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="交通" stackId="expense" fill="#3B82F6" barSize={10} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="购物" stackId="expense" fill="#A855F7" barSize={10} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="娱乐" stackId="expense" fill="#EC4899" barSize={10} radius={[0, 0, 0, 0]} />
-                <Bar dataKey="其他" stackId="expense" fill="#64748B" barSize={10} radius={[2, 2, 0, 0]} />
+                <Bar dataKey="餐饮" name={trCategory('餐饮')} stackId="expense" fill="#F97316" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="交通" name={trCategory('交通')} stackId="expense" fill="#3B82F6" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="购物" name={trCategory('购物')} stackId="expense" fill="#A855F7" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="娱乐" name={trCategory('娱乐')} stackId="expense" fill="#EC4899" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="其他" name={trCategory('其他')} stackId="expense" fill="#64748B" barSize={10} radius={[2, 2, 0, 0]} />
 
                 {/* Income Line */}
                 <Line

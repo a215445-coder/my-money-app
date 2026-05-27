@@ -77,16 +77,15 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { motion, AnimatePresence, Reorder, useMotionValue, useScroll, useTransform, useSpring } from 'framer-motion';
-const SAVING_CHALLENGE_TIPS = [
-  '干得漂亮！今天又成功击退了消费主义！',
-  '稳住！你正在变得更富有。',
-  '今天少买一杯奶茶，未来多一份底气。',
-  '把冲动存起来，把自由取出来。',
-  '每一次坚持，都是资产在发芽。',
-  '你已经在变强了，继续！',
+const SAVING_CHALLENGE_TIPS_FALLBACK = [
+  'Keep going — small wins compound.',
+  'Steady progress beats perfection.',
+  'One calm choice today, more freedom tomorrow.',
 ];
 import html2canvas from 'html2canvas';
 import { useTranslation } from 'react-i18next';
+import { setAppLanguage } from './i18n/lang';
+import { I18N_KEYS } from './i18n/keys';
 import { LiquidGlass } from '@ybouane/liquidglass';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 import StatsCharts from './components/StatsCharts';
@@ -344,21 +343,6 @@ const groupActivitiesKey = (groupId: string) => `group_saving_activities_${group
 
 export default function App() {
   const { t, i18n } = useTranslation();
-  // Ensure stored or system language is normalized to supported variants
-  useEffect(() => {
-    const saved = localStorage.getItem('app_lang');
-    if (saved) {
-      if (saved.startsWith('zh')) i18n.changeLanguage('zh-CN');
-      else if (saved.startsWith('en')) i18n.changeLanguage('en-US');
-      else i18n.changeLanguage(saved);
-      return;
-    }
-    const nav = navigator.language || (navigator as any).userLanguage;
-    if (nav) {
-      if (nav.startsWith('zh')) i18n.changeLanguage('zh-CN');
-      else if (nav.startsWith('en')) i18n.changeLanguage('en-US');
-    }
-  }, [i18n]);
   // --- Core State ---
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('transactions');
@@ -464,6 +448,10 @@ export default function App() {
   // --- Discovery State ---
   const [monthlySalary, setSalary] = useState<number>(10000);
   const wealthTips = useMemo(() => (t('wealth_tips', { returnObjects: true }) as string[]), [t, i18n.language]);
+  const savingChallengeTips = useMemo(
+    () => ((t('saving_challenge.tips', { returnObjects: true }) as unknown as string[]) || SAVING_CHALLENGE_TIPS_FALLBACK),
+    [t, i18n.language]
+  );
 
   const [wealthTip, setWealthTip] = useState(() => wealthTips[0] || '');
 
@@ -479,7 +467,7 @@ export default function App() {
   const savingChallengeProgressPct = Math.max(0, Math.min(100, (Math.max(0, savingChallengeStreak) / 30) * 100));
   const savingChallengeDayCount = Math.min(30, Math.max(0, savingChallengeStreak));
   const [savingChallengeTip, setSavingChallengeTip] = useState(() => {
-    return SAVING_CHALLENGE_TIPS[Math.floor(Math.random() * SAVING_CHALLENGE_TIPS.length)] || SAVING_CHALLENGE_TIPS[0] || '';
+    return savingChallengeTips[Math.floor(Math.random() * savingChallengeTips.length)] || savingChallengeTips[0] || '';
   });
 
   const savingChallengeStage = useMemo(() => {
@@ -487,51 +475,51 @@ export default function App() {
     if (day <= 0) {
       return {
         Icon: Sprout,
-        title: '财富种子待唤醒',
-        subtitle: '从今天开始，给自己一个更富有的明天',
+        title: t(I18N_KEYS.savingChallenge.stageSeedTitle),
+        subtitle: t(I18N_KEYS.savingChallenge.stageSeedSubtitle),
         tone: 'bg-emerald-50 border-emerald-200 text-emerald-700',
       };
     }
     if (day <= 1) {
       return {
         Icon: Sprout,
-        title: '刚刚破土的财富嫩芽',
-        subtitle: '第一天最难，也最值得',
+        title: t(I18N_KEYS.savingChallenge.stageSproutTitle),
+        subtitle: t(I18N_KEYS.savingChallenge.stageSproutSubtitle),
         tone: 'bg-emerald-50 border-emerald-200 text-emerald-700',
       };
     }
     if (day <= 10) {
       return {
         Icon: Sprout,
-        title: '生机勃勃的存钱幼苗',
-        subtitle: '坚持正在改变你的财务惯性',
+        title: t(I18N_KEYS.savingChallenge.stageSeedlingTitle),
+        subtitle: t(I18N_KEYS.savingChallenge.stageSeedlingSubtitle),
         tone: 'bg-emerald-50 border-emerald-200 text-emerald-700',
       };
     }
     if (day <= 20) {
       return {
         Icon: TreePine,
-        title: '稳稳扎根的财富小树',
-        subtitle: '习惯开始变得可靠且可复制',
+        title: t(I18N_KEYS.savingChallenge.stageSaplingTitle),
+        subtitle: t(I18N_KEYS.savingChallenge.stageSaplingSubtitle),
         tone: 'bg-emerald-50 border-emerald-200 text-emerald-700',
       };
     }
     return {
       Icon: TreePine,
-      title: '枝繁叶茂的财富之树',
-      subtitle: '你已经具备长期主义的力量',
+      title: t(I18N_KEYS.savingChallenge.stageTreeTitle),
+      subtitle: t(I18N_KEYS.savingChallenge.stageTreeSubtitle),
       tone: 'bg-emerald-50 border-emerald-200 text-emerald-700',
     };
-  }, [savingChallengeDayCount]);
+  }, [savingChallengeDayCount, t]);
 
   useEffect(() => {
     if (discoveryTool !== 'savingChallenge') return;
-    setSavingChallengeTip(SAVING_CHALLENGE_TIPS[Math.floor(Math.random() * SAVING_CHALLENGE_TIPS.length)] || SAVING_CHALLENGE_TIPS[0] || '');
+    setSavingChallengeTip(savingChallengeTips[Math.floor(Math.random() * savingChallengeTips.length)] || savingChallengeTips[0] || '');
     const id = window.setInterval(() => {
-      setSavingChallengeTip(SAVING_CHALLENGE_TIPS[Math.floor(Math.random() * SAVING_CHALLENGE_TIPS.length)] || SAVING_CHALLENGE_TIPS[0] || '');
+      setSavingChallengeTip(savingChallengeTips[Math.floor(Math.random() * savingChallengeTips.length)] || savingChallengeTips[0] || '');
     }, 3200);
     return () => window.clearInterval(id);
-  }, [discoveryTool]);
+  }, [discoveryTool, savingChallengeTips]);
 
   const handleSavingChallengeCheckIn = () => {
     if (savingChallengeCheckedToday) return;
@@ -3152,7 +3140,7 @@ export default function App() {
                         { key: 'assets', label: t('assets'), Icon: LineIcon, onClick: () => setActiveTab('assets') },
                         { key: 'budget', label: t('settings'), Icon: Settings, onClick: () => setIsBudgetModalOpen(true) },
                         { key: 'export', label: t('export'), Icon: Share2, onClick: () => requestExport('image') },
-                        { key: 'savingChallenge', label: '存钱挑战', Icon: Trophy, onClick: () => setDiscoveryTool('savingChallenge') },
+                        { key: 'savingChallenge', label: t(I18N_KEYS.savingChallenge.title), Icon: Trophy, onClick: () => setDiscoveryTool('savingChallenge') },
                         { key: 'fx', label: t('exchange'), Icon: ArrowRightLeft, onClick: () => setDiscoveryTool('exchange') },
                       ].map(item => (
                         <motion.button
@@ -3909,7 +3897,7 @@ export default function App() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-black">
                   {discoveryTool === 'savingChallenge'
-                    ? '存钱挑战'
+                    ? t(I18N_KEYS.savingChallenge.title)
                     : discoveryTool === 'exchange'
                       ? t('exchange')
                       : t('calculator')}
@@ -3931,13 +3919,13 @@ export default function App() {
                           <Trophy size={20} className="text-emerald-600" />
                         </div>
                         <div>
-                          <div className="text-sm font-black">存钱挑战</div>
-                          <div className="text-[10px] font-bold text-[#111111]/60 mt-1">绿色养成系 · 30 天打卡</div>
+                          <div className="text-sm font-black">{t(I18N_KEYS.savingChallenge.title)}</div>
+                          <div className="text-[10px] font-bold text-[#111111]/60 mt-1">{t(I18N_KEYS.savingChallenge.subtitle)}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-[#111111]/50">STREAK</div>
-                        <div className="text-lg font-black text-emerald-700">{savingChallengeStreak} 天</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest text-[#111111]/50">{t(I18N_KEYS.savingChallenge.streakLabel)}</div>
+                        <div className="text-lg font-black text-emerald-700">{savingChallengeStreak} {t(I18N_KEYS.savingChallenge.dayUnit)}</div>
                       </div>
                     </div>
 
@@ -3974,7 +3962,7 @@ export default function App() {
                         />
                       </div>
                       <div className="mt-3 flex items-center justify-between">
-                        <div className="text-[10px] font-bold text-[#111111]/45">{savingChallengeCheckedToday ? '今日已打卡' : '今日未打卡'}</div>
+                        <div className="text-[10px] font-bold text-[#111111]/45">{savingChallengeCheckedToday ? t(I18N_KEYS.savingChallenge.checkedToday) : t(I18N_KEYS.savingChallenge.uncheckedToday)}</div>
                         <div className="text-[10px] font-black text-[#111111]/60">{savingChallengeDayCount}/30</div>
                       </div>
                     </div>
@@ -3982,7 +3970,7 @@ export default function App() {
                     <div className="mt-6">
                       <div className="flex items-center justify-between">
                         <div className="text-[10px] font-black uppercase tracking-widest text-[#111111]/50">30D BADGES</div>
-                        <div className="text-[10px] font-black text-[#111111]/60">已点亮 {savingChallengeDayCount} 格</div>
+                        <div className="text-[10px] font-black text-[#111111]/60">{t(I18N_KEYS.savingChallenge.progressLit, { count: savingChallengeDayCount })}</div>
                       </div>
                       <div className="mt-3 grid grid-cols-6 gap-2">
                         {Array.from({ length: 30 }, (_, i) => {
@@ -4022,7 +4010,7 @@ export default function App() {
                       savingChallengeCheckedToday ? "bg-gray-200 text-gray-500" : "bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
                     )}
                   >
-                    {savingChallengeCheckedToday ? '已打卡' : '今日打卡'}
+                    {savingChallengeCheckedToday ? t(I18N_KEYS.savingChallenge.actionChecked) : t(I18N_KEYS.savingChallenge.actionCheckIn)}
                   </motion.button>
                 </div>
               )}
@@ -4428,7 +4416,7 @@ export default function App() {
                 ].map(l => (
                   <button
                     key={l.id}
-                    onClick={() => { localStorage.setItem('app_lang', l.id); i18n.changeLanguage(l.id); setIsLangPickerOpen(false); }}
+                    onClick={() => { setAppLanguage(l.id); setIsLangPickerOpen(false); }}
                     className={cn(
                       "w-full p-4 rounded-2xl flex flex-col items-center justify-center space-y-2 transition-all border",
                       i18n.language === l.id ? cn(theme.primary, "text-white", "border-transparent") : "lux-carbon-soft text-[#111111]/85 hover:bg-[#F2F2F7]"

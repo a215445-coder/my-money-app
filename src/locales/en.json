@@ -44,9 +44,46 @@
     "last30_trend": "Last 30 Days Category Trend",
     "income": "Income",
     "expense": "Expense",
+    "empty_title": "No data yet",
+    "empty_desc": "Add your first transaction to start your money story",
+    "tab_day": "Day",
+    "tab_week": "Week",
+    "tab_month": "Month",
+    "tab_year": "Year",
+    "summary_expense": "Expense",
+    "summary_balance": "Balance",
+    "radar_title": "Spending Footprint · Category Radar",
+    "no_expense_title": "No expenses yet",
+    "no_expense_desc": "No expense data in this period. Add one to see insights",
     "yearly_heatmap_title": "Yearly Spend Heatmap",
     "less": "Less",
     "more": "More"
+  },
+  "saving_challenge": {
+    "title": "Saving Challenge",
+    "subtitle": "Green habit · 30-day streak",
+    "streak_label": "Streak",
+    "day_unit": "days",
+    "checked_today": "Checked in today",
+    "unchecked_today": "Not checked in",
+    "progress_lit": "{{count}} tiles lit",
+    "action_checked": "Checked",
+    "action_check_in": "Check in",
+    "tips": [
+      "Well done — you beat impulse spending today.",
+      "Steady. You’re getting richer day by day.",
+      "Skip one small splurge today, gain confidence tomorrow.",
+      "Store the impulse, withdraw the freedom.",
+      "Every streak is an asset growing quietly.",
+      "You’re getting stronger — keep going."
+    ],
+    "stage": {
+      "seed": { "title": "Seed waiting to wake", "subtitle": "Start today — a richer tomorrow" },
+      "sprout": { "title": "Fresh sprout", "subtitle": "Day 1 is hardest — and most worth it" },
+      "seedling": { "title": "Growing seedling", "subtitle": "Consistency is reshaping your money habits" },
+      "sapling": { "title": "Rooted sapling", "subtitle": "Your habit is becoming reliable and repeatable" },
+      "tree": { "title": "Flourishing tree", "subtitle": "You’ve built long-term strength" }
+    }
   },
   "pro": {
     "unlock_income_radar": "Lifetime unlock: income source radar for structure and suggestions."

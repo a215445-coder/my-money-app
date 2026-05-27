@@ -823,11 +823,11 @@ i18n
 
 // 映射其他语言变体到支持的语言
 i18n.on('languageChanged', (lng) => {
-  if (lng?.startsWith('zh')) {
-    i18n.changeLanguage('zh-CN');
-  } else if (lng?.startsWith('en')) {
-    i18n.changeLanguage('en-US');
-  }
+  // Keep language normalized (and prevent infinite recursion).
+  if (!lng) return;
+  const lower = String(lng).toLowerCase();
+  const normalized = lower.startsWith('en') ? 'en-US' : 'zh-CN';
+  if (lng !== normalized) i18n.changeLanguage(normalized);
 });
 
 export default i18n;
