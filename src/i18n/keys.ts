@@ -9,6 +9,9 @@ export const I18N_KEYS = {
     googleLogin: 'login.google_login',
     continueLegal: 'login.continue_legal',
     errorPhone: 'login.error_phone',
+    countryPickerTitle: 'login.country_picker_title',
+    countryPickerClose: 'login.country_picker_close',
+    country: (id: string) => `login.countries.${id}` as const,
   },
   splash: {
     tagline: 'splash.tagline',

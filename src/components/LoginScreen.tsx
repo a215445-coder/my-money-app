@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import PhoneIntlField, { usePhoneIntlLogin } from './PhoneIntlInput';
 
 type LoginScreenProps = {
   onAuthed: () => void;
@@ -10,16 +11,20 @@ type LoginScreenProps = {
 
 export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenProps) {
   const { t } = useTranslation();
-  const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState(false);
+  const phoneIntl = usePhoneIntlLogin();
 
   const tryPhoneLogin = () => {
-    const trimmed = phone.replace(/\s/g, '');
-    if (trimmed.length < 6) {
+    if (!phoneIntl.isNationalValid()) {
       setPhoneError(true);
       return;
     }
     setPhoneError(false);
+    // E.164 预拼：未来 API 可直接读取；当前 mock 登录仍走 onAuthed()
+    const e164 = phoneIntl.getE164();
+    if (e164.length >= 8) {
+      sessionStorage.setItem('login_phone_e164', e164);
+    }
     onAuthed();
   };
 
@@ -54,22 +59,14 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
           <div className="w-full max-w-md rounded-[2rem] border border-white/80 bg-white p-7 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.12),0_8px_24px_-8px_rgba(0,0,0,0.06)]">
             <div className="space-y-3">
               <div>
-                <input
-                  type="tel"
-                  inputMode="tel"
-                  autoComplete="tel"
-                  placeholder={t('login.phone_placeholder')}
-                  value={phone}
-                  onChange={(e) => {
-                    setPhone(e.target.value);
-                    if (phoneError) setPhoneError(false);
-                  }}
-                  onKeyDown={(e) => e.key === 'Enter' && tryPhoneLogin()}
-                  className={`w-full rounded-2xl border bg-zinc-50/90 px-5 py-4 text-[15px] font-bold text-[#1D1D1F] placeholder:text-[#AEAEB2] focus:outline-none focus:ring-4 ${
-                    phoneError
-                      ? 'border-red-300/80 ring-red-500/15'
-                      : 'border-zinc-100 ring-[#1D1D1F]/8 focus:border-zinc-200'
-                  }`}
+                <PhoneIntlField
+                  countryId={phoneIntl.countryId}
+                  nationalNumber={phoneIntl.nationalNumber}
+                  hasError={phoneError}
+                  onCountryChange={phoneIntl.setCountryId}
+                  onNationalChange={phoneIntl.setNationalNumber}
+                  onClearError={() => setPhoneError(false)}
+                  onEnter={tryPhoneLogin}
                 />
                 {phoneError && (
                   <p className="mt-2 px-1 text-xs font-bold text-red-500">{t('login.error_phone')}</p>
