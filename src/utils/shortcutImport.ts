@@ -13,6 +13,8 @@ export type ShortcutImportDraftRow = {
 const DEFAULT_ACCOUNT_ID = 'ac-1';
 const DEVICE_ID_STORAGE_KEY = 'device_id';
 
+const VALID_CATEGORIES: Category[] = ['餐饮', '交通', '购物', '娱乐', '医疗', '教育', '收入', '其他'];
+
 const AMOUNT_GLOBAL_RE =
   /(?:￥|¥|\$|RMB|CNY)\s*(-?\d{1,6}(?:,\d{3})*(?:\.\d{2})?)|(-?\d{1,6}(?:,\d{3})*\.\d{2})\s*元|(?<![\d/.-])(\d{1,6}(?:,\d{3})*\.\d{2})(?!\d)/g;
 
@@ -27,15 +29,7 @@ const INLINE_ROW_RE = /^(.{2,24}?)\s+[-－]?\s*(?:￥|¥|\$)?\s*(\d{1,6}(?:,\d{3
 const SKIP_MERCHANT_RE =
   /支付成功|交易成功|账单详情|零钱|余额|转账|收款|信用卡|储蓄卡|^\d{4}[-/年]/;
 
-function parseAmountStr(raw: string): number {
-  const n = parseFloat(String(raw).replace(/,/g, ''));
-  if (!Number.isFinite(n)) return 0;
-  const abs = Math.abs(n);
-  if (abs < 0.01 || abs > 999_999) return 0;
-  return Math.round(abs * 100) / 100;
-}
-
-function decodeOcrParam(raw: string): string {
+function decodeParam(raw: string): string {
   let text = raw.replace(/\+/g, ' ');
   for (let i = 0; i < 2; i++) {
     try {
@@ -47,6 +41,119 @@ function decodeOcrParam(raw: string): string {
     }
   }
   return text.replace(/\u00a0/g, ' ').trim();
+}
+
+function parseAmountStr(raw: string): number {
+  const n = parseFloat(String(raw).replace(/,/g, ''));
+  if (!Number.isFinite(n)) return 0;
+  const abs = Math.abs(n);
+  if (abs < 0.01 || abs > 999_999) return 0;
+  return Math.round(abs * 100) / 100;
+}
+
+function normalizeCategory(raw: string): Category {
+  const decoded = decodeParam(raw);
+  if ((VALID_CATEGORIES as string[]).includes(decoded)) return decoded as Category;
+  return '其他';
+}
+
+type MenuImportPayload = {
+  amount: number;
+  category: Category;
+  note?: string;
+};
+
+/** ?action=import&type=餐饮&amount=35.5 */
+function readMenuImportFromUrl(): MenuImportPayload | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('action') !== 'import') return null;
+
+  const amountRaw = params.get('amount');
+  const typeRaw = params.get('type');
+  if (!amountRaw || !typeRaw) return null;
+
+  const amount = parseAmountStr(decodeParam(amountRaw));
+  if (amount <= 0) return null;
+
+  const category = normalizeCategory(typeRaw);
+  const noteRaw = params.get('shop') || params.get('note');
+  const note = noteRaw ? decodeParam(noteRaw) : '快捷指令';
+
+  return { amount, category, note };
+}
+
+function readImportOcrFromUrl(): string | null {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('action') !== 'import') return null;
+  const ocrRaw = params.get('ocrData');
+  if (!ocrRaw) return null;
+  return decodeParam(ocrRaw);
+}
+
+function redirectImportResult(status: 'success' | 'error', count: number, message?: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('action');
+  url.searchParams.delete('ocrData');
+  url.searchParams.delete('type');
+  url.searchParams.delete('amount');
+  url.searchParams.delete('shop');
+  url.searchParams.delete('note');
+  url.searchParams.set('importStatus', status);
+  url.searchParams.set('count', String(count));
+  if (message) url.searchParams.set('message', message);
+  else url.searchParams.delete('message');
+  window.location.replace(`${url.pathname}${url.search}${url.hash}`);
+}
+
+function persistTransactionsLocally(newTxs: Transaction[]): void {
+  const savedTx = localStorage.getItem('transactions');
+  const transactions: Transaction[] = savedTx ? JSON.parse(savedTx) : [];
+  localStorage.setItem('transactions', JSON.stringify([...newTxs, ...transactions]));
+
+  const balanceDelta = newTxs.reduce((sum, tx) => {
+    return sum + (tx.type === 'expense' ? -tx.amount : tx.amount);
+  }, 0);
+
+  const savedAcc = localStorage.getItem('accounts');
+  if (!savedAcc) return;
+  const accounts = JSON.parse(savedAcc) as Array<{ id: string; balance: number }>;
+  const nextAcc = accounts.map((acc) =>
+    acc.id === DEFAULT_ACCOUNT_ID ? { ...acc, balance: acc.balance + balanceDelta } : acc
+  );
+  localStorage.setItem('accounts', JSON.stringify(nextAcc));
+}
+
+function buildTransactionFromMenu(menu: MenuImportPayload): Transaction {
+  return {
+    id: crypto.randomUUID(),
+    amount: menu.amount,
+    type: menu.category === '收入' ? 'income' : 'expense',
+    category: menu.category,
+    date: new Date().toISOString(),
+    note: menu.note,
+    accountId: DEFAULT_ACCOUNT_ID,
+    mood: 'happy',
+  };
+}
+
+function toDraftRows(bills: Array<{ amount: number; shop: string; category?: Category }>): ShortcutImportDraftRow[] {
+  const seen = new Set<string>();
+  const rows: ShortcutImportDraftRow[] = [];
+  bills.forEach((bill, index) => {
+    if (bill.amount <= 0) return;
+    const key = `${bill.amount}|${bill.shop}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    rows.push({
+      rowKey: `shortcut-${index}-${Date.now()}`,
+      amount: bill.amount,
+      shop: bill.shop,
+      category: bill.category || '其他',
+    });
+  });
+  return rows;
 }
 
 function extractLabeledAmounts(text: string): Array<{ amount: number; shop: string }> {
@@ -67,24 +174,6 @@ function extractLabeledAmounts(text: string): Array<{ amount: number; shop: stri
   }
 
   return bills;
-}
-
-function toDraftRows(bills: Array<{ amount: number; shop: string }>): ShortcutImportDraftRow[] {
-  const seen = new Set<string>();
-  const rows: ShortcutImportDraftRow[] = [];
-  bills.forEach((bill, index) => {
-    if (bill.amount <= 0) return;
-    const key = `${bill.amount}|${bill.shop}`;
-    if (seen.has(key)) return;
-    seen.add(key);
-    rows.push({
-      rowKey: `shortcut-${index}-${Date.now()}`,
-      amount: bill.amount,
-      shop: bill.shop,
-      category: '其他',
-    });
-  });
-  return rows;
 }
 
 /** 从 OCR 纯文本中用正则提取多笔 { amount, shop } */
@@ -165,46 +254,11 @@ export function parseBillsFromOcrText(raw: string): ShortcutImportDraftRow[] {
   return toDraftRows(bills);
 }
 
-function readImportOcrFromUrl(): string | null {
-  if (typeof window === 'undefined') return null;
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('action') !== 'import') return null;
-  const ocrRaw = params.get('ocrData');
-  if (!ocrRaw) return null;
-  return decodeOcrParam(ocrRaw);
-}
-
-function redirectImportResult(status: 'success' | 'error', count: number, message?: string): void {
-  const url = new URL(window.location.href);
-  url.searchParams.delete('action');
-  url.searchParams.delete('ocrData');
-  url.searchParams.set('importStatus', status);
-  url.searchParams.set('count', String(count));
-  if (message) url.searchParams.set('message', message);
-  else url.searchParams.delete('message');
-  window.location.replace(`${url.pathname}${url.search}${url.hash}`);
-}
-
-function persistTransactionsLocally(newTxs: Transaction[]): void {
-  const savedTx = localStorage.getItem('transactions');
-  const transactions: Transaction[] = savedTx ? JSON.parse(savedTx) : [];
-  localStorage.setItem('transactions', JSON.stringify([...newTxs, ...transactions]));
-
-  const totalExpense = newTxs.reduce((sum, tx) => sum + tx.amount, 0);
-  const savedAcc = localStorage.getItem('accounts');
-  if (!savedAcc) return;
-  const accounts = JSON.parse(savedAcc) as Array<{ id: string; balance: number }>;
-  const nextAcc = accounts.map((acc) =>
-    acc.id === DEFAULT_ACCOUNT_ID ? { ...acc, balance: acc.balance - totalExpense } : acc
-  );
-  localStorage.setItem('accounts', JSON.stringify(nextAcc));
-}
-
 function rowsToTransactions(rows: ShortcutImportDraftRow[]): Transaction[] {
   return rows.map((row) => ({
     id: crypto.randomUUID(),
     amount: row.amount,
-    type: 'expense' as const,
+    type: row.category === '收入' ? ('income' as const) : ('expense' as const),
     category: row.category,
     date: new Date().toISOString(),
     note: row.shop || undefined,
@@ -213,34 +267,50 @@ function rowsToTransactions(rows: ShortcutImportDraftRow[]): Transaction[] {
   }));
 }
 
+async function persistAndSync(newTxs: Transaction[]): Promise<void> {
+  persistTransactionsLocally(newTxs);
+  const deviceId = getOrCreateDeviceId(DEVICE_ID_STORAGE_KEY);
+  try {
+    await billsRepo.upsertMany(supabase, deviceId, newTxs);
+  } catch (e) {
+    console.warn('[bills] silent import upsert failed', e);
+  }
+}
+
 /**
- * 静默导入：解析 ocrData → 写入 localStorage → 同步 Supabase → 重定向到结果页。
- * @returns true 表示已处理（将发生重定向，不应再挂载主 UI）
+ * 静默导入（无 UI）：
+ * 1. ?action=import&type=分类&amount=金额（快捷指令原生菜单）
+ * 2. ?action=import&ocrData=...（OCR 批量，兼容旧方案）
  */
 export async function executeSilentShortcutImport(): Promise<boolean> {
   if (typeof window === 'undefined') return false;
 
-  const ocrText = readImportOcrFromUrl();
-  if (!ocrText) return false;
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('action') !== 'import') return false;
 
   try {
-    const rows = parseBillsFromOcrText(ocrText).filter((r) => r.amount > 0);
-    if (rows.length === 0) {
-      redirectImportResult('error', 0, encodeURIComponent('未识别到有效金额'));
+    const menu = readMenuImportFromUrl();
+    if (menu) {
+      const newTx = buildTransactionFromMenu(menu);
+      await persistAndSync([newTx]);
+      redirectImportResult('success', 1);
       return true;
     }
 
-    const newTxs = rowsToTransactions(rows);
-    persistTransactionsLocally(newTxs);
-
-    const deviceId = getOrCreateDeviceId(DEVICE_ID_STORAGE_KEY);
-    try {
-      await billsRepo.upsertMany(supabase, deviceId, newTxs);
-    } catch (e) {
-      console.warn('[bills] silent import upsert failed', e);
+    const ocrText = readImportOcrFromUrl();
+    if (ocrText) {
+      const rows = parseBillsFromOcrText(ocrText).filter((r) => r.amount > 0);
+      if (rows.length === 0) {
+        redirectImportResult('error', 0, encodeURIComponent('未识别到有效金额'));
+        return true;
+      }
+      const newTxs = rowsToTransactions(rows);
+      await persistAndSync(newTxs);
+      redirectImportResult('success', newTxs.length);
+      return true;
     }
 
-    redirectImportResult('success', newTxs.length);
+    redirectImportResult('error', 0, encodeURIComponent('缺少 type/amount 或 ocrData 参数'));
     return true;
   } catch (err) {
     const message = encodeURIComponent(err instanceof Error ? err.message : String(err));
