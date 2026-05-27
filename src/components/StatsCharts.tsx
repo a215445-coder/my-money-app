@@ -336,6 +336,7 @@ export default function StatsCharts() {
   };
 
   const hasData = filteredTransactions.length > 0;
+  const hasExpenseData = filteredTransactions.some((t) => t.type === 'expense');
 
   // ── Area chart category colors ──
   const areaColors: Record<string, string> = {
@@ -408,6 +409,15 @@ export default function StatsCharts() {
               <span className="text-xs font-black text-[#1D1D1F]">消费足迹 · 支出分类雷达</span>
             </div>
 
+            {!hasExpenseData ? (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-[#F2F2F7] flex items-center justify-center mb-4">
+                  <Inbox size={28} className="text-[#6E6E73]" />
+                </div>
+                <p className="text-base font-black text-[#1D1D1F] mb-1">暂无支出记录</p>
+                <p className="text-xs font-bold text-[#6E6E73]">当前时段没有支出数据，去记一笔支出吧 📝</p>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {/* ── Radar Chart ── */}
               <div className="lg:col-span-2 h-72">
@@ -504,6 +514,7 @@ export default function StatsCharts() {
                 </div>
               </div>
             </div>
+            )}
           </motion.div>
 
           {/* ════════════════════════════════════════════════════════
