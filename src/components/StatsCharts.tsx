@@ -129,7 +129,7 @@ const EmptyState = () => (
     <p className="text-sm font-bold text-[#6E6E73] text-center max-w-xs">快去记一笔账吧！你的财务故事从这里开始 📝</p>
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }} className="mt-8 flex space-x-2">
       {['💰', '📊', '🎯'].map((emoji, i) => (
-        <motion.span key={emoji} initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 + i * 0.1 }} className="text-2xl">{emoji}</motion.span>
+        <motion.span key={`emoji-${emoji}`} initial={{ y: 10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.5 + i * 0.1 }} className="text-2xl">{emoji}</motion.span>
       ))}
     </motion.div>
   </motion.div>
@@ -418,69 +418,72 @@ export default function StatsCharts() {
                 <p className="text-xs font-bold text-[#6E6E73]">当前时段没有支出数据，去记一笔支出吧 📝</p>
               </div>
             ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="space-y-3 w-full">
               {/* ── Radar Chart ── */}
-              <div className="lg:col-span-2 h-72">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
-                    <PolarGrid stroke="#E8E8ED" />
-                    <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fontWeight: 'bold', fill: '#6E6E73' }} />
-                    <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
-                    <Radar
-                      name="本月"
-                      dataKey="本月"
-                      stroke={COLORS.orange}
-                      fill={COLORS.orange}
-                      fillOpacity={0.25}
-                      strokeWidth={2}
-                    />
-                    <Radar
-                      name="上月"
-                      dataKey="上月"
-                      stroke={COLORS.purple}
-                      fill={COLORS.purple}
-                      fillOpacity={0.2}
-                      strokeWidth={2}
-                      strokeDasharray="4 4"
-                    />
-                    <RechartsTooltip content={<CustomTooltip />} />
-                    <Legend
-                      wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '4px' }}
-                      iconType="circle"
-                      iconSize={8}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
+              <div className="w-full lg:col-span-2" style={{ height: '320px' }}>
+                <RadarChart
+                  data={radarData}
+                  width={typeof window !== 'undefined' ? Math.max(window.innerWidth * 0.6, 300) : 400}
+                  height={320}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius="70%"
+                >
+                  <PolarGrid stroke="#E8E8ED" />
+                  <PolarAngleAxis dataKey="category" tick={{ fontSize: 11, fontWeight: 'bold', fill: '#6E6E73' }} />
+                  <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={false} axisLine={false} />
+                  <Radar
+                    name="本月"
+                    dataKey="本月"
+                    stroke={COLORS.orange}
+                    fill={COLORS.orange}
+                    fillOpacity={0.25}
+                    strokeWidth={2}
+                  />
+                  <Radar
+                    name="上月"
+                    dataKey="上月"
+                    stroke={COLORS.purple}
+                    fill={COLORS.purple}
+                    fillOpacity={0.2}
+                    strokeWidth={2}
+                    strokeDasharray="4 4"
+                  />
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  <Legend
+                    wrapperStyle={{ fontSize: '10px', fontWeight: 'bold', paddingTop: '4px' }}
+                    iconType="circle"
+                    iconSize={8}
+                  />
+                </RadarChart>
               </div>
 
               {/* ── Mini Pie + Stacked Area ── */}
-              <div className="space-y-3">
+              <div className="flex gap-3 w-full">
                 {/* Mini Pie */}
-                <div className="bg-[#F9FAFB] rounded-xl p-3">
+                <div className="bg-[#F9FAFB] rounded-xl p-3 flex-1">
                   <p className="text-[9px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">本月总占比</p>
-                  <div className="h-28">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={pieData.slice(0, 5)}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={28}
-                          outerRadius={42}
-                          paddingAngle={2}
-                        >
-                          {pieData.slice(0, 5).map((entry, idx) => (
-                            <Cell key={idx} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
+                  <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <PieChart width={160} height={140}>
+                      <Pie
+                        data={pieData.slice(0, 5)}
+                        dataKey="value"
+                        nameKey="name"
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={28}
+                        outerRadius={42}
+                        paddingAngle={2}
+                      >
+                        {pieData.slice(0, 5).map((entry, idx) => (
+                          <Cell key={`cell-${idx}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                    </PieChart>
                   </div>
                   <div className="flex flex-wrap gap-x-2 gap-y-0.5 justify-center">
                     {pieData.slice(0, 5).map((item) => (
-                      <span key={item.name} className="text-[8px] font-bold text-[#6E6E73] flex items-center gap-1">
+                      <span key={`legend-${item.name}`} className="text-[8px] font-bold text-[#6E6E73] flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: item.color }} />
                         {item.name}
                       </span>
@@ -489,27 +492,25 @@ export default function StatsCharts() {
                 </div>
 
                 {/* Mini Stacked Area */}
-                <div className="bg-[#F9FAFB] rounded-xl p-3">
+                <div className="bg-[#F9FAFB] rounded-xl p-3 flex-1">
                   <p className="text-[9px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">近30天分类趋势</p>
-                  <div className="h-28">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={areaData}>
-                        <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#E8E8ED" />
-                        <XAxis dataKey="date" tick={false} axisLine={false} />
-                        <YAxis tick={false} axisLine={false} />
-                        {Object.keys(areaColors).map((cat) => (
-                          <Area
-                            key={cat}
-                            type="monotone"
-                            dataKey={cat}
-                            stackId="1"
-                            stroke={areaColors[cat]}
-                            fill={areaColors[cat]}
-                            fillOpacity={0.6}
-                          />
-                        ))}
-                      </AreaChart>
-                    </ResponsiveContainer>
+                  <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <AreaChart width={160} height={140} data={areaData}>
+                      <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#E8E8ED" />
+                      <XAxis dataKey="date" tick={false} axisLine={false} />
+                      <YAxis tick={false} axisLine={false} />
+                      {Object.keys(areaColors).map((cat) => (
+                        <Area
+                          key={`area-${cat}`}
+                          type="monotone"
+                          dataKey={cat}
+                          stackId="1"
+                          stroke={areaColors[cat]}
+                          fill={areaColors[cat]}
+                          fillOpacity={0.6}
+                        />
+                      ))}
+                    </AreaChart>
                   </div>
                 </div>
               </div>
@@ -546,60 +547,63 @@ export default function StatsCharts() {
             </div>
 
             {/* Combined Chart: Stacked Bars + Income/Expense Lines */}
-            <div className="w-full h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={combinedData} margin={{ top: 4, right: 8, left: -16, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F2F7" />
-                  <XAxis
-                    dataKey="dayLabel"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fontWeight: 'bold', fill: '#6E6E73' }}
-                    dy={6}
-                    interval={2}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fontSize: 9, fontWeight: 'bold', fill: '#6E6E73' }}
-                    dx={-2}
-                    tickFormatter={(v: number) => `¥${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0)}`}
-                  />
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Legend
-                    wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', paddingTop: '6px' }}
-                    iconType="circle"
-                    iconSize={6}
-                  />
+            <div style={{ height: '380px', overflow: 'auto' }}>
+              <ComposedChart
+                data={combinedData}
+                width={typeof window !== 'undefined' ? window.innerWidth - 60 : 500}
+                height={380}
+                margin={{ top: 10, right: 20, left: 40, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F2F7" />
+                <XAxis
+                  dataKey="dayLabel"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fontWeight: 'bold', fill: '#6E6E73' }}
+                  dy={6}
+                  interval={2}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fontWeight: 'bold', fill: '#6E6E73' }}
+                  dx={-2}
+                  tickFormatter={(v: number) => `¥${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v.toFixed(0)}`}
+                />
+                <RechartsTooltip content={<CustomTooltip />} />
+                <Legend
+                  wrapperStyle={{ fontSize: '9px', fontWeight: 'bold', paddingTop: '6px' }}
+                  iconType="circle"
+                  iconSize={6}
+                />
 
-                  {/* Stacked Bars */}
-                  <Bar dataKey="餐饮" stackId="expense" fill="#F97316" barSize={10} radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="交通" stackId="expense" fill="#3B82F6" barSize={10} radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="购物" stackId="expense" fill="#A855F7" barSize={10} radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="娱乐" stackId="expense" fill="#EC4899" barSize={10} radius={[0, 0, 0, 0]} />
-                  <Bar dataKey="其他" stackId="expense" fill="#64748B" barSize={10} radius={[2, 2, 0, 0]} />
+                {/* Stacked Bars */}
+                <Bar dataKey="餐饮" stackId="expense" fill="#F97316" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="交通" stackId="expense" fill="#3B82F6" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="购物" stackId="expense" fill="#A855F7" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="娱乐" stackId="expense" fill="#EC4899" barSize={10} radius={[0, 0, 0, 0]} />
+                <Bar dataKey="其他" stackId="expense" fill="#64748B" barSize={10} radius={[2, 2, 0, 0]} />
 
-                  {/* Income Line */}
-                  <Line
-                    type="monotone"
-                    dataKey="Income"
-                    stroke="#F97316"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#F97316' }}
-                  />
+                {/* Income Line */}
+                <Line
+                  type="monotone"
+                  dataKey="Income"
+                  stroke="#F97316"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4, fill: '#F97316' }}
+                />
 
-                  {/* Expense Line */}
-                  <Line
-                    type="monotone"
-                    dataKey="Expense"
-                    stroke="#A855F7"
-                    strokeWidth={2.5}
-                    dot={false}
-                    activeDot={{ r: 4, fill: '#A855F7' }}
-                  />
-                </ComposedChart>
-              </ResponsiveContainer>
+                {/* Expense Line */}
+                <Line
+                  type="monotone"
+                  dataKey="Expense"
+                  stroke="#A855F7"
+                  strokeWidth={2.5}
+                  dot={false}
+                  activeDot={{ r: 4, fill: '#A855F7' }}
+                />
+              </ComposedChart>
             </div>
           </motion.div>
         </>
