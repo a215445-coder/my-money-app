@@ -90,7 +90,6 @@ import { I18N_KEYS } from './i18n/keys';
 import { LiquidGlass } from '@ybouane/liquidglass';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 import StatsCharts from './components/StatsCharts';
-import HomeEdgeGlow from './components/HomeEdgeGlow';
 import LoginScreen from './components/LoginScreen';
 import AiBookkeepingChat from './components/AiBookkeepingChat';
 import { parseBillIntent, type ParsedBillIntent } from './utils/parseBillIntent';
@@ -381,7 +380,6 @@ export default function App() {
 
   const [isAuthed, setIsAuthed] = useState(() => sessionStorage.getItem(SESSION_AUTH_KEY) === 'true');
   const [loginFadeOut, setLoginFadeOut] = useState(false);
-  const [showHomeEdgeGlow, setShowHomeEdgeGlow] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
@@ -2348,7 +2346,6 @@ export default function App() {
   const handleLoginSuccess = useCallback(() => {
     localStorage.setItem('auth_done', 'true');
     sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
-    setShowHomeEdgeGlow(true);
     setLoginFadeOut(true);
     setIsAuthed(true);
     window.setTimeout(() => setLoginFadeOut(false), 450);
@@ -2360,7 +2357,6 @@ export default function App() {
     sessionStorage.removeItem('login_phone_e164');
     setIsAuthed(false);
     setLoginFadeOut(false);
-    setShowHomeEdgeGlow(false);
     setIsLogoutDialogOpen(false);
     setIsBudgetModalOpen(false);
     setIsMenuOpen(false);
@@ -2376,9 +2372,6 @@ export default function App() {
 
   return (
     <>
-    {showHomeEdgeGlow && (
-      <HomeEdgeGlow onComplete={() => setShowHomeEdgeGlow(false)} />
-    )}
     {loginFadeOut && <LoginScreen exiting onAuthed={() => {}} />}
     <motion.div
       initial={{ opacity: 0 }}
