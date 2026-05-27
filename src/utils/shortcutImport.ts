@@ -21,6 +21,16 @@ const INLINE_ROW_RE = /^(.{2,24}?)\s+[-－]?\s*(?:￥|¥|\$)?\s*(\d{1,6}(?:,\d{3
 const SKIP_MERCHANT_RE =
   /支付成功|交易成功|账单详情|零钱|余额|转账|收款|信用卡|储蓄卡|^\d{4}[-/年]/;
 
+function debugAlert(message: string): void {
+  if (typeof window === 'undefined') return;
+  window.alert(message);
+}
+
+function debugAlertError(err: unknown): void {
+  const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
+  debugAlert(`快捷指令导入错误：${message}`);
+}
+
 function parseAmountStr(raw: string): number {
   const n = parseFloat(String(raw).replace(/,/g, ''));
   if (!Number.isFinite(n)) return 0;
@@ -159,7 +169,6 @@ export function parseBillsFromOcrText(raw: string): ShortcutImportDraftRow[] {
   const rows = toDraftRows(bills);
   if (rows.length > 0) return rows;
 
-  // 兜底：有 ocrData 但未识别到金额时，仍弹出可编辑空行
   const firstLine = lines.find((l) => l.length >= 2 && !SKIP_MERCHANT_RE.test(l)) || '';
   return [
     {
@@ -171,30 +180,65 @@ export function parseBillsFromOcrText(raw: string): ShortcutImportDraftRow[] {
   ];
 }
 
-/** 读取 ?action=import&ocrData=...；只要参数存在就返回可编辑行（绝不返回 null） */
-export function parseShortcutImportFromUrl(): ShortcutImportDraftRow[] | null {
+function getOcrRawFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
-  if (params.get('action') !== 'import') return null;
+  return params.get('ocrData');
+}
 
-  const ocrRaw = params.get('ocrData');
-  if (!ocrRaw) return null;
+/** App 启动最早阶段探测：仅确认 URL 是否带上 ocrData（React 挂载前） */
+export function probeShortcutImportOnBoot(): void {
+  try {
+    const ocrRaw = getOcrRawFromUrl();
+    if (!ocrRaw) return;
+    debugAlert('已成功接收到快捷指令数据！');
+  } catch (err) {
+    debugAlertError(err);
+  }
+}
 
-  const text = decodeOcrParam(ocrRaw);
-  return parseBillsFromOcrText(text);
+function alertRegexMatchResult(rows: ShortcutImportDraftRow[], rawText: string): void {
+  const matched = rows.filter((r) => r.amount > 0);
+  if (matched.length > 0) {
+    const amounts = matched.map((r) => r.amount).join(', ');
+    debugAlert(`成功匹配到金额：${amounts}`);
+    return;
+  }
+  const preview = rawText.length > 300 ? `${rawText.slice(0, 300)}...` : rawText;
+  debugAlert(`正则匹配失败，收到的原始文本是：${preview}`);
+}
+
+/** 读取 ?ocrData=...（兼容 ?action=import&ocrData=...） */
+export function parseShortcutImportFromUrl(): ShortcutImportDraftRow[] | null {
+  try {
+    const ocrRaw = getOcrRawFromUrl();
+    if (!ocrRaw) return null;
+
+    debugAlert('已成功接收到快捷指令数据！');
+
+    const text = decodeOcrParam(ocrRaw);
+    const rows = parseBillsFromOcrText(text);
+    alertRegexMatchResult(rows, text);
+    return rows;
+  } catch (err) {
+    debugAlertError(err);
+    return null;
+  }
 }
 
 export function hasShortcutImportUrl(): boolean {
-  if (typeof window === 'undefined') return false;
-  const params = new URLSearchParams(window.location.search);
-  return params.get('action') === 'import' && !!params.get('ocrData');
+  return !!getOcrRawFromUrl();
 }
 
 export function clearShortcutImportUrlParams(): void {
-  if (typeof window === 'undefined') return;
-  const url = new URL(window.location.href);
-  url.searchParams.delete('action');
-  url.searchParams.delete('ocrData');
-  const next = `${url.pathname}${url.search}${url.hash}`;
-  window.history.replaceState({}, '', next);
+  try {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete('action');
+    url.searchParams.delete('ocrData');
+    const next = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState({}, '', next);
+  } catch (err) {
+    debugAlertError(err);
+  }
 }

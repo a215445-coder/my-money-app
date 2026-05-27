@@ -2182,8 +2182,15 @@ export default function App() {
 
   // iOS Shortcuts: ?action=import&ocrData=<url-encoded OCR plain text>
   useEffect(() => {
-    const rows = parseShortcutImportFromUrl();
-    if (rows && rows.length > 0) setShortcutImportRows(rows);
+    try {
+      const rows = parseShortcutImportFromUrl();
+      if (rows && rows.length > 0) {
+        setShortcutImportRows(rows);
+        setShowSplash(false);
+      }
+    } catch (err) {
+      window.alert(`快捷指令导入错误：${err instanceof Error ? err.message : String(err)}`);
+    }
   }, []);
 
   const dismissShortcutImport = useCallback(() => {
