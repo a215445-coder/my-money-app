@@ -964,3 +964,81 @@ input[type="submit"]:active:not(:disabled) {
   color: #1d1d1f !important;
   font-weight: 600 !important;
 }
+
+/* ── 登录入场：主屏边缘 Apple Intelligence 流光 ── */
+@property --home-edge-glow-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes home-edge-glow-run {
+  to {
+    --home-edge-glow-angle: 360deg;
+  }
+}
+
+.home-edge-glow {
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.home-edge-glow-ring {
+  position: absolute;
+  inset: 0;
+  padding: 2.5px;
+  background: conic-gradient(
+    from var(--home-edge-glow-angle),
+    rgba(255, 130, 195, 0.92) 0deg,
+    rgba(186, 132, 255, 0.88) 55deg,
+    rgba(118, 178, 255, 0.9) 115deg,
+    rgba(96, 214, 200, 0.72) 175deg,
+    rgba(168, 132, 255, 0.85) 235deg,
+    rgba(255, 148, 205, 0.88) 295deg,
+    rgba(255, 130, 195, 0.92) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: home-edge-glow-run 1.75s linear forwards;
+  filter: drop-shadow(0 0 14px rgba(167, 139, 250, 0.28));
+}
+
+.home-edge-glow-soft {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow:
+    inset 0 0 28px rgba(167, 139, 250, 0.12),
+    inset 0 0 48px rgba(96, 165, 250, 0.08);
+  animation: home-edge-glow-soft-pulse 1.75s ease-out forwards;
+}
+
+@keyframes home-edge-glow-soft-pulse {
+  0% {
+    opacity: 0.35;
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-edge-glow-ring {
+    animation-duration: 0.01ms;
+  }
+
+  .home-edge-glow-soft {
+    animation-duration: 0.01ms;
+  }
+}

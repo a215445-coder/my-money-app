@@ -89,6 +89,7 @@ import { I18N_KEYS } from './i18n/keys';
 import { LiquidGlass } from '@ybouane/liquidglass';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 import StatsCharts from './components/StatsCharts';
+import HomeEdgeGlow from './components/HomeEdgeGlow';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -431,6 +432,7 @@ export default function App() {
   const [groupJoinCode, setGroupJoinCode] = useState('');
 
   const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
+  const [showHomeEdgeGlow, setShowHomeEdgeGlow] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
@@ -2413,6 +2415,7 @@ export default function App() {
       <LoginScreen
         onAuthed={() => {
           localStorage.setItem('auth_done', 'true');
+          setShowHomeEdgeGlow(true);
           setIsAuthed(true);
         }}
       />
@@ -2426,6 +2429,9 @@ export default function App() {
         cn(theme.appBg, theme.appText)
       )}
     >
+      {showHomeEdgeGlow && (
+        <HomeEdgeGlow onComplete={() => setShowHomeEdgeGlow(false)} />
+      )}
       {/* Privacy Lock Screen */}
       {isLocked && (
         <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", "lux-carbon text-[#111111]")}>
