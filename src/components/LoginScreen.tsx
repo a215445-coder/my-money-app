@@ -1,24 +1,76 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import PhoneIntlField, { usePhoneIntlLogin } from './PhoneIntlInput';
 import type { PhoneCountryId } from './phoneCountries';
 import { nationalPhoneDigits } from './phoneNationalLengthRules';
+import AppleSignInButton from './login/AppleSignInButton';
+import { GoogleIconButton, WeChatIconButton } from './login/SocialIconButton';
+import { handleAppleSignIn, handleSendCaptcha } from '../utils/loginAuthMocks';
 
 type LoginScreenProps = {
   onAuthed: () => void;
   exiting?: boolean;
 };
 
+const CAPTCHA_COOLDOWN_SEC = 60;
+const LOGIN_BTN_RADIUS = 'rounded-2xl';
+
 export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenProps) {
   const { t } = useTranslation();
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [captchaCooldown, setCaptchaCooldown] = useState(0);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const phoneIntl = usePhoneIntlLogin();
 
   const showPhoneError =
     (phoneTouched || submitAttempted) && !phoneIntl.isNationalValid();
+
+  const clearCooldownTimer = useCallback(() => {
+    if (cooldownTimerRef.current !== null) {
+      window.clearInterval(cooldownTimerRef.current);
+      cooldownTimerRef.current = null;
+    }
+  }, []);
+
+  const startCaptchaCooldown = useCallback(() => {
+    clearCooldownTimer();
+    setCaptchaCooldown(CAPTCHA_COOLDOWN_SEC);
+    cooldownTimerRef.current = window.setInterval(() => {
+      setCaptchaCooldown((prev) => {
+        if (prev <= 1) {
+          clearCooldownTimer();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [clearCooldownTimer]);
+
+  useEffect(() => () => clearCooldownTimer(), [clearCooldownTimer]);
+
+  const onSendCaptchaClick = useCallback(async () => {
+    if (captchaCooldown > 0) return;
+    const phoneE164 = phoneIntl.getE164();
+    const result = await handleSendCaptcha(phoneE164);
+    if (result.success) {
+      startCaptchaCooldown();
+    }
+  }, [captchaCooldown, phoneIntl, startCaptchaCooldown]);
+
+  const onAppleSignInClick = useCallback(async () => {
+    if (appleLoading) return;
+    setAppleLoading(true);
+    try {
+      await handleAppleSignIn();
+    } finally {
+      setAppleLoading(false);
+    }
+  }, [appleLoading]);
 
   const handleNationalChange = (value: string) => {
     phoneIntl.setNationalNumber(value);
@@ -50,6 +102,8 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
     }
     onAuthed();
   };
+
+  const captchaBtnDisabled = captchaCooldown > 0;
 
   return (
     <motion.div
@@ -107,29 +161,65 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
                 </AnimatePresence>
               </div>
 
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  placeholder={t('login.captcha_placeholder')}
+                  value={captchaCode}
+                  onChange={(e) => setCaptchaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  className={`min-w-0 flex-1 border border-zinc-100 bg-zinc-50/90 px-4 py-4 text-[15px] font-bold text-[#1D1D1F] placeholder:text-[#AEAEB2] shadow-[0_4px_20px_-8px_rgba(0,0,0,0.06)] focus:border-zinc-200 focus:outline-none focus:ring-4 focus:ring-[#1D1D1F]/8 ${LOGIN_BTN_RADIUS}`}
+                />
+                <button
+                  type="button"
+                  disabled={captchaBtnDisabled}
+                  onClick={() => void onSendCaptchaClick()}
+                  className={`shrink-0 px-3.5 py-4 text-[12px] font-black whitespace-nowrap transition-all active:scale-[0.98] disabled:cursor-not-allowed ${LOGIN_BTN_RADIUS} ${
+                    captchaBtnDisabled
+                      ? 'bg-zinc-200 text-[#AEAEB2]'
+                      : 'bg-[#1D1D1F] text-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.35)]'
+                  }`}
+                >
+                  {captchaBtnDisabled
+                    ? t('login.captcha_retry', { seconds: captchaCooldown })
+                    : t('login.send_captcha')}
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={tryPhoneLogin}
-                className="w-full rounded-2xl bg-[#1D1D1F] py-4 text-sm font-black text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.45)] transition-transform active:scale-[0.98]"
+                className={`w-full ${LOGIN_BTN_RADIUS} bg-[#1D1D1F] py-4 text-sm font-black text-white shadow-[0_12px_32px_-8px_rgba(0,0,0,0.45)] transition-transform active:scale-[0.98]`}
               >
                 {t('login.phone_login')}
               </button>
 
-              <div className="grid grid-cols-2 gap-3 pt-1">
-                <button
-                  type="button"
+              <div className="flex items-center gap-3 pt-1">
+                <span className="h-px flex-1 bg-zinc-100" aria-hidden />
+                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#AEAEB2]">
+                  {t('login.or_continue_with')}
+                </span>
+                <span className="h-px flex-1 bg-zinc-100" aria-hidden />
+              </div>
+
+              <AppleSignInButton
+                label={t('login.sign_in_with_apple')}
+                loadingLabel={t('login.apple_signing_in')}
+                loading={appleLoading}
+                onClick={() => void onAppleSignInClick()}
+              />
+
+              <div className="flex items-center justify-center gap-4 pt-0.5">
+                <WeChatIconButton
+                  label={t('login.wechat_login')}
                   onClick={onAuthed}
-                  className="rounded-2xl border border-zinc-100 bg-zinc-50 py-3.5 text-xs font-black text-[#1D1D1F] shadow-[0_6px_20px_-10px_rgba(0,0,0,0.08)] transition-transform active:scale-[0.98]"
-                >
-                  {t('login.wechat_login')}
-                </button>
-                <button
-                  type="button"
+                />
+                <GoogleIconButton
+                  label={t('login.google_login')}
                   onClick={onAuthed}
-                  className="rounded-2xl border border-zinc-100 bg-zinc-50 py-3.5 text-xs font-black text-[#1D1D1F] shadow-[0_6px_20px_-10px_rgba(0,0,0,0.08)] transition-transform active:scale-[0.98]"
-                >
-                  {t('login.google_login')}
-                </button>
+                />
               </div>
             </div>
           </div>
