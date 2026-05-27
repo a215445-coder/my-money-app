@@ -25,8 +25,8 @@ function mapAuthErrorMessage(error: AuthError | null, fallback: string): string 
   ) {
     return '无法连接 Supabase 认证服务，请检查 .env 中的 VITE_SUPABASE_URL 是否与控制台完全一致，并重启 npm run dev';
   }
-  if (msg.includes('invalid api key') || msg.includes('api key')) {
-    return 'Supabase 公钥无效，请检查 VITE_SUPABASE_ANON_KEY（应使用 anon / publishable 密钥）';
+  if (msg.includes('invalid api key') || msg.includes('unregistered api key')) {
+    return 'Supabase 公钥无效。请打开控制台 → Project Settings → API Keys，复制 Publishable key（sb_publishable_…）或 Legacy anon key（eyJ…）到 .env 的 VITE_SUPABASE_ANON_KEY，保存后重启 npm run dev';
   }
   if (msg.includes('phone provider') || msg.includes('sms provider') || msg.includes('twilio')) {
     return '短信通道未就绪：请在 Supabase 控制台 Authentication → Phone 中配置 Twilio';
@@ -40,16 +40,17 @@ function mapAuthErrorMessage(error: AuthError | null, fallback: string): string 
   return error.message;
 }
 
+/** 仅检测网络/DNS；Supabase /auth/v1/health 常返回 401，不能当作不可用 */
 async function assertSupabaseReachable(): Promise<AuthActionResult | null> {
   if (!supabaseUrl) {
     return { success: false, message: '未配置 VITE_SUPABASE_URL' };
   }
   try {
     const res = await fetch(`${supabaseUrl}/auth/v1/health`, { method: 'GET' });
-    if (!res.ok) {
+    if (res.status === 404) {
       return {
         success: false,
-        message: `Supabase 认证服务异常（HTTP ${res.status}），请核对项目 URL 与密钥`,
+        message: 'Supabase 项目 URL 不存在（404），请核对 VITE_SUPABASE_URL',
       };
     }
     return null;
@@ -57,7 +58,7 @@ async function assertSupabaseReachable(): Promise<AuthActionResult | null> {
     return {
       success: false,
       message:
-        'Supabase 项目地址无法访问（DNS/URL 错误）。请打开 Supabase 控制台 → Project Settings → API，复制 Project URL 覆盖 .env 后重启开发服务',
+        'Supabase 项目地址无法访问（DNS/URL 错误）。请打开控制台 → Project Settings → API，复制 Project URL 到 .env 后重启 npm run dev',
     };
   }
 }
