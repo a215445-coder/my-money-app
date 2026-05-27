@@ -486,10 +486,23 @@ export default function App() {
     localStorage.setItem(SAVING_CHALLENGE_STREAK_KEY, String(savingChallengeStreak));
   }, [savingChallengeStreak]);
 
-  useEffect(() => {
-    if (activeTab === 'discovery') {
-      setWealthTip(wealthTips[Math.floor(Math.random() * wealthTips.length)] || '');
+  const pickRandomWealthTip = useCallback(() => {
+    if (!wealthTips.length) return;
+    if (wealthTips.length === 1) {
+      setWealthTip(wealthTips[0] || '');
+      return;
     }
+    let next = wealthTips[Math.floor(Math.random() * wealthTips.length)] || '';
+    while (next === wealthTip) {
+      next = wealthTips[Math.floor(Math.random() * wealthTips.length)] || '';
+    }
+    setWealthTip(next);
+  }, [wealthTips, wealthTip]);
+
+  useEffect(() => {
+    if (activeTab !== 'discovery') return;
+    if (!wealthTips.length) return;
+    setWealthTip(wealthTips[Math.floor(Math.random() * wealthTips.length)] || '');
   }, [activeTab, wealthTips]);
 
   const [dividendYield, setDividendYield] = useState<number>(128.45);
@@ -699,7 +712,6 @@ export default function App() {
     document.body.removeChild(textarea);
   };
 
-  const wealthMarquee = useMemo(() => wealthTips.join('  ·  '), [wealthTips]);
 
   // --- Settings & i18n ---
   const isDarkMode = false;
@@ -3098,30 +3110,27 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Tips Marquee */}
-                  <div className={cn(
-                    "rounded-[2.5rem] p-6 border shadow-sm overflow-hidden",
-                    isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
-                  )}>
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-2">
-                        <Smile size={18} className={cn(isDarkMode ? "text-[#6E6E73]" : "text-gray-700")} />
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('saving_tips')}</span>
-                      </div>
-                      <span className={cn("text-[10px] font-black", isDarkMode ? "text-[#86868B]" : "text-gray-400")}>“{wealthTip}”</span>
+                  {/* Saving tips — fixed quote, random on each visit */}
+                  <motion.button
+                    type="button"
+                    key={wealthTip}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                    onClick={pickRandomWealthTip}
+                    className={cn(
+                      "w-full text-left rounded-[2.5rem] p-6 border shadow-sm transition-all active:scale-[0.99]",
+                      isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-50"
+                    )}
+                  >
+                    <div className="flex items-center gap-2 mb-3">
+                      <Smile size={18} className={cn(isDarkMode ? "text-[#6E6E73]" : "text-gray-700")} />
+                      <span className={cn("text-[10px] font-black uppercase tracking-widest", isDarkMode ? "text-white/50" : "text-gray-400")}>{t('saving_tips')}</span>
                     </div>
-                    <div className="relative overflow-hidden">
-                      <motion.div
-                        animate={{ x: ['0%', '-50%'] }}
-                        transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
-                        className={cn("whitespace-nowrap text-sm font-black", isDarkMode ? "text-[#6E6E73]" : "text-gray-700")}
-                      >
-                        <span>{wealthMarquee}</span>
-                        <span className="mx-6 opacity-60">·</span>
-                        <span>{wealthMarquee}</span>
-                      </motion.div>
-                    </div>
-                  </div>
+                    <p className={cn("text-sm font-bold leading-relaxed break-words", isDarkMode ? "text-[#E5E5EA]" : "text-zinc-700")}>
+                      “{wealthTip}”
+                    </p>
+                  </motion.button>
                 </div>
               )}
 
