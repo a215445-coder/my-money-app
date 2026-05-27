@@ -1001,9 +1001,30 @@ input[type="submit"]:active:not(:disabled) {
 }
 
 .home-edge-glow {
-  overflow: hidden;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  z-index: 9999 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
   isolation: isolate;
-  border-radius: 44px;
+  box-sizing: border-box !important;
+  border-radius: 48px;
+}
+
+@supports (corner-shape: squircle) {
+  .home-edge-glow,
+  .home-edge-glow-ring,
+  .home-edge-glow-soft {
+    corner-shape: squircle;
+  }
 }
 
 .home-edge-glow-ring {

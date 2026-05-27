@@ -2376,6 +2376,9 @@ export default function App() {
 
   return (
     <>
+    {showHomeEdgeGlow && (
+      <HomeEdgeGlow onComplete={() => setShowHomeEdgeGlow(false)} />
+    )}
     {loginFadeOut && <LoginScreen exiting onAuthed={() => {}} />}
     <motion.div
       initial={{ opacity: 0 }}
@@ -2386,9 +2389,6 @@ export default function App() {
         cn(theme.appBg, theme.appText)
       )}
     >
-      {showHomeEdgeGlow && (
-        <HomeEdgeGlow onComplete={() => setShowHomeEdgeGlow(false)} />
-      )}
       {/* Privacy Lock Screen — main shell */}
       {isLocked && (
         <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", "lux-carbon text-[#111111]")}>

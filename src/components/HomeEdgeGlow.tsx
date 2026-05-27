@@ -1,16 +1,25 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 
-/** 登录入场边缘流光 — 纯展示层，pointer-events-none */
+/** 登录入场边缘流光 — 挂载至 body，穿透安全区与父级 transform 裁剪 */
 export default function HomeEdgeGlow({ onComplete }: { onComplete: () => void }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const id = window.setTimeout(onComplete, 2200);
     return () => window.clearTimeout(id);
   }, [onComplete]);
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <motion.div
-      className="home-edge-glow pointer-events-none fixed inset-0 z-[998] overflow-hidden rounded-[44px]"
+      className="home-edge-glow"
       initial={{ opacity: 1 }}
       animate={{ opacity: 0 }}
       transition={{ duration: 0.7, delay: 1.55, ease: [0.22, 1, 0.36, 1] }}
@@ -18,6 +27,7 @@ export default function HomeEdgeGlow({ onComplete }: { onComplete: () => void })
     >
       <div className="home-edge-glow-ring" />
       <div className="home-edge-glow-soft" aria-hidden />
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }
