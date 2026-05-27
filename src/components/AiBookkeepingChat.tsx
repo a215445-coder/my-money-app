@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Mic, Send, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import type { Category } from '../types';
+import type { ParsedBillIntent } from '../utils/parseBillIntent';
 import {
   collectTranscriptFromResults,
   getSpeechRecognitionCtor,
@@ -18,11 +18,7 @@ export type AiChatMessage = {
   text: string;
 };
 
-export type ParsedBillIntent = {
-  amount: number;
-  category: Category;
-  note: string;
-};
+export type { ParsedBillIntent };
 
 type AiBookkeepingChatProps = {
   open: boolean;
@@ -104,6 +100,7 @@ export default function AiBookkeepingChat({
               text: t('ai_bookkeeping.reply_success', {
                 category: categoryLabel,
                 amount: amountLabel,
+                note: parsed.note,
               }),
             },
           ]);

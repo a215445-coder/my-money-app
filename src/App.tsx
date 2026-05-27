@@ -92,7 +92,8 @@ import type { Transaction, Category, TransactionType, Account, CurrencyCode, Cur
 import StatsCharts from './components/StatsCharts';
 import HomeEdgeGlow from './components/HomeEdgeGlow';
 import LoginScreen from './components/LoginScreen';
-import AiBookkeepingChat, { type ParsedBillIntent } from './components/AiBookkeepingChat';
+import AiBookkeepingChat from './components/AiBookkeepingChat';
+import { parseBillIntent, type ParsedBillIntent } from './utils/parseBillIntent';
 
 const SESSION_AUTH_KEY = 'session_authed';
 
@@ -786,44 +787,15 @@ export default function App() {
     else setTimeContext('evening');
   }, []);
 
-  const parseVoiceIntent = (text: string) => {
-    const amountMatch = text.match(/(\d+(\.\d+)?)/);
-    const amount = amountMatch ? parseFloat(amountMatch[0]) : 0;
-
-    let category: Category = '其他';
-    const text_lower = text.toLowerCase();
-
-    const categoryMap: Record<string, string[]> = {
-      '餐饮': ['吃', '饭', '餐', '肯德基', '麦当劳', '火锅', '奶茶', '咖啡', '零食', '超市', '水果'],
-      '交通': ['打车', '地铁', '公交', '加油', '油费', '停车', '机票', '火车', '共享单车'],
-      '购物': ['买', '购', '衣服', '鞋', '包', '化妆品', '电器', '手机'],
-      '娱乐': ['玩', '游戏', '影', 'ktv', '酒吧', '旅游', '门票'],
-      '医疗': ['药', '医', '看病', '挂号', '手术', '体检'],
-      '教育': ['学', '书', '课', '培训', '考试', '文具'],
-      '收入': ['工资', '收入', '赚', '红包', '奖金', '兼职', '理财收益']
-    };
-
-    for (const [cat, keywords] of Object.entries(categoryMap)) {
-      if (keywords.some(k => text_lower.includes(k))) {
-        category = cat as Category;
-        break;
-      }
-    }
-
-    const note = text
-      .replace(/(\d+(\.\d+)?)/, '')
-      .replace(/块|元|钱|花了|支出|收入|买了|去吃/g, '')
-      .trim();
-
-    return { amount, category, note: note || t('voice.default_note') };
-  };
+  const parseVoiceIntent = (text: string) =>
+    parseBillIntent(text, t('voice.default_note'));
 
   const recordAiBookkeepingExpense = (parsed: ParsedBillIntent) => {
     const defaultAccount = accounts[0];
     if (!defaultAccount || parsed.amount <= 0) return;
     addOrUpdateTransaction({
       amount: parsed.amount,
-      type: 'expense',
+      type: parsed.type,
       category: parsed.category,
       date: new Date().toISOString(),
       note: parsed.note,

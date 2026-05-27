@@ -164,7 +164,7 @@
     "welcome": "What would you like to log today? Type or speak, e.g. “Lunch at KFC, 50 yuan.”",
     "input_placeholder": "Describe your expense...",
     "thinking": "Thinking…",
-    "reply_success": "Got it! Logged as [Category: {{category}}], [Amount: {{amount}}].",
+    "reply_success": "Entry saved!\n💰 Amount: {{amount}}\n🏷️ Category: {{category}}\n📝 Note: {{note}}",
     "reply_invalid": "I could not find an amount. Try again, e.g. “Lunch cost 50 yuan.”",
     "send_aria": "Send",
     "voice_aria": "Voice input",

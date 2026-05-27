@@ -164,7 +164,7 @@
     "welcome": "主人，今天想记点什么？你可以打字或者语音告诉我，比如：“中午吃肯德基花了 50 元”。",
     "input_placeholder": "输入你想记的账单...",
     "thinking": "正在识别中…",
-    "reply_success": "收到！已为您智能识别：[分类: {{category}}]，[金额: {{amount}}]，并已自动入账！",
+    "reply_success": "已为您记好一笔账！\n💰 金额：{{amount}}\n🏷️ 分类：{{category}}\n📝 备注：{{note}}",
     "reply_invalid": "抱歉，我没识别到金额，请再说一次，例如：午饭花了 50 元。",
     "send_aria": "发送",
     "voice_aria": "语音输入",
