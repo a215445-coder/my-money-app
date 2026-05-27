@@ -50,10 +50,14 @@ export function resolveIOSScreenCornerRadiusPx(): number {
 export function applyIOSScreenCornerRadiusVars(target: HTMLElement = document.documentElement): void {
   const radiusPx = resolveIOSScreenCornerRadiusPx();
   target.style.setProperty('--ios-screen-corner-radius', `${radiusPx}px`);
-  target.style.setProperty('--home-edge-bleed', '1px');
+  target.style.setProperty('--home-edge-bleed', '0px');
+  target.style.setProperty('--home-edge-inset', '1px');
+  target.style.setProperty('--home-edge-stroke', '5px');
 }
 
 export function clearIOSScreenCornerRadiusVars(target: HTMLElement = document.documentElement): void {
   target.style.removeProperty('--ios-screen-corner-radius');
   target.style.removeProperty('--home-edge-bleed');
+  target.style.removeProperty('--home-edge-inset');
+  target.style.removeProperty('--home-edge-stroke');
 }

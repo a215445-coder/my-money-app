@@ -41,6 +41,7 @@ export default function HomeEdgeGlow({ onComplete }: { onComplete: () => void })
       aria-hidden
     >
       <div className="home-edge-glow-ring" />
+      <div className="home-edge-glow-bloom" aria-hidden />
       <div className="home-edge-glow-soft" aria-hidden />
     </motion.div>,
     document.body
