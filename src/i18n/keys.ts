@@ -26,6 +26,11 @@ export const I18N_KEYS = {
     replyInvalid: 'ai_bookkeeping.reply_invalid',
     sendAria: 'ai_bookkeeping.send_aria',
     voiceAria: 'ai_bookkeeping.voice_aria',
+    voiceStopAria: 'ai_bookkeeping.voice_stop_aria',
+    micListening: 'ai_bookkeeping.mic_listening',
+    micDenied: 'ai_bookkeeping.mic_denied',
+    micUnsupported: 'ai_bookkeeping.mic_unsupported',
+    micNoSpeech: 'ai_bookkeeping.mic_no_speech',
     closeAria: 'ai_bookkeeping.close_aria',
   },
   stats: {

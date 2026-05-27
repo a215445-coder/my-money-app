@@ -3439,6 +3439,7 @@ export default function App() {
         }}
         parseIntent={parseVoiceIntent}
         onRecordExpense={recordAiBookkeepingExpense}
+        onNotify={showToast}
       />
 
       {/* Voice Recognition Modal */}

@@ -234,6 +234,11 @@ const resources = {
         reply_invalid: '抱歉，我没识别到金额，请再说一次，例如：午饭花了 50 元。',
         send_aria: '发送',
         voice_aria: '语音输入',
+        voice_stop_aria: '结束录音并发送',
+        mic_listening: '正在聆听，请说话…',
+        mic_denied: '无法获取麦克风权限，请使用打字记账',
+        mic_unsupported: '当前浏览器不支持语音输入，请使用打字记账',
+        mic_no_speech: '没有识别到语音，请重试',
         close_aria: '关闭',
       },
       search: {
@@ -637,6 +642,11 @@ const resources = {
         reply_invalid: 'I could not find an amount. Try again, e.g. “Lunch cost 50 yuan.”',
         send_aria: 'Send',
         voice_aria: 'Voice input',
+        voice_stop_aria: 'Stop recording and send',
+        mic_listening: 'Listening… speak now',
+        mic_denied: 'Microphone access denied. Please type your entry.',
+        mic_unsupported: 'Voice input is not supported in this browser. Please type.',
+        mic_no_speech: 'No speech detected. Please try again.',
         close_aria: 'Close',
       },
       search: {
