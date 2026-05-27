@@ -3712,7 +3712,7 @@ export default function App() {
             animate={{ scale: 1, opacity: 1, y: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
             className={cn(
-              "w-full max-w-sm rounded-[3rem] p-10 shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar relative",
+              "w-full max-w-sm rounded-[3rem] pt-10 px-10 pb-[calc(7rem+env(safe-area-inset-bottom,0px))] shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar relative",
               isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
             )}
           >
