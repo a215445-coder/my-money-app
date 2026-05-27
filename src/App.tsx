@@ -94,14 +94,11 @@ import AiBookkeepingChat from './components/AiBookkeepingChat';
 import { supabase } from './lib/supabaseClient';
 import { parseBillIntent, type ParsedBillIntent } from './utils/parseBillIntent';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
-import ShortcutImportModal from './components/ShortcutImportModal';
 import { getOrCreateDeviceId } from './utils/deviceId';
 import { billsRepo } from './utils/billsRepo';
 import {
-  clearShortcutImportUrlParams,
-  hasShortcutImportUrl,
-  parseShortcutImportFromUrl,
-  type ShortcutImportDraftRow,
+  getImportResultText,
+  isImportResultUrl,
 } from './utils/shortcutImport';
 
 const DEVICE_ID_STORAGE_KEY = 'device_id';
@@ -388,12 +385,8 @@ export default function App() {
   const [groupDraftName, setGroupDraftName] = useState('');
   const [groupJoinCode, setGroupJoinCode] = useState('');
 
-  const [showSplash, setShowSplash] = useState(() => !hasShortcutImportUrl());
+  const [showSplash, setShowSplash] = useState(true);
   const [deviceId] = useState(() => getOrCreateDeviceId(DEVICE_ID_STORAGE_KEY));
-  const [shortcutImportRows, setShortcutImportRows] = useState<ShortcutImportDraftRow[] | null>(() => {
-    const rows = parseShortcutImportFromUrl();
-    return rows && rows.length > 0 ? rows : null;
-  });
 
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isAiBookkeepingOpen, setIsAiBookkeepingOpen] = useState(false);
@@ -2180,63 +2173,6 @@ export default function App() {
     }
   };
 
-  // iOS Shortcuts: ?action=import&ocrData=<url-encoded OCR plain text>
-  useEffect(() => {
-    try {
-      const rows = parseShortcutImportFromUrl();
-      if (rows && rows.length > 0) {
-        setShortcutImportRows(rows);
-        setShowSplash(false);
-      }
-    } catch (err) {
-      window.alert(`快捷指令导入错误：${err instanceof Error ? err.message : String(err)}`);
-    }
-  }, []);
-
-  const dismissShortcutImport = useCallback(() => {
-    setShortcutImportRows(null);
-    clearShortcutImportUrlParams();
-  }, []);
-
-  const saveShortcutImport = useCallback(
-    (rows: ShortcutImportDraftRow[]) => {
-      const defaultAccount = accounts[0];
-      const valid = rows.filter((r) => r.amount > 0);
-      if (!defaultAccount || valid.length === 0) {
-        dismissShortcutImport();
-        return;
-      }
-      const newTxs: Transaction[] = valid.map((row) => ({
-        id: crypto.randomUUID(),
-        amount: row.amount,
-        type: 'expense' as const,
-        category: row.category,
-        date: new Date().toISOString(),
-        note: row.shop || undefined,
-        accountId: defaultAccount.id,
-        mood: 'happy' as const,
-      }));
-      const totalExpense = valid.reduce((sum, r) => sum + r.amount, 0);
-      setTransactions((prev) => [...newTxs, ...prev]);
-      setAccounts((prev) =>
-        prev.map((acc) =>
-          acc.id === defaultAccount.id ? { ...acc, balance: acc.balance - totalExpense } : acc
-        )
-      );
-      void billsRepo.upsertMany(supabase, deviceId, newTxs).catch((e) => {
-        console.warn('[bills] shortcut import upsert failed', e);
-      });
-      showToast(t('shortcut_import.saved', { count: newTxs.length }));
-      dismissShortcutImport();
-    },
-    [accounts, deviceId, dismissShortcutImport, showToast, t]
-  );
-
-  const shortcutExpenseCategories = useMemo(
-    () => CATEGORIES.map((c) => c.label).filter((c) => c !== '收入'),
-    []
-  );
-
   // Device-scoped cloud sync: load bills from Supabase by device_id
   useEffect(() => {
     let cancelled = false;
@@ -2451,19 +2387,23 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
+  if (isImportResultUrl()) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center bg-[#F6F8FA] text-[#1D1D1F] p-8"
+        role="status"
+        aria-live="polite"
+      >
+        <p className="text-lg font-black text-center whitespace-pre-wrap">{getImportResultText()}</p>
+      </div>
+    );
+  }
+
+  if (showSplash) {
+    return <SplashScreen onDone={() => setShowSplash(false)} />;
+  }
+
   return (
-    <>
-    <ShortcutImportModal
-      open={shortcutImportRows !== null}
-      initialRows={shortcutImportRows ?? []}
-      categories={shortcutExpenseCategories}
-      trCategory={(cat) => t(`categories.${cat}`)}
-      onCancel={dismissShortcutImport}
-      onSave={saveShortcutImport}
-    />
-    {showSplash ? (
-      <SplashScreen onDone={() => setShowSplash(false)} />
-    ) : (
     <>
     <PwaInstallPrompt />
     <motion.div
@@ -4533,8 +4473,6 @@ export default function App() {
         <div className="tabbar-safe-spacer pointer-events-none" />
       </nav>
     </motion.div>
-    </>
-    )}
     </>
   );
 }

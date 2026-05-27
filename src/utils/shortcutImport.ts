@@ -1,4 +1,7 @@
-import type { Category } from '../types';
+import type { Category, Transaction } from '../types';
+import { supabase } from '../lib/supabaseClient';
+import { billsRepo } from './billsRepo';
+import { getOrCreateDeviceId } from './deviceId';
 
 export type ShortcutImportDraftRow = {
   rowKey: string;
@@ -6,6 +9,9 @@ export type ShortcutImportDraftRow = {
   shop: string;
   category: Category;
 };
+
+const DEFAULT_ACCOUNT_ID = 'ac-1';
+const DEVICE_ID_STORAGE_KEY = 'device_id';
 
 const AMOUNT_GLOBAL_RE =
   /(?:￥|¥|\$|RMB|CNY)\s*(-?\d{1,6}(?:,\d{3})*(?:\.\d{2})?)|(-?\d{1,6}(?:,\d{3})*\.\d{2})\s*元|(?<![\d/.-])(\d{1,6}(?:,\d{3})*\.\d{2})(?!\d)/g;
@@ -20,16 +26,6 @@ const INLINE_ROW_RE = /^(.{2,24}?)\s+[-－]?\s*(?:￥|¥|\$)?\s*(\d{1,6}(?:,\d{3
 
 const SKIP_MERCHANT_RE =
   /支付成功|交易成功|账单详情|零钱|余额|转账|收款|信用卡|储蓄卡|^\d{4}[-/年]/;
-
-function debugAlert(message: string): void {
-  if (typeof window === 'undefined') return;
-  window.alert(message);
-}
-
-function debugAlertError(err: unknown): void {
-  const message = err instanceof Error ? `${err.name}: ${err.message}` : String(err);
-  debugAlert(`快捷指令导入错误：${message}`);
-}
 
 function parseAmountStr(raw: string): number {
   const n = parseFloat(String(raw).replace(/,/g, ''));
@@ -166,79 +162,114 @@ export function parseBillsFromOcrText(raw: string): ShortcutImportDraftRow[] {
     }
   }
 
-  const rows = toDraftRows(bills);
-  if (rows.length > 0) return rows;
-
-  const firstLine = lines.find((l) => l.length >= 2 && !SKIP_MERCHANT_RE.test(l)) || '';
-  return [
-    {
-      rowKey: `shortcut-fallback-${Date.now()}`,
-      amount: 0,
-      shop: firstLine.slice(0, 40),
-      category: '其他',
-    },
-  ];
+  return toDraftRows(bills);
 }
 
-function getOcrRawFromUrl(): string | null {
+function readImportOcrFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
-  return params.get('ocrData');
+  if (params.get('action') !== 'import') return null;
+  const ocrRaw = params.get('ocrData');
+  if (!ocrRaw) return null;
+  return decodeOcrParam(ocrRaw);
 }
 
-/** App 启动最早阶段探测：仅确认 URL 是否带上 ocrData（React 挂载前） */
-export function probeShortcutImportOnBoot(): void {
+function redirectImportResult(status: 'success' | 'error', count: number, message?: string): void {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('action');
+  url.searchParams.delete('ocrData');
+  url.searchParams.set('importStatus', status);
+  url.searchParams.set('count', String(count));
+  if (message) url.searchParams.set('message', message);
+  else url.searchParams.delete('message');
+  window.location.replace(`${url.pathname}${url.search}${url.hash}`);
+}
+
+function persistTransactionsLocally(newTxs: Transaction[]): void {
+  const savedTx = localStorage.getItem('transactions');
+  const transactions: Transaction[] = savedTx ? JSON.parse(savedTx) : [];
+  localStorage.setItem('transactions', JSON.stringify([...newTxs, ...transactions]));
+
+  const totalExpense = newTxs.reduce((sum, tx) => sum + tx.amount, 0);
+  const savedAcc = localStorage.getItem('accounts');
+  if (!savedAcc) return;
+  const accounts = JSON.parse(savedAcc) as Array<{ id: string; balance: number }>;
+  const nextAcc = accounts.map((acc) =>
+    acc.id === DEFAULT_ACCOUNT_ID ? { ...acc, balance: acc.balance - totalExpense } : acc
+  );
+  localStorage.setItem('accounts', JSON.stringify(nextAcc));
+}
+
+function rowsToTransactions(rows: ShortcutImportDraftRow[]): Transaction[] {
+  return rows.map((row) => ({
+    id: crypto.randomUUID(),
+    amount: row.amount,
+    type: 'expense' as const,
+    category: row.category,
+    date: new Date().toISOString(),
+    note: row.shop || undefined,
+    accountId: DEFAULT_ACCOUNT_ID,
+    mood: 'happy' as const,
+  }));
+}
+
+/**
+ * 静默导入：解析 ocrData → 写入 localStorage → 同步 Supabase → 重定向到结果页。
+ * @returns true 表示已处理（将发生重定向，不应再挂载主 UI）
+ */
+export async function executeSilentShortcutImport(): Promise<boolean> {
+  if (typeof window === 'undefined') return false;
+
+  const ocrText = readImportOcrFromUrl();
+  if (!ocrText) return false;
+
   try {
-    const ocrRaw = getOcrRawFromUrl();
-    if (!ocrRaw) return;
-    debugAlert('已成功接收到快捷指令数据！');
+    const rows = parseBillsFromOcrText(ocrText).filter((r) => r.amount > 0);
+    if (rows.length === 0) {
+      redirectImportResult('error', 0, encodeURIComponent('未识别到有效金额'));
+      return true;
+    }
+
+    const newTxs = rowsToTransactions(rows);
+    persistTransactionsLocally(newTxs);
+
+    const deviceId = getOrCreateDeviceId(DEVICE_ID_STORAGE_KEY);
+    try {
+      await billsRepo.upsertMany(supabase, deviceId, newTxs);
+    } catch (e) {
+      console.warn('[bills] silent import upsert failed', e);
+    }
+
+    redirectImportResult('success', newTxs.length);
+    return true;
   } catch (err) {
-    debugAlertError(err);
+    const message = encodeURIComponent(err instanceof Error ? err.message : String(err));
+    redirectImportResult('error', 0, message);
+    return true;
   }
 }
 
-function alertRegexMatchResult(rows: ShortcutImportDraftRow[], rawText: string): void {
-  const matched = rows.filter((r) => r.amount > 0);
-  if (matched.length > 0) {
-    const amounts = matched.map((r) => r.amount).join(', ');
-    debugAlert(`成功匹配到金额：${amounts}`);
-    return;
-  }
-  const preview = rawText.length > 300 ? `${rawText.slice(0, 300)}...` : rawText;
-  debugAlert(`正则匹配失败，收到的原始文本是：${preview}`);
+export function isImportResultUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).has('importStatus');
 }
 
-/** 读取 ?ocrData=...（兼容 ?action=import&ocrData=...） */
-export function parseShortcutImportFromUrl(): ShortcutImportDraftRow[] | null {
-  try {
-    const ocrRaw = getOcrRawFromUrl();
-    if (!ocrRaw) return null;
-
-    debugAlert('已成功接收到快捷指令数据！');
-
-    const text = decodeOcrParam(ocrRaw);
-    const rows = parseBillsFromOcrText(text);
-    alertRegexMatchResult(rows, text);
-    return rows;
-  } catch (err) {
-    debugAlertError(err);
-    return null;
-  }
+/** 供快捷指令读取的纯文本结果 */
+export function getImportResultText(): string {
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get('importStatus');
+  const count = params.get('count') || '0';
+  if (status === 'success') return `入库成功，共 ${count} 笔`;
+  const message = params.get('message');
+  const decoded = message ? decodeURIComponent(message) : '未知错误';
+  return `入库失败：${decoded}`;
 }
 
-export function hasShortcutImportUrl(): boolean {
-  return !!getOcrRawFromUrl();
-}
-
-export function clearShortcutImportUrlParams(): void {
-  try {
-    if (typeof window === 'undefined') return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete('action');
-    url.searchParams.delete('ocrData');
-    const next = `${url.pathname}${url.search}${url.hash}`;
-    window.history.replaceState({}, '', next);
-  } catch (err) {
-    debugAlertError(err);
-  }
+export function clearImportResultUrlParams(): void {
+  if (typeof window === 'undefined') return;
+  const url = new URL(window.location.href);
+  url.searchParams.delete('importStatus');
+  url.searchParams.delete('count');
+  url.searchParams.delete('message');
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
 }

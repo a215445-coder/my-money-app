@@ -3,12 +3,13 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './i18n/config'
 import App from './App.tsx'
-import { probeShortcutImportOnBoot } from './utils/shortcutImport'
+import { executeSilentShortcutImport } from './utils/shortcutImport'
 
-probeShortcutImportOnBoot()
-
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+void executeSilentShortcutImport().then((handled) => {
+  if (handled) return
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <App />
+    </StrictMode>,
+  )
+})
