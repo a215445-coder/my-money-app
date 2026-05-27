@@ -205,7 +205,7 @@
     "error_phone": "请输入有效的手机号码",
     "error_captcha": "验证码输入有误，请重试",
     "error_apple": "Apple 登录失败，请稍后重试",
-    "captcha_sent": "验证码已发送，请查收短信",
+    "captcha_sent": "验证码已发送，请查收短信（若未收到请查看拦截短信或 Supabase/Twilio 配置）",
     "verifying": "正在验证…",
     "country_picker_title": "选择国家或地区",
     "country_picker_close": "关闭国家选择"

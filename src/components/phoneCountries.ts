@@ -43,8 +43,18 @@ export function defaultPhoneCountryForLanguage(lang: string): PhoneCountryId {
 
 export function buildLoginPhoneE164(countryId: PhoneCountryId, nationalDigits: string): string {
   const country = getPhoneCountry(countryId);
-  const digits = nationalDigits.replace(/\D/g, '');
+  let digits = nationalDigits.replace(/\D/g, '');
+  if (countryId === 'CN') {
+    if (digits.startsWith('86') && digits.length > 11) digits = digits.slice(2);
+    if (digits.startsWith('0')) digits = digits.slice(1);
+  }
   return `+${country.dialCode}${digits}`;
+}
+
+const E164_PATTERN = /^\+[1-9]\d{7,14}$/;
+
+export function isValidE164Phone(phoneE164: string): boolean {
+  return E164_PATTERN.test(phoneE164);
 }
 
 export function getPhoneCountry(id: PhoneCountryId): PhoneCountryOption {
