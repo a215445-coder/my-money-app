@@ -600,7 +600,7 @@ export default function StatsCharts() {
               width={chartWidth}
               height={340}
               data={trendData}
-              margin={{ top: 8, right: 8, left: 0, bottom: 72 }}
+              margin={{ top: 8, right: 8, left: 0, bottom: 48 }}
               barGap={3}
               barCategoryGap={period === 'year' ? '22%' : period === 'week' ? '32%' : '28%'}
             >
@@ -609,9 +609,9 @@ export default function StatsCharts() {
                 dataKey="label"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 9, fontWeight: 700, fill: '#6E6E73' }}
+                tick={false}
+                height={0}
                 padding={{ left: 16, right: 16 }}
-                interval={period === 'month' ? 2 : 0}
               />
               <YAxis
                 axisLine={false}
