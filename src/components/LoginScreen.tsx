@@ -56,7 +56,7 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
       initial={{ opacity: 0 }}
       animate={{ opacity: exiting ? 0 : 1, y: exiting ? -16 : 0 }}
       transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
-      className={`fixed inset-0 z-[300] overflow-hidden bg-zinc-50 text-[#1D1D1F] ${exiting ? 'pointer-events-none' : 'pointer-events-auto'}`}
+      className={`fixed inset-0 overflow-hidden bg-zinc-50 text-[#1D1D1F] ${exiting ? 'z-[90] pointer-events-none' : 'z-[300] pointer-events-auto'}`}
       aria-hidden={exiting}
     >
       <div

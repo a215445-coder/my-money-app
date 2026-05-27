@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
 
+const ROOT_GLOW_CLASS = 'home-edge-glow-active';
+
 /** 登录入场边缘流光 — 挂载至 body，穿透安全区与父级 transform 裁剪 */
 export default function HomeEdgeGlow({ onComplete }: { onComplete: () => void }) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.classList.add(ROOT_GLOW_CLASS);
+    return () => document.documentElement.classList.remove(ROOT_GLOW_CLASS);
   }, []);
 
   useEffect(() => {

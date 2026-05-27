@@ -34,9 +34,15 @@ html,
 body,
 #root {
   width: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  min-height: 100dvh !important;
   height: 100% !important;
+  height: 100dvh !important;
   margin: 0 !important;
   padding: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
   background-color: var(--apple-bg) !important;
   background-image:
     radial-gradient(ellipse 90% 55% at 12% -8%, var(--apple-ambient-orange), transparent 58%),
@@ -45,6 +51,14 @@ body,
   background-attachment: fixed !important;
   overflow-x: hidden;
   color: var(--apple-text-primary);
+}
+
+/* 边缘流光期间：禁止根节点裁剪 fixed 全屏层 */
+html.home-edge-glow-active,
+html.home-edge-glow-active body {
+  overflow: visible !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
 }
 
 body::before {
@@ -496,11 +510,15 @@ main,
 }
 
 .app-container,
-[class*="layout"],
-main,
-.main-content {
+[class*="layout"] {
   margin-top: 0 !important;
   padding-top: 0 !important;
+  top: 0 !important;
+}
+
+/* 仅清除最外层壳；列表顶栏安全区仍由 .main-header 独立承担 */
+main.main-content {
+  margin-top: 0 !important;
   top: 0 !important;
 }
 
@@ -1002,21 +1020,22 @@ input[type="submit"]:active:not(:disabled) {
 
 .home-edge-glow {
   position: fixed !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
+  top: calc(-1 * env(safe-area-inset-top, 0px)) !important;
+  left: calc(-1 * env(safe-area-inset-left, 0px)) !important;
+  right: calc(-1 * env(safe-area-inset-right, 0px)) !important;
+  bottom: calc(-1 * env(safe-area-inset-bottom, 0px)) !important;
+  width: calc(100vw + env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px)) !important;
+  height: calc(100vh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)) !important;
+  height: calc(100dvh + env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px)) !important;
   margin: 0 !important;
   padding: 0 !important;
-  z-index: 9999 !important;
+  z-index: 999999 !important;
   pointer-events: none !important;
   overflow: hidden !important;
   isolation: isolate;
   box-sizing: border-box !important;
-  border-radius: 48px;
+  border-radius: 50px;
+  transform: translateZ(0);
 }
 
 @supports (corner-shape: squircle) {
