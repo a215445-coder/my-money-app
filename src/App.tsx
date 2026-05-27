@@ -90,13 +90,14 @@ import { I18N_KEYS } from './i18n/keys';
 import { LiquidGlass } from '@ybouane/liquidglass';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 import StatsCharts from './components/StatsCharts';
-import LoginScreen from './components/LoginScreen';
 import AiBookkeepingChat from './components/AiBookkeepingChat';
 import { supabase } from './lib/supabaseClient';
 import { parseBillIntent, type ParsedBillIntent } from './utils/parseBillIntent';
-import { signOutSupabase } from './utils/loginAuth';
+import PwaInstallPrompt from './components/PwaInstallPrompt';
+import { getOrCreateDeviceId } from './utils/deviceId';
+import { billsRepo } from './utils/billsRepo';
 
-const SESSION_AUTH_KEY = 'session_authed';
+const DEVICE_ID_STORAGE_KEY = 'device_id';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -380,40 +381,8 @@ export default function App() {
   const [groupDraftName, setGroupDraftName] = useState('');
   const [groupJoinCode, setGroupJoinCode] = useState('');
 
-  const [isAuthed, setIsAuthed] = useState(() => sessionStorage.getItem(SESSION_AUTH_KEY) === 'true');
-  const [loginFadeOut, setLoginFadeOut] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-
-    void supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!active || !session) return;
-      sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
-      localStorage.setItem('auth_done', 'true');
-      setIsAuthed(true);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session) {
-        sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
-        localStorage.setItem('auth_done', 'true');
-        setIsAuthed(true);
-        return;
-      }
-      if (_event === 'SIGNED_OUT') {
-        sessionStorage.removeItem(SESSION_AUTH_KEY);
-        localStorage.removeItem('auth_done');
-        setIsAuthed(false);
-      }
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [deviceId] = useState(() => getOrCreateDeviceId(DEVICE_ID_STORAGE_KEY));
 
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isAiBookkeepingOpen, setIsAiBookkeepingOpen] = useState(false);
@@ -866,7 +835,7 @@ export default function App() {
     kv.accounts = JSON.stringify(accounts);
     kv.monthly_budget = String(budget);
     kv.app_lang = i18n.language;
-    kv.auth_done = String(isAuthed);
+    kv.auth_done = 'true';
     kv.local_user_id = localUserId;
     kv.local_user_name = localUserName;
 
@@ -2156,6 +2125,9 @@ export default function App() {
       if (newTransaction.visibility === 'group' && newTransaction.groupId === groupSaving?.id) appendGroupActivity('add', newTransaction);
       setTransactions(prev => [newTransaction, ...prev]);
     }
+    void billsRepo.upsertOne(supabase, deviceId, newTransaction).catch((e) => {
+      console.warn('[bills] upsert failed', e);
+    });
     setAccounts(prev => prev.map(acc => {
       if (acc.id !== t.accountId) return acc;
       if (editingTransaction) {
@@ -2184,6 +2156,9 @@ export default function App() {
         }));
       }
       setTransactions(prev => prev.filter(tx => tx.id !== id));
+      void billsRepo.deleteOne(supabase, deviceId, id).catch((err) => {
+        console.warn('[bills] delete failed', err);
+      });
     }
   };
 
@@ -2193,6 +2168,33 @@ export default function App() {
       window.location.reload();
     }
   };
+
+  // Device-scoped cloud sync: load bills from Supabase by device_id
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const remote = await billsRepo.listByDeviceId(supabase, deviceId);
+        if (cancelled) return;
+        if (remote.length > 0) {
+          setTransactions(remote);
+          localStorage.setItem('transactions', JSON.stringify(remote));
+          return;
+        }
+        // First sync: if local has data but cloud is empty, seed cloud.
+        const localSaved = localStorage.getItem('transactions');
+        const localTx: Transaction[] = localSaved ? JSON.parse(localSaved) : [];
+        if (localTx.length > 0) {
+          await billsRepo.upsertMany(supabase, deviceId, localTx);
+        }
+      } catch (e) {
+        console.warn('[bills] failed to sync from Supabase', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [deviceId]);
 
   const formatCurrency = (v: number) => v.toLocaleString(i18n.language === 'en-US' ? 'en-US' : 'zh-CN', { minimumFractionDigits: 2 });
   const formatAssetTotal = (v: number) =>
@@ -2375,22 +2377,8 @@ export default function App() {
     }
   };
 
-  const handleLoginSuccess = useCallback(() => {
-    localStorage.setItem('auth_done', 'true');
-    sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
-    setLoginFadeOut(true);
-    setIsAuthed(true);
-    window.setTimeout(() => setLoginFadeOut(false), 450);
-  }, []);
-
   const handleLogout = () => {
-    void signOutSupabase();
-    localStorage.removeItem('auth_done');
-    sessionStorage.removeItem(SESSION_AUTH_KEY);
-    sessionStorage.removeItem('login_phone_e164');
-    setIsAuthed(false);
-    setLoginFadeOut(false);
-    setIsLogoutDialogOpen(false);
+    // 登录机制已移除：保留空实现以避免引用断裂（不会触发任何数据清理）
     setIsBudgetModalOpen(false);
     setIsMenuOpen(false);
   };
@@ -2399,22 +2387,9 @@ export default function App() {
     return <SplashScreen onDone={() => setShowSplash(false)} />;
   }
 
-  if (!isAuthed) {
-    return (
-      <>
-        <LoginScreen onAuthed={handleLoginSuccess} onNotify={showToast} />
-        {isToastOpen && (
-          <div className="fixed left-1/2 top-[calc(env(safe-area-inset-top)+1rem)] z-[400] -translate-x-1/2 rounded-full bg-[#1D1D1F]/90 px-4 py-2 text-[11px] font-black text-white shadow-lg backdrop-blur-md">
-            {toastMessage}
-          </div>
-        )}
-      </>
-    );
-  }
-
   return (
     <>
-    {loginFadeOut && <LoginScreen exiting onAuthed={() => {}} />}
+    <PwaInstallPrompt />
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -3743,7 +3718,7 @@ export default function App() {
               <div className="flex items-center space-x-2">
                 <h2 className="text-xl font-black">{t('settings')}</h2>
               </div>
-              <button onClick={() => { setIsBudgetModalOpen(false); setIsLogoutDialogOpen(false); }} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
+              <button onClick={() => { setIsBudgetModalOpen(false); }} className={cn("p-2 rounded-full", isDarkMode ? "bg-slate-700" : "bg-gray-100")}>
                 <X size={18} />
               </button>
             </div>
@@ -3846,21 +3821,6 @@ export default function App() {
                   <span>{t('clear_data')}</span>
                 </button>
 
-                <button
-                  onClick={() => setIsLogoutDialogOpen(true)}
-                  className={cn(
-                    "w-full p-5 flex items-center justify-between rounded-[2rem] overflow-hidden border active:scale-[0.98] transition-all",
-                    isDarkMode ? "bg-slate-700 border-slate-600 hover:bg-slate-600/80" : "bg-gray-50 border-gray-100 hover:bg-gray-100"
-                  )}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-8 h-8 bg-rose-100 text-rose-500 rounded-lg flex items-center justify-center">
-                      <LogOut size={18} />
-                    </div>
-                    <span className="text-sm font-black text-rose-500">{t('logout')}</span>
-                  </div>
-                  <ChevronRight size={18} className="text-rose-400 opacity-70" />
-                </button>
                 {/* 底部垫高：避开悬浮 TabBar + 凸起加号（仅布局） */}
                 <div
                   className="shrink-0 h-[calc(6.5rem+env(safe-area-inset-bottom,0px))]"
@@ -4263,49 +4223,7 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {isLogoutDialogOpen && (
-          <div
-            className="fixed inset-0 z-[1200] flex items-center justify-center p-6 bg-black/30 backdrop-blur-md"
-            onClick={() => setIsLogoutDialogOpen(false)}
-            role="presentation"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                "w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border",
-                isDarkMode ? "bg-slate-800/95 text-white border-slate-700" : "bg-white/95 text-gray-900 border-gray-100"
-              )}
-            >
-              <div className="text-center">
-                <h3 className="text-lg font-black">{t('logout_confirm_title')}</h3>
-                <p className={cn("mt-2 text-xs font-bold", isDarkMode ? "text-white/50" : "text-gray-500")}>{t('logout_confirm_body')}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 mt-8">
-                <button
-                  onClick={() => setIsLogoutDialogOpen(false)}
-                  className={cn(
-                    "py-4 rounded-2xl font-black text-xs active:scale-95 transition-all border",
-                    isDarkMode ? "bg-slate-700 border-slate-600 text-[#6E6E73]" : "bg-gray-50 border-gray-100 text-gray-600"
-                  )}
-                >
-                  {t('cancel')}
-                </button>
-                <button
-                  onClick={handleLogout}
-                  className="py-4 rounded-2xl font-black text-xs bg-rose-500 text-white shadow-lg active:scale-95 transition-all"
-                >
-                  {t('logout')}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+      {/* 登录机制已移除：不再展示登出确认弹窗 */}
 
       {/* Budget Edit Modal */}
       <AnimatePresence>

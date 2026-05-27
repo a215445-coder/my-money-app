@@ -1,12 +1,10 @@
 import type { AuthError } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabaseClient';
+import { looksLikePlaceholderSupabaseKey, supabase } from '../lib/supabaseClient';
 import { isValidE164Phone } from '../components/phoneCountries';
 
 export type AuthActionResult =
   | { success: true }
   | { success: false; message: string };
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? '';
 
 function fail(error: AuthError | null, fallback = 'Authentication failed'): AuthActionResult {
   return { success: false, message: mapAuthErrorMessage(error, fallback) };
@@ -23,10 +21,16 @@ function mapAuthErrorMessage(error: AuthError | null, fallback: string): string 
     msg.includes('load failed') ||
     status === 0
   ) {
-    return '无法连接 Supabase 认证服务，请检查 .env 中的 VITE_SUPABASE_URL 是否与控制台完全一致，并重启 npm run dev';
+    return '无法连接 Supabase，请检查网络与 VITE_SUPABASE_URL，并重启 npm run dev';
   }
   if (msg.includes('invalid api key') || msg.includes('unregistered api key')) {
-    return 'Supabase 公钥无效。请打开控制台 → Project Settings → API Keys，复制 Publishable key（sb_publishable_…）或 Legacy anon key（eyJ…）到 .env 的 VITE_SUPABASE_ANON_KEY，保存后重启 npm run dev';
+    return [
+      'Supabase 公钥无效（服务器已拒绝当前密钥）。',
+      '请打开 supabase.com/dashboard → 本项目 → Project Settings → API Keys，',
+      '复制 Publishable key（sb_publishable_…）或 Legacy 里的 anon public（eyJ 开头），',
+      '完整粘贴到 .env 的 VITE_SUPABASE_ANON_KEY，保存后重启 npm run dev。',
+      '注意：不能使用文档示例或编造密钥，必须从你自己的项目控制台复制。',
+    ].join('');
   }
   if (msg.includes('phone provider') || msg.includes('sms provider') || msg.includes('twilio')) {
     return '短信通道未就绪：请在 Supabase 控制台 Authentication → Phone 中配置 Twilio';
@@ -40,29 +44,6 @@ function mapAuthErrorMessage(error: AuthError | null, fallback: string): string 
   return error.message;
 }
 
-/** 仅检测网络/DNS；Supabase /auth/v1/health 常返回 401，不能当作不可用 */
-async function assertSupabaseReachable(): Promise<AuthActionResult | null> {
-  if (!supabaseUrl) {
-    return { success: false, message: '未配置 VITE_SUPABASE_URL' };
-  }
-  try {
-    const res = await fetch(`${supabaseUrl}/auth/v1/health`, { method: 'GET' });
-    if (res.status === 404) {
-      return {
-        success: false,
-        message: 'Supabase 项目 URL 不存在（404），请核对 VITE_SUPABASE_URL',
-      };
-    }
-    return null;
-  } catch {
-    return {
-      success: false,
-      message:
-        'Supabase 项目地址无法访问（DNS/URL 错误）。请打开控制台 → Project Settings → API，复制 Project URL 到 .env 后重启 npm run dev',
-    };
-  }
-}
-
 /** 通过 Supabase + Twilio 向手机号发送短信 OTP */
 export async function handleSendCaptcha(phoneE164: string): Promise<AuthActionResult> {
   if (!isValidE164Phone(phoneE164)) {
@@ -72,10 +53,13 @@ export async function handleSendCaptcha(phoneE164: string): Promise<AuthActionRe
     };
   }
 
-  const reachability = await assertSupabaseReachable();
-  if (reachability) {
-    console.error('[login] Supabase unreachable', { supabaseUrl });
-    return reachability;
+  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? '';
+  if (looksLikePlaceholderSupabaseKey(anonKey)) {
+    return {
+      success: false,
+      message:
+        '当前 .env 中的 VITE_SUPABASE_ANON_KEY 仍是占位/无效密钥。请从 Supabase 控制台 API Keys 页完整复制 Publishable 或 anon 公钥后再试。',
+    };
   }
 
   const { data, error } = await supabase.auth.signInWithOtp({
