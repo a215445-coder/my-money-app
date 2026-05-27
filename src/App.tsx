@@ -4718,7 +4718,7 @@ function TransactionForm({
           viewBox="0 0 24 24"
           xmlns="http://www.w3.org/2000/svg"
           role="img"
-          aria-label="WeChat"
+          aria-label="Share"
           className="max-w-full h-auto text-[#07C160]"
           fill="currentColor"
         >

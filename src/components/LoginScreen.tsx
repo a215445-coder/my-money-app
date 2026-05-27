@@ -6,7 +6,7 @@ import PhoneIntlField, { usePhoneIntlLogin } from './PhoneIntlInput';
 import type { PhoneCountryId } from './phoneCountries';
 import { nationalPhoneDigits } from './phoneNationalLengthRules';
 import AppleSignInButton from './login/AppleSignInButton';
-import { GoogleIconButton, WeChatIconButton } from './login/SocialIconButton';
+import { GoogleIconButton } from './login/SocialIconButton';
 import {
   handleAppleSignIn,
   handleSendCaptcha,
@@ -270,10 +270,6 @@ export default function LoginScreen({
               />
 
               <div className="flex items-center justify-center gap-4 pt-0.5">
-                <WeChatIconButton
-                  label={t('login.wechat_login')}
-                  onClick={onAuthed}
-                />
                 <GoogleIconButton
                   label={t('login.google_login')}
                   onClick={onAuthed}

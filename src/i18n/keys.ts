@@ -11,7 +11,6 @@ export const I18N_KEYS = {
     signInWithApple: 'login.sign_in_with_apple',
     appleSigningIn: 'login.apple_signing_in',
     orContinueWith: 'login.or_continue_with',
-    wechatLogin: 'login.wechat_login',
     googleLogin: 'login.google_login',
     continueLegal: 'login.continue_legal',
     errorPhone: 'login.error_phone',
