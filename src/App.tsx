@@ -2484,12 +2484,12 @@ export default function App() {
               type="button"
               onClick={() => setIsAiBookkeepingOpen(true)}
               className={cn(
-                "flex shrink-0 items-center gap-1 rounded-2xl border px-2 py-2 shadow-sm transition-all active:scale-95 hover:opacity-90",
+                "flex shrink-0 items-center justify-center gap-1.5 rounded-2xl border p-3 shadow-sm transition-all active:scale-90 hover:opacity-90",
                 isDarkMode ? "border-indigo-500/30 bg-slate-800" : "border-indigo-100 bg-white shadow-[0_0_20px_-6px_rgba(99,102,241,0.45)]"
               )}
             >
-              <Sparkles size={15} className="shrink-0 text-indigo-500" />
-              <span className="text-[9px] font-black leading-none text-indigo-600 whitespace-nowrap">
+              <Sparkles size={20} className="shrink-0 text-indigo-500" />
+              <span className="text-[10px] font-black leading-none text-indigo-600 whitespace-nowrap">
                 {t('ai_bookkeeping.header_button')}
               </span>
             </button>
