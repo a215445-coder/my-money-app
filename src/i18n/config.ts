@@ -3,6 +3,8 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import zhExtra from '../locales/zh.json';
 import enExtra from '../locales/en.json';
+import phoneCountriesZh from '../locales/phone-countries.zh.json';
+import phoneCountriesEn from '../locales/phone-countries.en.json';
 
 const deepMerge = (base: any, extra: any) => {
   if (!extra || typeof extra !== 'object') return extra ?? base;
@@ -798,8 +800,23 @@ const resources = {
   },
 };
 
-(resources['zh-CN'].translation as any) = deepMerge(resources['zh-CN'].translation, zhExtra);
-(resources['en-US'].translation as any) = deepMerge(resources['en-US'].translation, enExtra);
+const zhExtraMerged = {
+  ...zhExtra,
+  login: {
+    ...(zhExtra as { login?: Record<string, unknown> }).login,
+    countries: phoneCountriesZh,
+  },
+};
+const enExtraMerged = {
+  ...enExtra,
+  login: {
+    ...(enExtra as { login?: Record<string, unknown> }).login,
+    countries: phoneCountriesEn,
+  },
+};
+
+(resources['zh-CN'].translation as any) = deepMerge(resources['zh-CN'].translation, zhExtraMerged);
+(resources['en-US'].translation as any) = deepMerge(resources['en-US'].translation, enExtraMerged);
 
 i18n
   .use(LanguageDetector)

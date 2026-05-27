@@ -166,15 +166,6 @@
     "continue_legal": "继续即表示同意隐私政策与用户协议",
     "error_phone": "请输入有效的手机号码（至少 6 位数字）",
     "country_picker_title": "选择国家或地区",
-    "country_picker_close": "关闭国家选择",
-    "countries": {
-      "CN": "中国大陆",
-      "HK": "中国香港",
-      "MO": "中国澳门",
-      "TW": "中国台湾",
-      "MY": "马来西亚",
-      "SG": "新加坡",
-      "US": "美国"
-    }
+    "country_picker_close": "关闭国家选择"
   }
 }

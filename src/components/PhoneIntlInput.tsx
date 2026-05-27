@@ -139,9 +139,9 @@ export default function PhoneIntlField({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.98 }}
               transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[320] max-h-[min(16rem,42vh)] overflow-y-auto rounded-2xl border border-white/90 bg-white/95 p-1.5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+              className="phone-country-picker-scroll absolute left-0 right-0 top-[calc(100%+0.5rem)] z-[320] max-h-[300px] overflow-y-auto overscroll-contain rounded-2xl border border-white/90 bg-white/95 p-1.5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.18)] backdrop-blur-xl"
             >
-              <p className="px-3 pb-2 pt-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#AEAEB2]">
+              <p className="sticky top-0 z-[1] bg-white/95 px-3 pb-2 pt-2 text-[10px] font-black uppercase tracking-[0.16em] text-[#AEAEB2] backdrop-blur-sm">
                 {t('login.country_picker_title')}
               </p>
               {PHONE_COUNTRIES.map((c) => {
@@ -157,7 +157,7 @@ export default function PhoneIntlField({
                       setPickerOpen(false);
                     }}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
-                      on ? 'bg-zinc-100' : 'hover:bg-zinc-50 active:bg-zinc-100'
+                      on ? 'bg-zinc-100' : 'hover:bg-zinc-100 active:bg-zinc-200'
                     }`}
                   >
                     <span className="text-xl leading-none">{c.flag}</span>

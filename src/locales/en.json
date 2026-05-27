@@ -166,15 +166,6 @@
     "continue_legal": "By continuing you agree to our Privacy Policy and Terms.",
     "error_phone": "Enter a valid mobile number (at least 6 digits).",
     "country_picker_title": "Country or region",
-    "country_picker_close": "Close country picker",
-    "countries": {
-      "CN": "China",
-      "HK": "Hong Kong",
-      "MO": "Macau",
-      "TW": "Taiwan",
-      "MY": "Malaysia",
-      "SG": "Singapore",
-      "US": "United States"
-    }
+    "country_picker_close": "Close country picker"
   }
 }

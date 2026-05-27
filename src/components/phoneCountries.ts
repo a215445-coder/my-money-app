@@ -1,23 +1,38 @@
-export const PHONE_COUNTRY_IDS = ['CN', 'HK', 'MO', 'TW', 'MY', 'SG', 'US'] as const;
-export type PhoneCountryId = (typeof PHONE_COUNTRY_IDS)[number];
+import catalogJson from '../data/phoneCountryCatalog.json';
 
-export type PhoneCountryOption = {
-  id: PhoneCountryId;
+export type PhoneCountryCatalogEntry = {
+  id: string;
   dialCode: string;
   flag: string;
+  nameEn: string;
+  nameZh: string;
+  letter: string;
 };
 
-export const PHONE_COUNTRIES: PhoneCountryOption[] = [
-  { id: 'CN', dialCode: '86', flag: '🇨🇳' },
-  { id: 'HK', dialCode: '852', flag: '🇭🇰' },
-  { id: 'MO', dialCode: '853', flag: '🇲🇴' },
-  { id: 'TW', dialCode: '886', flag: '🇹🇼' },
-  { id: 'MY', dialCode: '60', flag: '🇲🇾' },
-  { id: 'SG', dialCode: '65', flag: '🇸🇬' },
-  { id: 'US', dialCode: '1', flag: '🇺🇸' },
-];
+/** 已排序：中国置顶，其余按英文名 A-Z */
+export const PHONE_COUNTRY_CATALOG = catalogJson as PhoneCountryCatalogEntry[];
+
+export type PhoneCountryOption = {
+  id: string;
+  dialCode: string;
+  flag: string;
+  nameEn: string;
+  letter: string;
+};
+
+export const PHONE_COUNTRIES: PhoneCountryOption[] = PHONE_COUNTRY_CATALOG.map(
+  ({ id, dialCode, flag, nameEn, letter }) => ({ id, dialCode, flag, nameEn, letter })
+);
+
+export type PhoneCountryId = string;
 
 export const DEFAULT_PHONE_COUNTRY: PhoneCountryId = 'CN';
+
+const PHONE_COUNTRY_IDS = new Set(PHONE_COUNTRIES.map((c) => c.id));
+
+export function isPhoneCountryId(id: string): id is PhoneCountryId {
+  return PHONE_COUNTRY_IDS.has(id);
+}
 
 export function defaultPhoneCountryForLanguage(lang: string): PhoneCountryId {
   const base = lang.split('-')[0]?.toLowerCase();
@@ -26,9 +41,8 @@ export function defaultPhoneCountryForLanguage(lang: string): PhoneCountryId {
   return DEFAULT_PHONE_COUNTRY;
 }
 
-/** E.164 风格拼接，供登录校验与未来 API 复用 */
 export function buildLoginPhoneE164(countryId: PhoneCountryId, nationalDigits: string): string {
-  const country = PHONE_COUNTRIES.find((c) => c.id === countryId) ?? PHONE_COUNTRIES[0];
+  const country = getPhoneCountry(countryId);
   const digits = nationalDigits.replace(/\D/g, '');
   return `+${country.dialCode}${digits}`;
 }
