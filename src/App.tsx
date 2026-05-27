@@ -96,10 +96,6 @@ import { parseBillIntent, type ParsedBillIntent } from './utils/parseBillIntent'
 import PwaInstallPrompt from './components/PwaInstallPrompt';
 import { getOrCreateDeviceId } from './utils/deviceId';
 import { billsRepo } from './utils/billsRepo';
-import {
-  getImportResultText,
-  isImportResultUrl,
-} from './utils/shortcutImport';
 
 const DEVICE_ID_STORAGE_KEY = 'device_id';
 
@@ -2386,18 +2382,6 @@ export default function App() {
     setIsBudgetModalOpen(false);
     setIsMenuOpen(false);
   };
-
-  if (isImportResultUrl()) {
-    return (
-      <div
-        className="min-h-screen flex items-center justify-center bg-[#F6F8FA] text-[#1D1D1F] p-8"
-        role="status"
-        aria-live="polite"
-      >
-        <p className="text-lg font-black text-center whitespace-pre-wrap">{getImportResultText()}</p>
-      </div>
-    );
-  }
 
   if (showSplash) {
     return <SplashScreen onDone={() => setShowSplash(false)} />;
