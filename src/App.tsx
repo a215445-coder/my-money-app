@@ -99,6 +99,7 @@ import { getOrCreateDeviceId } from './utils/deviceId';
 import { billsRepo } from './utils/billsRepo';
 import {
   clearShortcutImportUrlParams,
+  hasShortcutImportUrl,
   parseShortcutImportFromUrl,
   type ShortcutImportDraftRow,
 } from './utils/shortcutImport';
@@ -387,9 +388,12 @@ export default function App() {
   const [groupDraftName, setGroupDraftName] = useState('');
   const [groupJoinCode, setGroupJoinCode] = useState('');
 
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => !hasShortcutImportUrl());
   const [deviceId] = useState(() => getOrCreateDeviceId(DEVICE_ID_STORAGE_KEY));
-  const [shortcutImportRows, setShortcutImportRows] = useState<ShortcutImportDraftRow[] | null>(null);
+  const [shortcutImportRows, setShortcutImportRows] = useState<ShortcutImportDraftRow[] | null>(() => {
+    const rows = parseShortcutImportFromUrl();
+    return rows && rows.length > 0 ? rows : null;
+  });
 
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isAiBookkeepingOpen, setIsAiBookkeepingOpen] = useState(false);
@@ -2440,13 +2444,8 @@ export default function App() {
     setIsMenuOpen(false);
   };
 
-  if (showSplash) {
-    return <SplashScreen onDone={() => setShowSplash(false)} />;
-  }
-
   return (
     <>
-    <PwaInstallPrompt />
     <ShortcutImportModal
       open={shortcutImportRows !== null}
       initialRows={shortcutImportRows ?? []}
@@ -2455,6 +2454,11 @@ export default function App() {
       onCancel={dismissShortcutImport}
       onSave={saveShortcutImport}
     />
+    {showSplash ? (
+      <SplashScreen onDone={() => setShowSplash(false)} />
+    ) : (
+    <>
+    <PwaInstallPrompt />
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -4522,6 +4526,8 @@ export default function App() {
         <div className="tabbar-safe-spacer pointer-events-none" />
       </nav>
     </motion.div>
+    </>
+    )}
     </>
   );
 }

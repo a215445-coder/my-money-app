@@ -10,6 +10,9 @@ export type ShortcutImportDraftRow = {
 const AMOUNT_GLOBAL_RE =
   /(?:￥|¥|\$|RMB|CNY)\s*(-?\d{1,6}(?:,\d{3})*(?:\.\d{2})?)|(-?\d{1,6}(?:,\d{3})*\.\d{2})\s*元|(?<![\d/.-])(\d{1,6}(?:,\d{3})*\.\d{2})(?!\d)/g;
 
+const AMOUNT_LABEL_RE =
+  /(?:金额|实付|实付金额|支付金额|合计|总计|应付)[:：\s]*(?:￥|¥|\$)?\s*(-?\d+(?:\.\d{1,2})?)/gi;
+
 const MERCHANT_LABEL_RE =
   /(?:商户名称|商户|商品名称|商品|收款方|交易对方|对方|门店|店铺)[:：\s]*(.+)/i;
 const PAY_TO_RE = /(?:付款给|支付给|向)\s*(.+?)(?:\s*付款|\s*支付|$)/i;
@@ -24,6 +27,40 @@ function parseAmountStr(raw: string): number {
   const abs = Math.abs(n);
   if (abs < 0.01 || abs > 999_999) return 0;
   return Math.round(abs * 100) / 100;
+}
+
+function decodeOcrParam(raw: string): string {
+  let text = raw.replace(/\+/g, ' ');
+  for (let i = 0; i < 2; i++) {
+    try {
+      const next = decodeURIComponent(text);
+      if (next === text) break;
+      text = next;
+    } catch {
+      break;
+    }
+  }
+  return text.replace(/\u00a0/g, ' ').trim();
+}
+
+function extractLabeledAmounts(text: string): Array<{ amount: number; shop: string }> {
+  const bills: Array<{ amount: number; shop: string }> = [];
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+
+  for (const line of lines) {
+    AMOUNT_LABEL_RE.lastIndex = 0;
+    const m = AMOUNT_LABEL_RE.exec(line);
+    if (!m) continue;
+    const amount = parseAmountStr(m[1]);
+    if (amount <= 0) continue;
+
+    let shop = '';
+    const merchantOnLine = line.match(MERCHANT_LABEL_RE);
+    if (merchantOnLine) shop = merchantOnLine[1].trim();
+    bills.push({ amount, shop });
+  }
+
+  return bills;
 }
 
 function toDraftRows(bills: Array<{ amount: number; shop: string }>): ShortcutImportDraftRow[] {
@@ -48,6 +85,22 @@ function toDraftRows(bills: Array<{ amount: number; shop: string }>): ShortcutIm
 export function parseBillsFromOcrText(raw: string): ShortcutImportDraftRow[] {
   const text = raw.replace(/\u00a0/g, ' ').trim();
   if (!text) return [];
+
+  const labeled = extractLabeledAmounts(text);
+  if (labeled.length > 0) {
+    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    let lastShop = '';
+    for (const line of lines) {
+      const merchantMatch = line.match(MERCHANT_LABEL_RE);
+      if (merchantMatch) lastShop = merchantMatch[1].trim();
+    }
+    return toDraftRows(
+      labeled.map((b, i) => ({
+        amount: b.amount,
+        shop: b.shop || lastShop || `账单${i + 1}`,
+      }))
+    );
+  }
 
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const bills: Array<{ amount: number; shop: string }> = [];
@@ -90,8 +143,8 @@ export function parseBillsFromOcrText(raw: string): ShortcutImportDraftRow[] {
       const before = text.slice(0, match.index);
       const lineIdx = before.split(/\r?\n/).length - 1;
       let shop = '';
-      for (let i = lineIdx - 1; i >= Math.max(0, lineIdx - 3); i--) {
-        const candidate = lines[i];
+      for (let j = lineIdx - 1; j >= Math.max(0, lineIdx - 3); j--) {
+        const candidate = lines[j];
         if (!candidate || /^\d|^[￥¥$]/.test(candidate)) continue;
         if (SKIP_MERCHANT_RE.test(candidate)) continue;
         if (candidate.length >= 2 && candidate.length <= 40) {
@@ -103,9 +156,22 @@ export function parseBillsFromOcrText(raw: string): ShortcutImportDraftRow[] {
     }
   }
 
-  return toDraftRows(bills);
+  const rows = toDraftRows(bills);
+  if (rows.length > 0) return rows;
+
+  // 兜底：有 ocrData 但未识别到金额时，仍弹出可编辑空行
+  const firstLine = lines.find((l) => l.length >= 2 && !SKIP_MERCHANT_RE.test(l)) || '';
+  return [
+    {
+      rowKey: `shortcut-fallback-${Date.now()}`,
+      amount: 0,
+      shop: firstLine.slice(0, 40),
+      category: '其他',
+    },
+  ];
 }
 
+/** 读取 ?action=import&ocrData=...；只要参数存在就返回可编辑行（绝不返回 null） */
 export function parseShortcutImportFromUrl(): ShortcutImportDraftRow[] | null {
   if (typeof window === 'undefined') return null;
   const params = new URLSearchParams(window.location.search);
@@ -114,13 +180,14 @@ export function parseShortcutImportFromUrl(): ShortcutImportDraftRow[] | null {
   const ocrRaw = params.get('ocrData');
   if (!ocrRaw) return null;
 
-  try {
-    const text = decodeURIComponent(ocrRaw.replace(/\+/g, ' '));
-    const rows = parseBillsFromOcrText(text);
-    return rows.length > 0 ? rows : null;
-  } catch {
-    return null;
-  }
+  const text = decodeOcrParam(ocrRaw);
+  return parseBillsFromOcrText(text);
+}
+
+export function hasShortcutImportUrl(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('action') === 'import' && !!params.get('ocrData');
 }
 
 export function clearShortcutImportUrlParams(): void {

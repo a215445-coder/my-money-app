@@ -40,7 +40,7 @@ export default function ShortcutImportModal({
     <AnimatePresence>
       {open && (
         <div
-          className="fixed inset-0 z-[1300] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/30 backdrop-blur-md"
+          className="fixed inset-0 z-[10000] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/30 backdrop-blur-md"
           onClick={onCancel}
           role="presentation"
         >
@@ -50,7 +50,7 @@ export default function ShortcutImportModal({
             exit={{ y: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 28, stiffness: 280 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-lg max-h-[min(90dvh,720px)] flex flex-col rounded-t-[2rem] sm:rounded-[2rem] bg-white text-[#111111] shadow-2xl border border-gray-100 overflow-hidden"
+            className="w-full max-w-lg max-h-[min(90dvh,720px)] flex flex-col rounded-t-[2rem] sm:rounded-[2rem] bg-white text-[#111111] shadow-2xl border border-gray-100 overflow-hidden z-[10001]"
           >
             <div className="shrink-0 px-6 pt-6 pb-4 border-b border-gray-100">
               <h2 className="text-lg font-black">{t('shortcut_import.title')}</h2>
