@@ -158,6 +158,18 @@
   "profile": {
     "change_avatar": "Change Avatar"
   },
+  "ai_bookkeeping": {
+    "header_button": "AI Log",
+    "title": "AI Bookkeeping",
+    "welcome": "What would you like to log today? Type or speak, e.g. “Lunch at KFC, 50 yuan.”",
+    "input_placeholder": "Describe your expense...",
+    "thinking": "Thinking…",
+    "reply_success": "Got it! Logged as [Category: {{category}}], [Amount: {{amount}}].",
+    "reply_invalid": "I could not find an amount. Try again, e.g. “Lunch cost 50 yuan.”",
+    "send_aria": "Send",
+    "voice_aria": "Voice input",
+    "close_aria": "Close"
+  },
   "wealth_tips": [
     "Knowing “wants” from “needs” is the first step in managing money.",
     "Money you resist spending on impulse becomes your cushion against the unknown.",

@@ -158,6 +158,18 @@
   "profile": {
     "change_avatar": "更换头像"
   },
+  "ai_bookkeeping": {
+    "header_button": "AI 记账",
+    "title": "AI 记账助手",
+    "welcome": "主人，今天想记点什么？你可以打字或者语音告诉我，比如：“中午吃肯德基花了 50 元”。",
+    "input_placeholder": "输入你想记的账单...",
+    "thinking": "正在识别中…",
+    "reply_success": "收到！已为您智能识别：[分类: {{category}}]，[金额: {{amount}}]，并已自动入账！",
+    "reply_invalid": "抱歉，我没识别到金额，请再说一次，例如：午饭花了 50 元。",
+    "send_aria": "发送",
+    "voice_aria": "语音输入",
+    "close_aria": "关闭"
+  },
   "wealth_tips": [
     "区分“想要”和“需要”，是理财的第一步。",
     "你在冲动消费时省下的钱，都会变成未来对抗未知的底气。",

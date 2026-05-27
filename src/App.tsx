@@ -38,6 +38,7 @@ import {
   Compass,
   Zap as ZapIcon,
   Calculator,
+  Sparkles,
 } from 'lucide-react';
 import {
   format,
@@ -91,6 +92,7 @@ import type { Transaction, Category, TransactionType, Account, CurrencyCode, Cur
 import StatsCharts from './components/StatsCharts';
 import HomeEdgeGlow from './components/HomeEdgeGlow';
 import LoginScreen from './components/LoginScreen';
+import AiBookkeepingChat, { type ParsedBillIntent } from './components/AiBookkeepingChat';
 
 const SESSION_AUTH_KEY = 'session_authed';
 
@@ -383,6 +385,7 @@ export default function App() {
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
+  const [isAiBookkeepingOpen, setIsAiBookkeepingOpen] = useState(false);
   const [voiceText, setVoiceText] = useState('');
   const [isWealthMilestoneSheetOpen, setIsWealthMilestoneSheetOpen] = useState(false);
   const [timeContext, setTimeContext] = useState<'morning' | 'afternoon' | 'evening'>(() => {
@@ -813,6 +816,20 @@ export default function App() {
       .trim();
 
     return { amount, category, note: note || t('voice.default_note') };
+  };
+
+  const recordAiBookkeepingExpense = (parsed: ParsedBillIntent) => {
+    const defaultAccount = accounts[0];
+    if (!defaultAccount || parsed.amount <= 0) return;
+    addOrUpdateTransaction({
+      amount: parsed.amount,
+      type: 'expense',
+      category: parsed.category,
+      date: new Date().toISOString(),
+      note: parsed.note,
+      accountId: defaultAccount.id,
+      mood: 'happy',
+    });
   };
 
   const buildBackupKV = () => {
@@ -2487,13 +2504,24 @@ export default function App() {
           : "pt-[env(safe-area-inset-top)]"
       )}>
         {activeTab === 'list' && (
-          <header className="main-header flex justify-between items-center mb-12 gap-2">
-            <div className="flex items-center space-x-2">
-              <button onClick={() => setIsMenuOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
-                <Menu size={20} />
-              </button>
-            </div>
-            <div className="text-center flex-1 min-w-0 px-1">
+          <header className="main-header flex items-center gap-2 mb-12">
+            <button onClick={() => setIsMenuOpen(true)} className={cn("shrink-0 p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+              <Menu size={20} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsAiBookkeepingOpen(true)}
+              className={cn(
+                "flex shrink-0 items-center gap-1 rounded-2xl border px-2 py-2 shadow-sm transition-all active:scale-95 hover:opacity-90",
+                isDarkMode ? "border-indigo-500/30 bg-slate-800" : "border-indigo-100 bg-white shadow-[0_0_20px_-6px_rgba(99,102,241,0.45)]"
+              )}
+            >
+              <Sparkles size={15} className="shrink-0 text-indigo-500" />
+              <span className="text-[9px] font-black leading-none text-indigo-600 whitespace-nowrap">
+                {t('ai_bookkeeping.header_button')}
+              </span>
+            </button>
+            <div className="min-w-0 flex-1 text-center px-0.5">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{getFilterLabel()}</p>
               <div className="flex items-center justify-center space-x-3 min-w-0">
                 <button onClick={() => changeDate('prev')} className="p-1 hover:scale-125 transition-transform"><ChevronLeft size={16} /></button>
@@ -2506,7 +2534,7 @@ export default function App() {
                 <button onClick={() => changeDate('next')} className="p-1 hover:scale-125 transition-transform"><ChevronRight size={16} /></button>
               </div>
             </div>
-            <button onClick={() => setIsSearchModalOpen(true)} className={cn("p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
+            <button onClick={() => setIsSearchModalOpen(true)} className={cn("shrink-0 p-3 rounded-2xl shadow-sm border active:scale-90 transition-all", isDarkMode ? "bg-slate-800 border-slate-700" : "bg-white border-gray-100")}>
               <Search size={20} />
             </button>
           </header>
@@ -3398,6 +3426,20 @@ export default function App() {
           </AnimatePresence>
         </div>
       </main>
+
+      <AiBookkeepingChat
+        open={isAiBookkeepingOpen}
+        onClose={() => setIsAiBookkeepingOpen(false)}
+        isDarkMode={isDarkMode}
+        formatMoney={formatMoney}
+        trCategory={(cat) => {
+          const key = `categories.${cat}`;
+          const translated = t(key);
+          return translated && translated !== key ? translated : cat;
+        }}
+        parseIntent={parseVoiceIntent}
+        onRecordExpense={recordAiBookkeepingExpense}
+      />
 
       {/* Voice Recognition Modal */}
       <AnimatePresence>

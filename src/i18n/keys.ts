@@ -16,6 +16,18 @@ export const I18N_KEYS = {
   splash: {
     tagline: 'splash.tagline',
   },
+  aiBookkeeping: {
+    headerButton: 'ai_bookkeeping.header_button',
+    title: 'ai_bookkeeping.title',
+    welcome: 'ai_bookkeeping.welcome',
+    inputPlaceholder: 'ai_bookkeeping.input_placeholder',
+    thinking: 'ai_bookkeeping.thinking',
+    replySuccess: 'ai_bookkeeping.reply_success',
+    replyInvalid: 'ai_bookkeeping.reply_invalid',
+    sendAria: 'ai_bookkeeping.send_aria',
+    voiceAria: 'ai_bookkeeping.voice_aria',
+    closeAria: 'ai_bookkeeping.close_aria',
+  },
   stats: {
     visualizationDetails: 'stats_ui.visualization_details',
     detailDay: 'stats_ui.detail_day',
