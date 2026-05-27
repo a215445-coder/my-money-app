@@ -9,6 +9,7 @@ import {
   defaultPhoneCountryForLanguage,
   getPhoneCountry,
 } from './phoneCountries';
+import { isValidNationalPhoneLength } from './phoneNationalLengthRules';
 
 export function usePhoneIntlLogin() {
   const { i18n } = useTranslation();
@@ -23,7 +24,7 @@ export function usePhoneIntlLogin() {
 
   const getE164 = () => buildLoginPhoneE164(countryId, nationalNumber);
 
-  const isNationalValid = () => nationalNumber.replace(/\D/g, '').length >= 6;
+  const isNationalValid = () => isValidNationalPhoneLength(countryId, nationalNumber);
 
   return {
     countryId,
@@ -41,7 +42,7 @@ type PhoneIntlFieldProps = {
   hasError?: boolean;
   onCountryChange: (id: PhoneCountryId) => void;
   onNationalChange: (value: string) => void;
-  onClearError?: () => void;
+  onBlurField?: () => void;
   onEnter?: () => void;
 };
 
@@ -51,7 +52,7 @@ export default function PhoneIntlField({
   hasError,
   onCountryChange,
   onNationalChange,
-  onClearError,
+  onBlurField,
   onEnter,
 }: PhoneIntlFieldProps) {
   const { t } = useTranslation();
@@ -111,8 +112,8 @@ export default function PhoneIntlField({
           value={nationalNumber}
           onChange={(e) => {
             onNationalChange(e.target.value.replace(/[^\d\s-]/g, ''));
-            onClearError?.();
           }}
+          onBlur={() => onBlurField?.()}
           onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
           className="min-w-0 flex-1 bg-transparent px-4 py-4 text-[15px] font-bold text-[#1D1D1F] placeholder:text-[#AEAEB2] focus:outline-none"
         />
@@ -155,6 +156,7 @@ export default function PhoneIntlField({
                     onClick={() => {
                       onCountryChange(c.id);
                       setPickerOpen(false);
+                      onBlurField?.();
                     }}
                     className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${
                       on ? 'bg-zinc-100' : 'hover:bg-zinc-100 active:bg-zinc-200'

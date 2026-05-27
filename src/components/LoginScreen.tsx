@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import PhoneIntlField, { usePhoneIntlLogin } from './PhoneIntlInput';
+import type { PhoneCountryId } from './phoneCountries';
+import { nationalPhoneDigits } from './phoneNationalLengthRules';
 
 type LoginScreenProps = {
   onAuthed: () => void;
@@ -11,16 +13,37 @@ type LoginScreenProps = {
 
 export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenProps) {
   const { t } = useTranslation();
-  const [phoneError, setPhoneError] = useState(false);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const phoneIntl = usePhoneIntlLogin();
 
+  const showPhoneError =
+    (phoneTouched || submitAttempted) && !phoneIntl.isNationalValid();
+
+  const handleNationalChange = (value: string) => {
+    phoneIntl.setNationalNumber(value);
+    if (nationalPhoneDigits(value).length > 0) {
+      setPhoneTouched(true);
+    }
+  };
+
+  const handlePhoneBlur = () => {
+    setPhoneTouched(true);
+  };
+
+  const handleCountryChange = (id: PhoneCountryId) => {
+    phoneIntl.setCountryId(id);
+    if (phoneTouched || nationalPhoneDigits(phoneIntl.nationalNumber).length > 0) {
+      setPhoneTouched(true);
+    }
+  };
+
   const tryPhoneLogin = () => {
+    setSubmitAttempted(true);
+    setPhoneTouched(true);
     if (!phoneIntl.isNationalValid()) {
-      setPhoneError(true);
       return;
     }
-    setPhoneError(false);
-    // E.164 预拼：未来 API 可直接读取；当前 mock 登录仍走 onAuthed()
     const e164 = phoneIntl.getE164();
     if (e164.length >= 8) {
       sessionStorage.setItem('login_phone_e164', e164);
@@ -62,15 +85,26 @@ export default function LoginScreen({ onAuthed, exiting = false }: LoginScreenPr
                 <PhoneIntlField
                   countryId={phoneIntl.countryId}
                   nationalNumber={phoneIntl.nationalNumber}
-                  hasError={phoneError}
-                  onCountryChange={phoneIntl.setCountryId}
-                  onNationalChange={phoneIntl.setNationalNumber}
-                  onClearError={() => setPhoneError(false)}
+                  hasError={showPhoneError}
+                  onCountryChange={handleCountryChange}
+                  onNationalChange={handleNationalChange}
+                  onBlurField={handlePhoneBlur}
                   onEnter={tryPhoneLogin}
                 />
-                {phoneError && (
-                  <p className="mt-2 px-1 text-xs font-bold text-red-500">{t('login.error_phone')}</p>
-                )}
+                <AnimatePresence>
+                  {showPhoneError && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.2 }}
+                      className="mt-2 px-1 text-xs font-bold text-red-500"
+                      role="alert"
+                    >
+                      {t('login.error_phone')}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
 
               <button

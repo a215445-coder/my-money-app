@@ -164,7 +164,7 @@
     "wechat_login": "WeChat",
     "google_login": "Google",
     "continue_legal": "By continuing you agree to our Privacy Policy and Terms.",
-    "error_phone": "Enter a valid mobile number (at least 6 digits).",
+    "error_phone": "Please enter a valid phone number",
     "country_picker_title": "Country or region",
     "country_picker_close": "Close country picker"
   }
