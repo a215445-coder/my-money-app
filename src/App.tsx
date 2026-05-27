@@ -94,8 +94,14 @@ import AiBookkeepingChat from './components/AiBookkeepingChat';
 import { supabase } from './lib/supabaseClient';
 import { parseBillIntent, type ParsedBillIntent } from './utils/parseBillIntent';
 import PwaInstallPrompt from './components/PwaInstallPrompt';
+import ShortcutImportModal from './components/ShortcutImportModal';
 import { getOrCreateDeviceId } from './utils/deviceId';
 import { billsRepo } from './utils/billsRepo';
+import {
+  clearShortcutImportUrlParams,
+  parseShortcutImportFromUrl,
+  type ShortcutImportDraftRow,
+} from './utils/shortcutImport';
 
 const DEVICE_ID_STORAGE_KEY = 'device_id';
 
@@ -383,6 +389,7 @@ export default function App() {
 
   const [showSplash, setShowSplash] = useState(true);
   const [deviceId] = useState(() => getOrCreateDeviceId(DEVICE_ID_STORAGE_KEY));
+  const [shortcutImportRows, setShortcutImportRows] = useState<ShortcutImportDraftRow[] | null>(null);
 
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [isAiBookkeepingOpen, setIsAiBookkeepingOpen] = useState(false);
@@ -2169,6 +2176,56 @@ export default function App() {
     }
   };
 
+  // iOS Shortcuts: ?action=import&ocrData=<url-encoded OCR plain text>
+  useEffect(() => {
+    const rows = parseShortcutImportFromUrl();
+    if (rows && rows.length > 0) setShortcutImportRows(rows);
+  }, []);
+
+  const dismissShortcutImport = useCallback(() => {
+    setShortcutImportRows(null);
+    clearShortcutImportUrlParams();
+  }, []);
+
+  const saveShortcutImport = useCallback(
+    (rows: ShortcutImportDraftRow[]) => {
+      const defaultAccount = accounts[0];
+      const valid = rows.filter((r) => r.amount > 0);
+      if (!defaultAccount || valid.length === 0) {
+        dismissShortcutImport();
+        return;
+      }
+      const newTxs: Transaction[] = valid.map((row) => ({
+        id: crypto.randomUUID(),
+        amount: row.amount,
+        type: 'expense' as const,
+        category: row.category,
+        date: new Date().toISOString(),
+        note: row.shop || undefined,
+        accountId: defaultAccount.id,
+        mood: 'happy' as const,
+      }));
+      const totalExpense = valid.reduce((sum, r) => sum + r.amount, 0);
+      setTransactions((prev) => [...newTxs, ...prev]);
+      setAccounts((prev) =>
+        prev.map((acc) =>
+          acc.id === defaultAccount.id ? { ...acc, balance: acc.balance - totalExpense } : acc
+        )
+      );
+      void billsRepo.upsertMany(supabase, deviceId, newTxs).catch((e) => {
+        console.warn('[bills] shortcut import upsert failed', e);
+      });
+      showToast(t('shortcut_import.saved', { count: newTxs.length }));
+      dismissShortcutImport();
+    },
+    [accounts, deviceId, dismissShortcutImport, showToast, t]
+  );
+
+  const shortcutExpenseCategories = useMemo(
+    () => CATEGORIES.map((c) => c.label).filter((c) => c !== '收入'),
+    []
+  );
+
   // Device-scoped cloud sync: load bills from Supabase by device_id
   useEffect(() => {
     let cancelled = false;
@@ -2390,6 +2447,14 @@ export default function App() {
   return (
     <>
     <PwaInstallPrompt />
+    <ShortcutImportModal
+      open={shortcutImportRows !== null}
+      initialRows={shortcutImportRows ?? []}
+      categories={shortcutExpenseCategories}
+      trCategory={(cat) => t(`categories.${cat}`)}
+      onCancel={dismissShortcutImport}
+      onSave={saveShortcutImport}
+    />
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
