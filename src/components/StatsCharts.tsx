@@ -29,9 +29,8 @@ import {
   PolarGrid,
   PolarAngleAxis,
   PolarRadiusAxis,
-  ComposedChart,
+  BarChart,
   Bar,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -473,7 +472,7 @@ export default function StatsCharts() {
               key={pill.key}
               type="button"
               onClick={() => setPeriod(pill.key)}
-              className={`relative flex-1 py-2.5 rounded-xl text-xs font-black transition-colors z-10 ${
+              className={`relative flex-1 py-2.5 rounded-xl text-xs font-black transition-all duration-150 active:scale-95 z-10 ${
                 period === pill.key ? 'text-[#1D1D1F]' : 'text-[#6E6E73]'
               }`}
             >
@@ -597,9 +596,23 @@ export default function StatsCharts() {
             className="w-full max-w-full overflow-hidden"
             style={{ height: 340, width: '100%' }}
           >
-            <ComposedChart width={chartWidth} height={340} data={trendData} margin={{ top: 8, right: 8, left: 0, bottom: 72 }}>
+            <BarChart
+              width={chartWidth}
+              height={340}
+              data={trendData}
+              margin={{ top: 8, right: 8, left: 0, bottom: 72 }}
+              barGap={3}
+              barCategoryGap={period === 'year' ? '22%' : period === 'week' ? '32%' : '28%'}
+            >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F2F2F7" />
-              <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 700, fill: '#6E6E73' }} />
+              <XAxis
+                dataKey="label"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 9, fontWeight: 700, fill: '#6E6E73' }}
+                padding={{ left: 16, right: 16 }}
+                interval={period === 'month' ? 2 : 0}
+              />
               <YAxis
                 axisLine={false}
                 tickLine={false}
@@ -620,39 +633,23 @@ export default function StatsCharts() {
                   position: 'relative',
                 }}
               />
-              {EXPENSE_CATS.map((cat, idx) => (
-                <Bar
-                  key={cat}
-                  dataKey={cat}
-                  name={trCategory(cat)}
-                  stackId="exp"
-                  fill={CATEGORY_COLORS[cat]}
-                  barSize={period === 'year' ? 14 : 8}
-                  radius={idx === EXPENSE_CATS.length - 1 ? [4, 4, 0, 0] : [0, 0, 0, 0]}
-                  {...CHART_ANIM}
-                />
-              ))}
-              <Line
-                type="monotone"
+              <Bar
                 dataKey="Income"
                 name={t(I18N_KEYS.stats.income)}
-                stroke={COLORS.orange}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5 }}
+                fill="#10b981"
+                barSize={8}
+                radius={[4, 4, 0, 0]}
                 {...CHART_ANIM}
               />
-              <Line
-                type="monotone"
+              <Bar
                 dataKey="Expense"
                 name={t(I18N_KEYS.stats.expense)}
-                stroke={COLORS.purple}
-                strokeWidth={2.5}
-                dot={false}
-                activeDot={{ r: 5 }}
+                fill="#ef4444"
+                barSize={8}
+                radius={[4, 4, 0, 0]}
                 {...CHART_ANIM}
               />
-            </ComposedChart>
+            </BarChart>
           </motion.div>
         </AnimatePresence>
       </motion.div>
