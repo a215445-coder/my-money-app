@@ -90,6 +90,9 @@ import { LiquidGlass } from '@ybouane/liquidglass';
 import type { Transaction, Category, TransactionType, Account, CurrencyCode, Currency } from './types';
 import StatsCharts from './components/StatsCharts';
 import HomeEdgeGlow from './components/HomeEdgeGlow';
+import LoginScreen from './components/LoginScreen';
+
+const SESSION_AUTH_KEY = 'session_authed';
 
 // Utility for tailwind classes
 function cn(...inputs: ClassValue[]) {
@@ -98,6 +101,7 @@ function cn(...inputs: ClassValue[]) {
 
 
 function SplashScreen({ onDone }: { onDone: () => void }) {
+  const { t } = useTranslation();
   const [phase, setPhase] = useState<'enter' | 'exit'>('enter');
 
   useEffect(() => {
@@ -147,69 +151,10 @@ function SplashScreen({ onDone }: { onDone: () => void }) {
           transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
           className="mt-2 text-sm font-bold text-[#6E6E73]"
         >
-          轻松记账，掌控财富
+          {t('splash.tagline')}
         </motion.p>
       </motion.div>
     </motion.div>
-  );
-}
-
-function LoginScreen({ onAuthed }: { onAuthed: () => void }) {
-  const { t } = useTranslation();
-  const [phone, setPhone] = useState('');
-  return (
-    <div className="fixed inset-0 z-[300] overflow-hidden text-[#111111] bg-[#F6F8FA]">
-      <div className="absolute inset-0 p-8 flex flex-col">
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-full max-w-md">
-            <h1 className="text-4xl font-black tracking-tight">{t('login.title')}</h1>
-            <p className="mt-3 text-[#6E6E73] text-sm font-bold">{t('login.subtitle')}</p>
-
-            <div className="mt-10 rounded-[3rem] p-8 lux-gold-hairline bg-white shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
-              <div className="space-y-4">
-                <div className="relative">
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    placeholder={t('login.phone_placeholder')}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full px-5 py-4 rounded-2xl bg-[#F2F2F7] lux-ios-glass-subtle text-[#111111] font-bold placeholder:text-[#86868B] focus:outline-none focus:ring-4 ring-[#1D1D1F]/10"
-                  />
-                </div>
-
-                <button
-                  onClick={onAuthed}
-                  className="w-full py-4 rounded-2xl bg-white text-black font-black text-sm shadow-lg active:scale-95 transition-all"
-                >
-                  {t('login.phone_login')}
-                </button>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={onAuthed}
-                    className="py-4 rounded-2xl bg-[#F2F2F7] lux-ios-glass-subtle text-[#111111] font-black text-xs active:scale-95 transition-all"
-                  >
-                    {t('login.wechat_login')}
-                  </button>
-                  <button
-                    onClick={onAuthed}
-                    className="py-4 rounded-2xl bg-[#F2F2F7] lux-ios-glass-subtle text-[#111111] font-black text-xs active:scale-95 transition-all"
-                  >
-                    {t('login.google_login')}
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-6 text-center text-[10px] font-bold text-[#86868B]">
-              {t('login.continue_legal')}
-            </div>
-          </div>
-        </div>
-        <div className="pb-[env(safe-area-inset-bottom)]" />
-      </div>
-    </div>
   );
 }
 
@@ -431,7 +376,8 @@ export default function App() {
   const [groupDraftName, setGroupDraftName] = useState('');
   const [groupJoinCode, setGroupJoinCode] = useState('');
 
-  const [isAuthed, setIsAuthed] = useState(() => localStorage.getItem('auth_done') === 'true');
+  const [isAuthed, setIsAuthed] = useState(() => sessionStorage.getItem(SESSION_AUTH_KEY) === 'true');
+  const [loginFadeOut, setLoginFadeOut] = useState(false);
   const [showHomeEdgeGlow, setShowHomeEdgeGlow] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
@@ -2398,9 +2344,21 @@ export default function App() {
     }
   };
 
+  const handleLoginSuccess = useCallback(() => {
+    localStorage.setItem('auth_done', 'true');
+    sessionStorage.setItem(SESSION_AUTH_KEY, 'true');
+    setShowHomeEdgeGlow(true);
+    setLoginFadeOut(true);
+    setIsAuthed(true);
+    window.setTimeout(() => setLoginFadeOut(false), 450);
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem('auth_done');
+    sessionStorage.removeItem(SESSION_AUTH_KEY);
     setIsAuthed(false);
+    setLoginFadeOut(false);
+    setShowHomeEdgeGlow(false);
     setIsLogoutDialogOpen(false);
     setIsBudgetModalOpen(false);
     setIsMenuOpen(false);
@@ -2411,19 +2369,16 @@ export default function App() {
   }
 
   if (!isAuthed) {
-    return (
-      <LoginScreen
-        onAuthed={() => {
-          localStorage.setItem('auth_done', 'true');
-          setShowHomeEdgeGlow(true);
-          setIsAuthed(true);
-        }}
-      />
-    );
+    return <LoginScreen onAuthed={handleLoginSuccess} />;
   }
 
   return (
+    <>
+    {loginFadeOut && <LoginScreen exiting onAuthed={() => {}} />}
     <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className={cn(
         "min-h-screen transition-all duration-1000 pb-[calc(52px+env(safe-area-inset-bottom)+12px)] font-sans relative overflow-hidden",
         cn(theme.appBg, theme.appText)
@@ -2432,7 +2387,7 @@ export default function App() {
       {showHomeEdgeGlow && (
         <HomeEdgeGlow onComplete={() => setShowHomeEdgeGlow(false)} />
       )}
-      {/* Privacy Lock Screen */}
+      {/* Privacy Lock Screen — main shell */}
       {isLocked && (
         <div className={cn("fixed inset-0 z-[100] flex flex-col items-center justify-center p-8", "lux-carbon text-[#111111]")}>
           <div className={cn("w-20 h-20 rounded-3xl flex items-center justify-center mb-8 shadow-2xl animate-bounce", theme.primary)}>
@@ -4497,6 +4452,7 @@ export default function App() {
         <div className="tabbar-safe-spacer pointer-events-none" />
       </nav>
     </motion.div>
+    </>
   );
 }
 

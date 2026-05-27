@@ -1,4 +1,18 @@
 export const I18N_KEYS = {
+  login: {
+    title: 'login.title',
+    subtitle: 'login.subtitle',
+    brandBadge: 'login.brand_badge',
+    phonePlaceholder: 'login.phone_placeholder',
+    phoneLogin: 'login.phone_login',
+    wechatLogin: 'login.wechat_login',
+    googleLogin: 'login.google_login',
+    continueLegal: 'login.continue_legal',
+    errorPhone: 'login.error_phone',
+  },
+  splash: {
+    tagline: 'splash.tagline',
+  },
   stats: {
     visualizationDetails: 'stats_ui.visualization_details',
     detailDay: 'stats_ui.detail_day',

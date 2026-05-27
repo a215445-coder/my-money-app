@@ -151,5 +151,19 @@
   "edit_monthly_budget": "设置每月预算",
   "edit_budget_desc": "合理规划每月支出，助你更有序地理财",
   "confirm": "确认",
-  "cancel": "取消"
+  "cancel": "取消",
+  "splash": {
+    "tagline": "轻松记账，掌控财富"
+  },
+  "login": {
+    "title": "欢迎回来",
+    "subtitle": "登录后即可同步多设备数据与专业报表能力。",
+    "brand_badge": "专业记账",
+    "phone_placeholder": "请输入手机号",
+    "phone_login": "登录",
+    "wechat_login": "微信登录",
+    "google_login": "Google 登录",
+    "continue_legal": "继续即表示同意隐私政策与用户协议",
+    "error_phone": "请输入有效的手机号（至少 6 位）"
+  }
 }
