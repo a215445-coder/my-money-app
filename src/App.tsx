@@ -3617,53 +3617,83 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Transaction Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm">
+      {/* Transaction Modal — 70vh stacking sheet (方案 B) */}
+      <AnimatePresence>
+        {isModalOpen && (
           <motion.div
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] pt-8 px-8 pb-0 shadow-2xl relative overflow-hidden bg-white backdrop-blur-[24px] lux-gold-hairline text-[#111111] max-h-[calc(100dvh-(env(safe-area-inset-top)+1rem))] flex flex-col"
+            key="transaction-modal-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            className="fixed inset-0 z-[99999] flex items-end justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }}
           >
-            <div className="absolute inset-0 backdrop-blur-2xl -z-10" />
+            <motion.div
+              key="transaction-modal-sheet"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              drag="y"
+              dragConstraints={{ top: 0, bottom: 0 }}
+              dragElastic={{ top: 0, bottom: 0.4 }}
+              onDragEnd={(_, info) => {
+                if (info.offset.y > 96 || info.velocity.y > 520) {
+                  setIsModalOpen(false);
+                  setEditingTransaction(null);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className={cn(
+                'w-full max-w-md flex flex-col relative overflow-hidden',
+                'rounded-t-[2.5rem] shadow-[0_-8px_40px_rgba(0,0,0,0.12)]',
+                'bg-white backdrop-blur-[24px] lux-gold-hairline text-[#111111]',
+                'h-[70dvh] max-h-[70dvh] min-h-0',
+                'pb-[env(safe-area-inset-bottom)]',
+                'sm:rounded-[2.5rem] sm:mb-4 sm:h-auto sm:max-h-[min(70dvh,720px)]'
+              )}
+            >
+              <div className="absolute inset-0 backdrop-blur-2xl -z-10 pointer-events-none" />
 
-            <div className="pt-1 pb-4 flex justify-center">
-              <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(29,29,31,0.35),rgba(110,110,115,0.85),rgba(72,72,74,0.45))]" />
-            </div>
-            <div className="relative mb-6 h-10">
-              <button
-                onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }}
-                className={cn(
-                  "absolute left-0 -top-2 p-2 rounded-full transition-all active:scale-90 z-10",
-                  "lux-carbon-soft text-[#1D1D1F] lux-shimmer-tap"
-                )}
-              >
-                <X size={20} />
-              </button>
-              <h2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl font-black text-center whitespace-nowrap">
-                {editingTransaction ? t('edit_bill') : t('add_bill')}
-              </h2>
-            </div>
+              <div className="pt-3 pb-3 flex justify-center shrink-0 cursor-grab active:cursor-grabbing touch-none">
+                <div className="w-12 h-1.5 rounded-full bg-[linear-gradient(90deg,rgba(29,29,31,0.35),rgba(110,110,115,0.85),rgba(72,72,74,0.45))]" />
+              </div>
+              <div className="relative mb-4 h-10 shrink-0 px-8">
+                <button
+                  type="button"
+                  onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }}
+                  className={cn(
+                    'absolute left-6 -top-1 p-2 rounded-full transition-all active:scale-90 z-10',
+                    'lux-carbon-soft text-[#1D1D1F] lux-shimmer-tap'
+                  )}
+                  aria-label={t('cancel')}
+                >
+                  <X size={20} />
+                </button>
+                <h2 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-xl font-black text-center whitespace-nowrap pointer-events-none">
+                  {editingTransaction ? t('edit_bill') : t('add_bill')}
+                </h2>
+              </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar pb-0">
-              <TransactionForm
-                accounts={accounts}
-                transactions={transactions}
-                rates={rates}
-                onSubmit={addOrUpdateTransaction}
-                initialData={editingTransaction || undefined}
-                onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
-                isDarkMode={isDarkMode}
-                groupSaving={groupSaving}
-                displayCurrencyCode={displayCurrencyCode}
-                onDisplayCurrencyCodeChange={setDisplayCurrencyCode}
-              />
-            </div>
+              <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar px-8">
+                <TransactionForm
+                  accounts={accounts}
+                  transactions={transactions}
+                  rates={rates}
+                  onSubmit={addOrUpdateTransaction}
+                  initialData={editingTransaction || undefined}
+                  onDelete={editingTransaction ? () => { deleteTransaction(editingTransaction.id, { stopPropagation: () => { } } as any); setIsModalOpen(false); } : undefined}
+                  isDarkMode={isDarkMode}
+                  groupSaving={groupSaving}
+                  displayCurrencyCode={displayCurrencyCode}
+                  onDisplayCurrencyCodeChange={setDisplayCurrencyCode}
+                />
+              </div>
+            </motion.div>
           </motion.div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
 
       {/* Search & Advanced Filter Modal */}
       <AnimatePresence>
