@@ -811,10 +811,23 @@ i18n
       escapeValue: false,
     },
     detection: {
-      order: ['localStorage', 'navigator'],
+      order: ['localStorage', 'navigator', 'htmlTag'],
       lookupLocalStorage: 'app_lang',
+      lookupFromPathIndex: 0,
+      lookupFromSubdomainIndex: 0,
       caches: ['localStorage'],
-    }
-  });
+    },
+    supportedLngs: ['zh-CN', 'en-US', 'zh', 'en'],
+    nonExplicitSupportedLngs: true,
+  } as any);
+
+// 映射其他语言变体到支持的语言
+i18n.on('languageChanged', (lng) => {
+  if (lng?.startsWith('zh')) {
+    i18n.changeLanguage('zh-CN');
+  } else if (lng?.startsWith('en')) {
+    i18n.changeLanguage('en-US');
+  }
+});
 
 export default i18n;

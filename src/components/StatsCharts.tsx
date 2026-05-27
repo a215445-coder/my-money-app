@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   format,
   parseISO,
@@ -164,6 +165,7 @@ const generateMockTrend = (days: number, base: number, volatility: number): numb
 
 // ── Main Component ──
 export default function StatsCharts() {
+  const { t } = useTranslation();
   const [timeDimension, setTimeDimension] = useState<TimeDimension>('month');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -373,9 +375,9 @@ export default function StatsCharts() {
             className="grid grid-cols-3 gap-3"
           >
             <div className="bg-white rounded-2xl p-4 shadow-[0_8px_32px_rgba(0,0,0,0.02)] border border-[rgba(0,0,0,0.04)]">
-              <div className="flex items-center space-x-2 mb-2">
-                <div className="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center"><TrendingUp size={16} className="text-green-500" /></div>
-                <span className="text-[10px] font-black text-[#6E6E73] uppercase tracking-widest">收入</span>
+              <div className="flex items-center space-x-2 mb-4">
+                <Activity size={18} className="text-[#6E6E73]" />
+                <span className="text-xs font-black text-[#1D1D1F]">{t('stats_ui.visualization_details')}</span>
               </div>
               <p className="text-lg font-black text-[#1D1D1F] tabular-nums">{formatMoney(summary.income)}</p>
             </div>
@@ -462,7 +464,7 @@ export default function StatsCharts() {
               <div className="flex gap-3 w-full">
                 {/* Mini Pie */}
                 <div className="bg-[#F9FAFB] rounded-xl p-3 flex-1">
-                  <p className="text-[9px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">本月总占比</p>
+                  <p className="text-[9px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">{t('stats_ui.monthly_share')}</p>
                   <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <PieChart width={160} height={140}>
                       <Pie
@@ -493,7 +495,7 @@ export default function StatsCharts() {
 
                 {/* Mini Stacked Area */}
                 <div className="bg-[#F9FAFB] rounded-xl p-3 flex-1">
-                  <p className="text-[9px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">近30天分类趋势</p>
+                  <p className="text-[9px] font-black text-[#6E6E73] uppercase tracking-widest mb-1">{t('stats_ui.last30_trend')}</p>
                   <div style={{ height: '140px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <AreaChart width={160} height={140} data={areaData}>
                       <CartesianGrid strokeDasharray="2 2" vertical={false} stroke="#E8E8ED" />
@@ -534,7 +536,7 @@ export default function StatsCharts() {
                 <span className="text-xs font-black text-[#1D1D1F]">Visualization Details</span>
               </div>
               <div className="flex space-x-1 bg-[#F2F2F7] rounded-xl p-0.5">
-                {([{ key: 'day', label: 'Day' }, { key: 'week', label: 'Week' }, { key: 'month', label: 'Month' }] as { key: 'day' | 'week' | 'month'; label: string }[]).map((tab) => (
+                {([{ key: 'day', label: t('stats_ui.detail_day') }, { key: 'week', label: t('stats_ui.detail_week') }, { key: 'month', label: t('stats_ui.detail_month') }] as { key: 'day' | 'week' | 'month'; label: string }[]).map((tab) => (
                   <button
                     key={tab.key}
                     onClick={() => setDetailTab(tab.key)}
@@ -586,6 +588,7 @@ export default function StatsCharts() {
 
                 {/* Income Line */}
                 <Line
+                  name={t('stats_ui.income')}
                   type="monotone"
                   dataKey="Income"
                   stroke="#F97316"
@@ -596,6 +599,7 @@ export default function StatsCharts() {
 
                 {/* Expense Line */}
                 <Line
+                  name={t('stats_ui.expense')}
                   type="monotone"
                   dataKey="Expense"
                   stroke="#A855F7"

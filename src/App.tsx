@@ -344,6 +344,21 @@ const groupActivitiesKey = (groupId: string) => `group_saving_activities_${group
 
 export default function App() {
   const { t, i18n } = useTranslation();
+  // Ensure stored or system language is normalized to supported variants
+  useEffect(() => {
+    const saved = localStorage.getItem('app_lang');
+    if (saved) {
+      if (saved.startsWith('zh')) i18n.changeLanguage('zh-CN');
+      else if (saved.startsWith('en')) i18n.changeLanguage('en-US');
+      else i18n.changeLanguage(saved);
+      return;
+    }
+    const nav = navigator.language || (navigator as any).userLanguage;
+    if (nav) {
+      if (nav.startsWith('zh')) i18n.changeLanguage('zh-CN');
+      else if (nav.startsWith('en')) i18n.changeLanguage('en-US');
+    }
+  }, [i18n]);
   // --- Core State ---
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem('transactions');
@@ -3633,7 +3648,7 @@ export default function App() {
               <button
                 onClick={() => { setIsModalOpen(false); setEditingTransaction(null); }}
                 className={cn(
-                  "absolute left-0 top-1/2 -translate-y-1/2 -mt-1 p-2 rounded-full transition-all active:scale-90 z-10",
+                  "absolute left-0 -top-2 p-2 rounded-full transition-all active:scale-90 z-10",
                   "lux-carbon-soft text-[#1D1D1F] lux-shimmer-tap"
                 )}
               >
