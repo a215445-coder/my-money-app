@@ -3706,14 +3706,16 @@ export default function App() {
 
       {/* Settings Modal */}
       {isBudgetModalOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-black/20 backdrop-blur-md">
+        <div className="fixed inset-0 z-[1100] flex items-end sm:items-center justify-center p-0 sm:p-6 bg-black/20 backdrop-blur-md">
           <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            initial={{ y: '100%', opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ type: 'spring', damping: 28, stiffness: 320 }}
             className={cn(
-              "w-full max-w-sm rounded-[3rem] pt-10 px-10 pb-[calc(11rem+env(safe-area-inset-bottom,0px))] shadow-2xl max-h-[85vh] overflow-y-auto no-scrollbar relative",
-              isDarkMode ? "bg-slate-800 text-white" : "bg-white text-gray-900"
+              'w-full max-w-sm rounded-t-[2.5rem] sm:rounded-[3rem] pt-10 px-10',
+              'pb-[calc(8rem+env(safe-area-inset-bottom,0px))]',
+              'shadow-2xl max-h-[min(92dvh,100%)] sm:max-h-[85vh] overflow-y-auto no-scrollbar relative',
+              isDarkMode ? 'bg-slate-800 text-white' : 'bg-white text-gray-900'
             )}
           >
             <div className="flex justify-between items-center mb-8">
@@ -3825,6 +3827,11 @@ export default function App() {
                   </div>
                   <ChevronRight size={18} className="text-rose-400 opacity-70" />
                 </button>
+                {/* 底部垫高：避开悬浮 TabBar + 凸起加号（仅布局） */}
+                <div
+                  className="shrink-0 h-[calc(6.5rem+env(safe-area-inset-bottom,0px))]"
+                  aria-hidden
+                />
               </div>
             </div>
           </motion.div>
