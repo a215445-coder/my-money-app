@@ -3699,15 +3699,28 @@ export default function App() {
                 />
                 <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-orange-500/[0.04] rounded-full blur-2xl pointer-events-none" />
                 <div className="flex items-center space-x-4 relative z-10">
-                  <div className="w-14 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center overflow-hidden border border-zinc-200/70 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => avatarLibraryInputRef.current?.click()}
+                    aria-label={t('profile.change_avatar')}
+                    className="w-14 h-14 shrink-0 bg-zinc-100 rounded-2xl flex items-center justify-center overflow-hidden border border-zinc-200/70 shadow-sm cursor-pointer transition-all hover:opacity-80 active:scale-[0.98]"
+                  >
                     {localUserAvatar ? (
-                      <img src={localUserAvatar} alt="avatar" className="w-full h-full object-cover" />
+                      <img src={localUserAvatar} alt="" className="w-full h-full object-cover" />
                     ) : (
                       <User className="text-zinc-700" size={28} />
                     )}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-black text-zinc-800 truncate">{localUserName}</p>
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      onClick={openEditName}
+                      aria-label={t('profile.edit_name')}
+                      className="flex w-full min-w-0 items-center gap-1 text-left font-black text-zinc-800 truncate transition-colors hover:text-zinc-600 active:opacity-70"
+                    >
+                      <span className="min-w-0 truncate">{localUserName}</span>
+                      <Pencil size={12} className="shrink-0 text-zinc-400" aria-hidden />
+                    </button>
                     <p className="text-[10px] font-bold text-zinc-500">{t('user_id')}</p>
                   </div>
                 </div>
@@ -4148,19 +4161,27 @@ export default function App() {
       {/* Edit Username Modal */}
       <AnimatePresence>
         {isEditNameModalOpen && (
-          <div className="fixed inset-0 z-[180] flex items-center justify-center p-6 bg-black/20 backdrop-blur-md" onClick={() => setIsEditNameModalOpen(false)}>
+          <div className="fixed inset-0 z-[1200] flex items-center justify-center p-6 bg-black/30 backdrop-blur-md" onClick={() => setIsEditNameModalOpen(false)}>
             <motion.div
               initial={{ scale: 0.96, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.96, opacity: 0, y: 10 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className={cn("w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl", "lux-carbon-soft text-[#111111]")}
+              className={cn("w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl bg-white text-[#111111] border-[rgba(0,0,0,0.06)]")}
               onClick={e => e.stopPropagation()}
             >
+              <h3 className="text-sm font-black text-zinc-800 mb-4">{t('profile.edit_name')}</h3>
               <input
                 autoFocus
                 value={draftUserName}
                 onChange={(e) => setDraftUserName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const next = draftUserName.trim();
+                    if (next) setLocalUserName(next);
+                    setIsEditNameModalOpen(false);
+                  }
+                }}
                 placeholder={t('profile.name_placeholder')}
                 className={cn(
                   "w-full rounded-2xl px-4 py-4 text-sm font-bold outline-none border",
@@ -4168,6 +4189,7 @@ export default function App() {
                 )}
               />
               <button
+                type="button"
                 onClick={() => {
                   const next = draftUserName.trim();
                   if (next) setLocalUserName(next);

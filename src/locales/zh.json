@@ -155,6 +155,9 @@
   "splash": {
     "tagline": "轻松记账，掌控财富"
   },
+  "profile": {
+    "change_avatar": "更换头像"
+  },
   "login": {
     "title": "欢迎回来",
     "subtitle": "登录后即可同步多设备数据与专业报表能力。",

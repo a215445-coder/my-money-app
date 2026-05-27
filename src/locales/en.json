@@ -155,6 +155,9 @@
   "splash": {
     "tagline": "Track wisely. Own your wealth."
   },
+  "profile": {
+    "change_avatar": "Change Avatar"
+  },
   "login": {
     "title": "Welcome Back",
     "subtitle": "Sign in to sync across devices and unlock Pro insights.",
