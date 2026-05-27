@@ -3726,31 +3726,32 @@ export default function App() {
             </div>
 
             <div className="space-y-8">
-              {/* User Card */}
-              <div className={cn("p-6 rounded-[2rem] relative overflow-hidden group", theme.primary)}>
+              {/* User Card — 方案 A：高定白悬浮卡，高对比文字 */}
+              <div className="p-6 rounded-[2rem] relative overflow-hidden bg-white border border-[rgba(0,0,0,0.06)] shadow-[0_8px_30px_rgb(0,0,0,0.015)]">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="absolute top-0 right-0 w-32 h-32 bg-[#F2F2F7] rounded-full -mr-12 -mt-12"
+                  className="absolute top-0 right-0 w-32 h-32 bg-zinc-100/90 rounded-full -mr-12 -mt-12 pointer-events-none"
                 />
+                <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-orange-500/[0.04] rounded-full blur-2xl pointer-events-none" />
                 <div className="flex items-center space-x-4 relative z-10">
-                  <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center overflow-hidden">
+                  <div className="w-14 h-14 bg-zinc-100 rounded-2xl flex items-center justify-center overflow-hidden border border-zinc-200/70 shadow-sm">
                     {localUserAvatar ? (
                       <img src={localUserAvatar} alt="avatar" className="w-full h-full object-cover" />
                     ) : (
-                      <User className="text-white" size={28} />
+                      <User className="text-zinc-700" size={28} />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-black text-[#111111] truncate">{localUserName}</p>
-                    <p className={cn("text-[10px] font-bold", "text-[#6E6E73]")}>{t('user_id')}</p>
+                    <p className="font-black text-zinc-800 truncate">{localUserName}</p>
+                    <p className="text-[10px] font-bold text-zinc-500">{t('user_id')}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex space-x-2">
-                  <div className={cn("flex-1 py-2 bg-[#F2F2F7] rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", "text-white")}>
+                <div className="mt-4 flex space-x-2 relative z-10">
+                  <div className="flex-1 py-2 bg-emerald-50 rounded-xl text-[8px] font-black uppercase text-center text-emerald-700 border border-emerald-100/90">
                     {t('settings_syncing')}
                   </div>
-                  <div className={cn("flex-1 py-2 bg-white/20 rounded-xl text-[8px] font-black uppercase text-center backdrop-blur-sm", "text-white")}>
+                  <div className="flex-1 py-2 bg-zinc-100 rounded-xl text-[8px] font-black uppercase text-center text-zinc-700 border border-zinc-200/80">
                     {t('settings_backup')}
                   </div>
                 </div>
